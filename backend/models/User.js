@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
     enum: ['customer', 'admin'], 
     default: 'customer' 
   },
+  active: { type: Boolean, default: true },
   emailVerified: { type: Boolean, default: false },
   verificationToken: String,
   verificationExpires: Date,
