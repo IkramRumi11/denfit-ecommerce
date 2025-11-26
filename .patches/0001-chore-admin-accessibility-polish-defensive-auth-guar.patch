@@ -1,0 +1,1047 @@
+From 363ec398c44981471c44025cb5bdf358a07cc101 Mon Sep 17 00:00:00 2001
+From: DENFiT Bot <devnull@example.com>
+Date: Wed, 19 Nov 2025 18:20:17 +0500
+Subject: [PATCH] chore(admin): accessibility polish + defensive auth guard and
+ layout fixes
+
+---
+ backend/middleware/auth.js                    | 137 +++++++++
+ backend/middleware/authMiddleware.js          | 127 +++++++++
+ backend/models/User.js                        | 174 ++++++++++++
+ frontend/src/components/admin/QuickLinks.tsx  |  52 ++++
+ .../src/layouts/AdminLayout/AdminLayout.tsx   | 260 ++++++++++++++++++
+ frontend/src/layouts/AdminLayout/Sidebar.tsx  | 157 +++++++++++
+ frontend/vite.config.ts                       |  68 +++++
+ 7 files changed, 975 insertions(+)
+ create mode 100644 backend/middleware/auth.js
+ create mode 100644 backend/middleware/authMiddleware.js
+ create mode 100644 backend/models/User.js
+ create mode 100644 frontend/src/components/admin/QuickLinks.tsx
+ create mode 100644 frontend/src/layouts/AdminLayout/AdminLayout.tsx
+ create mode 100644 frontend/src/layouts/AdminLayout/Sidebar.tsx
+ create mode 100644 frontend/vite.config.ts
+
+diff --git a/backend/middleware/auth.js b/backend/middleware/auth.js
+new file mode 100644
+index 0000000..8bf3c69
+--- /dev/null
++++ b/backend/middleware/auth.js
+@@ -0,0 +1,137 @@
++﻿import jwt from 'jsonwebtoken';
++
++import User from '../models/User.js';
++
++// Protect routes - JWT verification
++export const protect = async (req, res, next) => {
++  try {
++    let token;
++
++    // 1) Get token from header
++    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
++      token = req.headers.authorization.split(' ')[1];
++    }
++    // 2) Get token from cookie
++    else if (req.cookies?.jwt) {
++      token = req.cookies.jwt;
++    }
++
++    if (!token) {
++      return res.status(401).json({
++        success: false,
++        message: 'You are not logged in. Please log in to get access.'
++      });
++    }
++
++    // 2) Verify token
++    const decoded = jwt.verify(token, process.env.JWT_SECRET);
++
++    // 3) Check if user still exists
++    const currentUser = await User.findById(decoded.id);
++    if (!currentUser) {
++      return res.status(401).json({
++        success: false,
++        message: 'The user belonging to this token no longer exists.'
++      });
++    }
++
++    // 4) Check if user changed password after token was issued
++    // Defensive: only call if model provides the method to avoid runtime errors
++    if (typeof currentUser.changedPasswordAfter === 'function') {
++      try {
++        if (currentUser.changedPasswordAfter(decoded.iat)) {
++          return res.status(401).json({
++            success: false,
++            message: 'User recently changed password. Please log in again.'
++          });
++        }
++      } catch (e) {
++        console.warn('changedPasswordAfter check failed:', e?.message || e);
++      }
++    }
++
++    // 5) Check if account is active
++    if (!currentUser.active) {
++      return res.status(401).json({
++        success: false,
++        message: 'Your account has been deactivated. Please contact support.'
++      });
++    }
++
++    // GRANT ACCESS TO PROTECTED ROUTE
++    req.user = currentUser;
++    res.locals.user = currentUser;
++    next();
++  } catch (error) {
++    if (error.name === 'JsonWebTokenError') {
++      return res.status(401).json({
++        success: false,
++        message: 'Invalid token. Please log in again.'
++      });
++    }
++    
++    if (error.name === 'TokenExpiredError') {
++      return res.status(401).json({
++        success: false,
++        message: 'Your token has expired. Please log in again.'
++      });
++    }
++
++    res.status(500).json({
++      success: false,
++      message: 'Authentication error'
++    });
++  }
++};
++
++// Grant access to specific roles
++export const authorize = (...roles) => {
++  return (req, res, next) => {
++    if (!roles.includes(req.user.role)) {
++      return res.status(403).json({
++        success: false,
++        message: `You do not have permission to perform this action. Required roles: ${roles.join(', ')}`
++      });
++    }
++    next();
++  };
++};
++
++// Optional auth - doesn't throw error if no token
++export const optionalAuth = async (req, res, next) => {
++  try {
++    let token;
++
++    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
++      token = req.headers.authorization.split(' ')[1];
++    } else if (req.cookies?.jwt) {
++      token = req.cookies.jwt;
++    }
++
++    if (token) {
++      const decoded = jwt.verify(token, process.env.JWT_SECRET);
++      const currentUser = await User.findById(decoded.id);
++      
++      if (currentUser && !currentUser.changedPasswordAfter(decoded.iat)) {
++        req.user = currentUser;
++        res.locals.user = currentUser;
++      }
++    }
++    
++    next();
++  } catch (error) {
++    // Continue without user if token is invalid
++    next();
++  }
++};
++
++// Check if email is verified
++export const requireEmailVerification = (req, res, next) => {
++  if (!req.user.emailVerified) {
++    return res.status(403).json({
++      success: false,
++      message: 'Please verify your email address to access this resource.'
++    });
++  }
++  next();
++};
+\ No newline at end of file
+diff --git a/backend/middleware/authMiddleware.js b/backend/middleware/authMiddleware.js
+new file mode 100644
+index 0000000..055935b
+--- /dev/null
++++ b/backend/middleware/authMiddleware.js
+@@ -0,0 +1,127 @@
++// middleware/authMiddleware.js
++import jwt from 'jsonwebtoken';
++
++import User from '../models/User.js';
++
++// Protect routes - JWT verification
++export const protect = async (req, res, next) => {
++  try {
++    let token;
++
++    // 1) Check for token in headers
++    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
++      token = req.headers.authorization.split(' ')[1];
++    }
++    // 2) Check for token in cookies
++    else if (req.cookies?.jwt) {
++      token = req.cookies.jwt;
++    }
++
++    if (!token) {
++      return res.status(401).json({
++        success: false,
++        message: 'You are not logged in. Please log in to get access.'
++      });
++    }
++
++    // 2) Verify token
++    const decoded = jwt.verify(token, process.env.JWT_SECRET);
++
++    // 3) Check if user still exists
++    const currentUser = await User.findById(decoded.id);
++    if (!currentUser) {
++      // Clear stale cookie so client doesn't keep sending an invalid token
++      try {
++        res.cookie('jwt', 'loggedout', {
++          expires: new Date(Date.now() + 10 * 1000),
++          httpOnly: true
++        });
++      } catch (e) {
++        // ignore cookie set errors
++      }
++      return res.status(401).json({
++        success: false,
++        message: 'The user belonging to this token no longer exists.'
++      });
++    }
++
++    // 4) Check if user changed password after token was issued
++    // Defensive: only call if model provides the method to avoid runtime errors
++    if (typeof currentUser.changedPasswordAfter === 'function') {
++      try {
++        if (currentUser.changedPasswordAfter(decoded.iat)) {
++          return res.status(401).json({
++            success: false,
++            message: 'User recently changed password. Please log in again.'
++          });
++        }
++      } catch (e) {
++        console.warn('changedPasswordAfter check failed:', e?.message || e);
++      }
++    }
++
++    // Grant access to protected route
++    req.user = currentUser;
++    next();
++  } catch (error) {
++    if (error.name === 'JsonWebTokenError') {
++      return res.status(401).json({
++        success: false,
++        message: 'Invalid token. Please log in again.'
++      });
++    }
++    
++    if (error.name === 'TokenExpiredError') {
++      return res.status(401).json({
++        success: false,
++        message: 'Your token has expired. Please log in again.'
++      });
++    }
++
++    // Log unexpected auth errors for debugging and return a safe 401
++    console.error('Authentication middleware error:', error);
++    return res.status(401).json({
++      success: false,
++      message: 'Invalid or expired authentication token. Please log in again.'
++    });
++  }
++};
++
++// Restrict to certain roles
++export const restrictTo = (...roles) => {
++  return (req, res, next) => {
++    if (!roles.includes(req.user.role)) {
++      return res.status(403).json({
++        success: false,
++        message: 'You do not have permission to perform this action.'
++      });
++    }
++    next();
++  };
++};
++
++// Optional authentication (doesn't throw error if no user)
++export const optionalAuth = async (req, res, next) => {
++  try {
++    let token;
++
++    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
++      token = req.headers.authorization.split(' ')[1];
++    } else if (req.cookies?.jwt) {
++      token = req.cookies.jwt;
++    }
++
++    if (token) {
++      const decoded = jwt.verify(token, process.env.JWT_SECRET);
++      const currentUser = await User.findById(decoded.id);
++      if (currentUser) {
++        req.user = currentUser;
++      }
++    }
++
++    next();
++  } catch (error) {
++    // Continue without user if token is invalid
++    next();
++  }
++};
+\ No newline at end of file
+diff --git a/backend/models/User.js b/backend/models/User.js
+new file mode 100644
+index 0000000..7e69f02
+--- /dev/null
++++ b/backend/models/User.js
+@@ -0,0 +1,174 @@
++﻿// backend/models/User.js
++import mongoose from 'mongoose';
++import bcrypt from 'bcryptjs';
++import crypto from 'crypto';
++import jwt from 'jsonwebtoken'; // Added for getSignedJwtToken if needed
++import validator from 'validator';
++
++const userSchema = new mongoose.Schema({
++  name: { 
++    type: String, 
++    required: [true, 'Please provide your name'], 
++    trim: true 
++  },
++  email: { 
++    type: String, 
++    required: [true, 'Please provide your email'], 
++    unique: true, 
++    lowercase: true,
++    validate: {
++      validator: function(v) {
++        // Strict email validation: always require a valid email.
++        // Development-only bypasses have been removed to avoid accidental insecure behavior.
++        return validator.isEmail(v || '');
++      },
++      message: 'Please provide a valid email'
++    },
++    index: true
++  },
++  password: { 
++    type: String, 
++    required: [true, 'Please provide a password'], 
++    minlength: 8,
++    select: false 
++  },
++  role: { 
++    type: String, 
++    enum: ['customer', 'admin'], 
++    default: 'customer' 
++  },
++  emailVerified: { type: Boolean, default: false },
++  verificationToken: String,
++  verificationExpires: Date,
++  lastVerificationSentAt: Date,
++  resetPasswordToken: String,
++  resetPasswordExpires: Date,
++  passwordChangedAt: Date,
++  phone: { type: String, unique: true, sparse: true }, // allow multiple nulls via sparse
++  dateOfBirth: Date,
++  gender: {
++    type: String,
++    enum: ['male', 'female', 'other', 'prefer-not-to-say']
++  },
++  avatar: String,
++  addresses: [{
++    name: String,
++    street: String,
++    city: String,
++    state: String,
++    zipCode: String,
++    country: { type: String, default: 'Pakistan' },
++    isDefault: { type: Boolean, default: false }
++  }],
++  preferences: {
++    newsletter: { type: Boolean, default: true },
++    emailNotifications: { type: Boolean, default: true }
++  },
++  lastLogin: Date,
++  loginCount: { type: Number, default: 0 },
++  loginAttempts: { type: Number, default: 0, select: false },
++  lockUntil: { type: Date, select: false },
++  deviceInfo: [{  // Added: For login tracking
++    userAgent: String,
++    ipAddress: String,
++    lastAccess: { type: Date, default: Date.now }
++  }]
++}, {
++  timestamps: true
++});
++
++// Simple indexes
++userSchema.index({ verificationToken: 1 });
++userSchema.index({ resetPasswordToken: 1 });
++
++// Password encryption middleware
++userSchema.pre('save', async function(next) {
++  if (!this.isModified('password')) return next();
++  try {
++    this.password = await bcrypt.hash(this.password, 12);
++    // Record time of password change so issued JWTs can be invalidated
++    if (!this.isNew) {
++      // set slightly in the past to avoid potential token creation race
++      this.passwordChangedAt = Date.now() - 1000;
++    }
++    next();
++  } catch (error) {
++    next(error);
++  }
++});
++
++// Compare password
++userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
++  return await bcrypt.compare(candidatePassword, userPassword);
++};
++
++// Check if user changed password after the given JWT timestamp (in seconds)
++userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
++  if (this.passwordChangedAt) {
++    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
++    return changedTimestamp > JWTTimestamp;
++  }
++  // False means NOT changed
++  return false;
++};
++
++// Generate JWT (added for completeness)
++userSchema.methods.getSignedJwtToken = function() {
++  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
++    expiresIn: process.env.JWT_EXPIRES_IN || '90d'
++  });
++};
++
++// Password reset token
++userSchema.methods.createPasswordResetToken = function() {
++  const resetToken = crypto.randomBytes(32).toString('hex');
++  this.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
++  this.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
++  return resetToken;
++};
++
++// Email verification token
++userSchema.methods.createVerificationToken = function() {
++  const verificationToken = crypto.randomBytes(32).toString('hex');
++  this.verificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
++  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
++  return verificationToken;
++};
++
++// Virtual for lock state
++userSchema.virtual('isLocked').get(function() {
++  return !!(this.lockUntil && this.lockUntil > Date.now());
++});
++
++// Increment login attempts and optionally lock account
++userSchema.methods.incrementLoginAttempts = async function() {
++  // If previously locked but lock has expired, reset counts
++  if (this.lockUntil && this.lockUntil < Date.now()) {
++    this.loginAttempts = 1;
++    this.lockUntil = undefined;
++    await this.save({ validateBeforeSave: false });
++    return;
++  }
++
++  this.loginAttempts = (this.loginAttempts || 0) + 1;
++
++  // Lock condition (example: 5 failed attempts -> lock)
++  const MAX_ATTEMPTS = 5;
++  const LOCK_TIME = 2 * 60 * 60 * 1000; // 2 hours
++
++  if (this.loginAttempts >= MAX_ATTEMPTS) {
++    this.lockUntil = Date.now() + LOCK_TIME;
++  }
++
++  await this.save({ validateBeforeSave: false });
++};
++
++// Reset login attempts after successful login
++userSchema.methods.resetLoginAttempts = async function() {
++  this.loginAttempts = 0;
++  this.lockUntil = undefined;
++  await this.save({ validateBeforeSave: false });
++};
++
++const User = mongoose.model('User', userSchema);
++export default User;
+\ No newline at end of file
+diff --git a/frontend/src/components/admin/QuickLinks.tsx b/frontend/src/components/admin/QuickLinks.tsx
+new file mode 100644
+index 0000000..9a60c41
+--- /dev/null
++++ b/frontend/src/components/admin/QuickLinks.tsx
+@@ -0,0 +1,52 @@
++// frontend/src/components/admin/QuickLinks.tsx
++import React from 'react';
++import { useNavigate } from 'react-router-dom';
++import adminMenu from '../../layouts/AdminLayout/adminMenu';
++import { useAuth } from '../../context/AuthContext';
++
++const isAllowed = (user: any, permission?: string) => {
++  // If no permission is set on the menu item, default to admin-only visibility.
++  if (!permission) return user?.role === 'admin';
++  // If user has explicit permissions array, check it.
++  if (Array.isArray(user?.permissions)) return user.permissions.includes(permission) || user.role === 'admin';
++  // Fallback: admin role has access
++  return user?.role === 'admin';
++};
++
++const QuickLinks: React.FC = () => {
++  const navigate = useNavigate();
++  const { user } = useAuth();
++
++  const items = adminMenu.filter(m => m.to !== '/admin' && isAllowed(user, m.permission));
++
++  if (!items.length) return null;
++
++  return (
++    <section className="mb-4" aria-labelledby="quick-links-heading">
++      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
++        <div className="flex items-center justify-between mb-3">
++          <div>
++            <h2 id="quick-links-heading" className="font-bold text-gray-900">Quick Links</h2>
++            <div className="text-sm text-gray-500">Jump to common admin sections</div>
++          </div>
++        </div>
++        <div className="flex flex-wrap gap-3" role="list" aria-labelledby="quick-links-heading">
++          {items.map((m) => (
++            <button
++              key={m.to}
++              onClick={() => navigate(m.to)}
++              role="listitem"
++              aria-label={`Go to ${m.label}`}
++              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm hover:bg-gray-50 transition flex items-center gap-2"
++            >
++              <span aria-hidden className="w-5 h-5 text-gray-600">{m.icon}</span>
++              <span>{m.label}</span>
++            </button>
++          ))}
++        </div>
++      </div>
++    </section>
++  );
++};
++
++export default QuickLinks;
+diff --git a/frontend/src/layouts/AdminLayout/AdminLayout.tsx b/frontend/src/layouts/AdminLayout/AdminLayout.tsx
+new file mode 100644
+index 0000000..8c5f343
+--- /dev/null
++++ b/frontend/src/layouts/AdminLayout/AdminLayout.tsx
+@@ -0,0 +1,260 @@
++// frontend/src/layouts/AdminLayout/AdminLayout.tsx
++import React, { useState, useEffect, useCallback } from 'react';
++import { Outlet, useLocation } from 'react-router-dom';
++import Sidebar from './Sidebar';
++import HeaderBar from './HeaderBar';
++import { AnimatePresence, motion } from 'framer-motion';
++
++// Custom hook for responsive behavior
++const useResponsiveLayout = () => {
++  const [isMobile, setIsMobile] = useState(false);
++  const [collapsed, setCollapsed] = useState(false);
++  const [sidebarOpenMobile, setSidebarOpenMobile] = useState(false);
++
++  // Handle responsive behavior
++  useEffect(() => {
++    const checkScreenSize = () => {
++      const mobile = window.innerWidth < 768;
++      setIsMobile(mobile);
++      
++      // Auto-collapse sidebar on mobile
++      if (mobile) {
++        setSidebarOpenMobile(false);
++      }
++    };
++
++    checkScreenSize();
++    window.addEventListener('resize', checkScreenSize);
++    
++    return () => window.removeEventListener('resize', checkScreenSize);
++  }, []);
++
++  // Close mobile sidebar when route changes
++  const location = useLocation();
++  useEffect(() => {
++    if (sidebarOpenMobile) {
++      setSidebarOpenMobile(false);
++    }
++  }, [location]);
++
++  // Keyboard shortcuts
++  useEffect(() => {
++    const handleKeyPress = (e: KeyboardEvent) => {
++      // Ctrl/Cmd + B to toggle sidebar
++      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
++        e.preventDefault();
++        if (isMobile) {
++          setSidebarOpenMobile(prev => !prev);
++        } else {
++          setCollapsed(prev => !prev);
++        }
++      }
++      
++      // Escape to close mobile sidebar
++      if (e.key === 'Escape' && sidebarOpenMobile) {
++        setSidebarOpenMobile(false);
++      }
++    };
++
++    document.addEventListener('keydown', handleKeyPress);
++    return () => document.removeEventListener('keydown', handleKeyPress);
++  }, [isMobile, sidebarOpenMobile]);
++
++  return {
++    isMobile,
++    collapsed,
++    sidebarOpenMobile,
++    setCollapsed,
++    setSidebarOpenMobile
++  };
++};
++
++// Backdrop component for mobile overlay
++const MobileBackdrop: React.FC<{ 
++  isOpen: boolean; 
++  onClose: () => void 
++}> = ({ isOpen, onClose }) => (
++  <AnimatePresence>
++    {isOpen && (
++      <motion.div
++        initial={{ opacity: 0 }}
++        animate={{ opacity: 1 }}
++        exit={{ opacity: 0 }}
++        transition={{ duration: 0.2 }}
++        className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
++        onClick={onClose}
++      />
++    )}
++  </AnimatePresence>
++);
++
++const AdminLayout: React.FC = () => {
++  const {
++    isMobile,
++    collapsed,
++    sidebarOpenMobile,
++    setCollapsed,
++    setSidebarOpenMobile
++  } = useResponsiveLayout();
++
++  const location = useLocation();
++
++  // Smooth scroll to top on route change
++  useEffect(() => {
++    window.scrollTo({ top: 0, behavior: 'smooth' });
++  }, [location]);
++
++  // Handle body scroll lock when mobile sidebar is open
++  useEffect(() => {
++    if (sidebarOpenMobile) {
++      document.body.style.overflow = 'hidden';
++    } else {
++      document.body.style.overflow = 'unset';
++    }
++
++    return () => {
++      document.body.style.overflow = 'unset';
++    };
++  }, [sidebarOpenMobile]);
++
++  const handleToggleCollapse = useCallback(() => {
++    if (isMobile) {
++      setSidebarOpenMobile(false);
++    } else {
++      setCollapsed(prev => !prev);
++    }
++  }, [isMobile, setCollapsed, setSidebarOpenMobile]);
++
++  const handleCloseMobileSidebar = useCallback(() => {
++    setSidebarOpenMobile(false);
++  }, []);
++
++  return (
++    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900/10 text-slate-800 dark:text-slate-100 transition-colors duration-300">
++      <div className="flex relative">
++        {/* Desktop Sidebar */}
++        <motion.aside
++          initial={false}
++          animate={{ 
++            width: collapsed ? 80 : 288,
++            transition: { type: "spring", stiffness: 300, damping: 30 }
++          }}
++          className="hidden md:flex md:flex-col h-screen sticky top-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-r border-slate-200/60 dark:border-slate-700/60 shadow-sm z-20"
++        >
++          <Sidebar 
++            collapsed={collapsed} 
++            onToggleCollapse={handleToggleCollapse} 
++          />
++        </motion.aside>
++
++        {/* Mobile Sidebar Overlay */}
++        <MobileBackdrop 
++          isOpen={sidebarOpenMobile} 
++          onClose={handleCloseMobileSidebar} 
++        />
++
++        {/* Mobile Sidebar */}
++        <AnimatePresence mode="wait">
++          {sidebarOpenMobile && (
++            <motion.div
++              key="mobile-sidebar"
++              initial={{ x: -320, opacity: 0 }}
++              animate={{ x: 0, opacity: 1 }}
++              exit={{ x: -320, opacity: 0 }}
++              transition={{ 
++                type: "spring", 
++                stiffness: 400, 
++                damping: 40,
++                duration: 0.2
++              }}
++              className="fixed inset-y-0 left-0 z-40 w-72 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-r border-slate-200/60 dark:border-slate-700/60 shadow-2xl md:hidden"
++            >
++              <Sidebar
++                collapsed={false}
++                onToggleCollapse={handleCloseMobileSidebar}
++                mobileOverlay
++              />
++            </motion.div>
++          )}
++        </AnimatePresence>
++
++        {/* Main Content Area */}
++        <motion.div 
++          className="flex-1 min-h-screen flex flex-col"
++          initial={false}
++          animate={{
++            marginLeft: isMobile ? 0 : (collapsed ? 80 : 288),
++            transition: { type: "spring", stiffness: 300, damping: 30 }
++          }}
++        >
++          {/* Sticky Header */}
++          <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200/60 dark:border-slate-700/60 shadow-sm">
++            <HeaderBar
++              onOpenMobileSidebar={() => setSidebarOpenMobile(true)}
++              collapsed={collapsed}
++              onToggleCollapse={handleToggleCollapse}
++            />
++          </div>
++
++          {/* Main Content */}
++          <main className="flex-1 p-4 sm:p-6 lg:p-8">
++            <AnimatePresence mode="wait">
++              <motion.div
++                key={location.pathname}
++                initial={{ opacity: 0, y: 12, scale: 0.995 }}
++                animate={{ opacity: 1, y: 0, scale: 1 }}
++                exit={{ opacity: 0, y: -12, scale: 0.995 }}
++                transition={{ 
++                  duration: 0.2,
++                  ease: "easeOut"
++                }}
++                className="h-full"
++              >
++                <Outlet />
++              </motion.div>
++            </AnimatePresence>
++          </main>
++        </motion.div>
++      </div>
++
++      {/* Performance Optimizations */}
++      <style>{`
++        /* Smooth scrolling for the entire app */
++        html {
++          scroll-behavior: smooth;
++        }
++        
++        /* Custom scrollbar */
++        ::-webkit-scrollbar {
++          width: 6px;
++        }
++        
++        ::-webkit-scrollbar-track {
++          background: transparent;
++        }
++        
++        ::-webkit-scrollbar-thumb {
++          background: #cbd5e1;
++          border-radius: 3px;
++        }
++        
++        ::-webkit-scrollbar-thumb:hover {
++          background: #94a3b8;
++        }
++        
++        .dark ::-webkit-scrollbar-thumb {
++          background: #475569;
++        }
++        
++        .dark ::-webkit-scrollbar-thumb:hover {
++          background: #64748b;
++        }
++  `}</style>
++    </div>
++  );
++};
++
++// Add display name for better debugging
++AdminLayout.displayName = 'AdminLayout';
++
++export default AdminLayout;
+\ No newline at end of file
+diff --git a/frontend/src/layouts/AdminLayout/Sidebar.tsx b/frontend/src/layouts/AdminLayout/Sidebar.tsx
+new file mode 100644
+index 0000000..968e221
+--- /dev/null
++++ b/frontend/src/layouts/AdminLayout/Sidebar.tsx
+@@ -0,0 +1,157 @@
++import React from "react";
++import { NavLink, useNavigate } from "react-router-dom";
++import { LogOut, Menu } from "lucide-react";
++import adminMenu from "./adminMenu";
++import { useAuth } from "../../context/AuthContext";
++import { motion } from "framer-motion";
++
++/**
++ * NOTE: shadcn/ui components path used here as project convention.
++ * If your project uses a different import path, adjust these imports.
++ */
++import { Avatar } from "@/components/ui/avatar";
++import { Button } from "@/components/ui/button";
++import { Separator } from "@/components/ui/separator";
++
++interface Props {
++  collapsed?: boolean;
++  onToggleCollapse?: () => void;
++  mobileOverlay?: boolean;
++}
++
++const Sidebar: React.FC<Props> = ({ collapsed = false, onToggleCollapse, mobileOverlay = false }) => {
++  const { user, logout } = useAuth();
++  const navigate = useNavigate();
++
++  // Keep menu structure but filter by permissions/role as before
++  const allowedMenu = adminMenu.filter((m) => {
++    if (!m.permission) return user?.role === "admin"; // default to admin-only if permission missing
++    if (Array.isArray(user?.permissions)) return user.permissions.includes(m.permission) || user.role === "admin";
++    return user?.role === "admin";
++  });
++
++  const handleLogout = async () => {
++    try {
++      await logout();
++      navigate("/");
++    } catch (err) {
++      console.error("Logout failed:", err);
++    }
++  };
++
++  const getAvatarUrl = () => {
++    if (user?.avatar) return user.avatar;
++    const name = user?.name || "Admin User";
++    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=111827&color=fff&bold=true`;
++  };
++
++  return (
++    <nav
++      aria-label="Admin primary"
++      className="h-full bg-white dark:bg-slate-800 border-r border-slate-100 dark:border-slate-700 flex flex-col justify-between"
++      role="navigation"
++    >
++      <div className="p-4">
++        <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
++          <div
++            aria-hidden
++            className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-white bg-gradient-to-br from-slate-700 to-slate-500"
++          >
++            D
++          </div>
++
++          {!collapsed && (
++            <div className="flex flex-col">
++              <div className="text-lg font-bold">DENFiT</div>
++              <div className="text-xs text-slate-500">Admin Console</div>
++            </div>
++          )}
++
++          {/* collapse/expand control for desktop */}
++          <div className="ml-auto md:flex hidden">
++            <Button
++              variant="ghost"
++              size="icon"
++              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
++              onClick={onToggleCollapse}
++              className="p-1"
++            >
++              <Menu className="w-4 h-4" />
++            </Button>
++          </div>
++        </div>
++
++        <div className="mt-6">
++          <div className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
++            {allowedMenu.map((m) => (
++              <NavLink
++                key={m.to}
++                to={m.to}
++                title={m.label}
++                end
++                onClick={() => mobileOverlay && onToggleCollapse && onToggleCollapse()}
++                className={({ isActive }) =>
++                  `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
++                    ${isActive ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white" : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`
++                }
++              >
++                <div aria-hidden className="w-5 h-5 text-slate-600 dark:text-slate-300">
++                  {m.icon}
++                </div>
++                {!collapsed && <span>{m.label}</span>}
++              </NavLink>
++            ))}
++          </div>
++        </div>
++      </div>
++
++      <Separator />
++
++      <div className="p-4 border-t border-slate-100 dark:border-slate-700">
++        <div className="flex items-center justify-between gap-2">
++          <div className="flex items-center gap-2">
++            <Avatar>
++              <img src={getAvatarUrl()} alt={user?.name || "Admin"} />
++            </Avatar>
++
++            {!collapsed && (
++              <div>
++                <div className="text-sm font-semibold">{user?.name || "Admin User"}</div>
++                <div className="text-xs text-slate-500">{user?.role === "admin" ? "Admin" : "User"}</div>
++              </div>
++            )}
++          </div>
++
++          <div className="flex items-center gap-2">
++            {/* Mobile toggle (visible only on mobile) */}
++            <div className="md:hidden">
++              <Button
++                variant="ghost"
++                size="icon"
++                onClick={onToggleCollapse}
++                aria-label="Close sidebar"
++                className="p-1"
++              >
++                <Menu className="w-4 h-4" />
++              </Button>
++            </div>
++
++            {/* Logout */}
++            <Button
++              variant="ghost"
++              size="icon"
++              onClick={handleLogout}
++              title="Sign out"
++              aria-label="Sign out"
++              className="p-1"
++            >
++              <LogOut className="w-4 h-4" />
++            </Button>
++          </div>
++        </div>
++      </div>
++    </nav>
++  );
++};
++
++export default Sidebar;
+diff --git a/frontend/vite.config.ts b/frontend/vite.config.ts
+new file mode 100644
+index 0000000..3258b0a
+--- /dev/null
++++ b/frontend/vite.config.ts
+@@ -0,0 +1,68 @@
++﻿// frontend/vite.config.ts
++import { defineConfig } from 'vite';
++import react from '@vitejs/plugin-react';
++import path from 'path';
++import fs from 'fs';
++
++// Avoid TypeScript complaints about Node globals in this config file.
++declare const __dirname: string;
++declare var process: any;
++
++// Allow local HTTPS in dev when SSL paths are provided via env vars.
++const sslKey = (process as any).env.SSL_KEY_PATH;
++const sslCert = (process as any).env.SSL_CERT_PATH;
++let httpsConfig: any = false;
++if (sslKey && sslCert && fs.existsSync(sslKey) && fs.existsSync(sslCert)) {
++  httpsConfig = { key: fs.readFileSync(sslKey), cert: fs.readFileSync(sslCert) };
++}
++
++export default defineConfig({
++  plugins: [react()],
++
++  resolve: {
++    alias: {
++      react: path.resolve(__dirname, './node_modules/react'),
++      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
++      // Allow '@/...' imports to resolve to the frontend `src` directory
++      '@': path.resolve(__dirname, './src'),
++    },
++  },
++
++  server: {
++    port: 3000, // Frontend runs here
++    https: httpsConfig,
++    hmr: {
++      protocol: 'ws',
++      host: 'localhost',
++      port: 3000,
++    },
++    proxy: {
++      '/api': {
++        // Proxy API calls to the running backend. Backend is currently running on 3002 in dev.
++        // Adjust to match backend `PORT` in `backend/.env` (default 3002 in this workspace).
++        target: 'http://localhost:3002',
++        changeOrigin: true,
++        secure: false,
++        rewrite: (path) => path.replace(/^\/api/, '/api'), // keep same path
++      },
++    },
++  },
++
++  optimizeDeps: {
++    include: [
++      'react',
++      'react-dom',
++      'react-router-dom',
++      '@headlessui/react',
++      'framer-motion',
++      'lucide-react',
++      'axios',
++    ],
++    force: true, // Force re-optimization to prevent stale cache issues
++  },
++
++  build: {
++    outDir: 'dist',
++    sourcemap: true, // helpful for debugging
++  },
++});
+-- 
+2.51.0.windows.1
+

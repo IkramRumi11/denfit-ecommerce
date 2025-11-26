@@ -1,0 +1,63 @@
+file,path,issue-severity,summary,fixed,fix-commit-hash
+package.json,./package.json,low,Root package for concurrently running dev servers,N,N/A
+backend/package.json,backend/package.json,low,Backend dependencies - no vulnerabilities found,Y,pending
+frontend/package.json,frontend/package.json,high,2 vulnerabilities (glob + js-yaml) - FIXED with npm audit fix,Y,pending
+backend/server.js,backend/server.js,low,Import order warning - minor style issue,N,pending
+backend/controllers/adminController.js,backend/controllers/adminController.js,medium,26 unused error variables in catch blocks - should log errors,N,pending
+backend/controllers/authController.js,backend/controllers/authController.js,medium,Multiple unused error variables and empty catch blocks,N,pending
+backend/controllers/orderController.js,backend/controllers/orderController.js,medium,4 unused error variables in catch blocks,N,pending
+backend/controllers/productController.js,backend/controllers/productController.js,medium,5 unused error variables in catch blocks,N,pending
+backend/controllers/uploadController.js,backend/controllers/uploadController.js,medium,3 unused error variables in catch blocks,N,pending
+backend/controllers/userController.js,backend/controllers/userController.js,low,No issues detected,N,N/A
+backend/middleware/auth.js,backend/middleware/auth.js,medium,1 unused error variable,N,pending
+backend/middleware/authMiddleware.js,backend/middleware/authMiddleware.js,medium,2 unused error variables,N,pending
+backend/middleware/csrf.js,backend/middleware/csrf.js,medium,1 unused error variable,N,pending
+backend/middleware/errorHandler.js,backend/middleware/errorHandler.js,low,Unused 'next' parameter (Express convention),N,N/A
+backend/middleware/upload.js,backend/middleware/upload.js,low,No issues detected,N,N/A
+backend/models/User.js,backend/models/User.js,low,No issues detected,N,N/A
+backend/models/Product.js,backend/models/Product.js,low,No issues detected,N,N/A
+backend/models/Order.js,backend/models/Order.js,low,No issues detected,N,N/A
+backend/models/Category.js,backend/models/Category.js,low,No issues detected,N,N/A
+backend/models/AuditLog.js,backend/models/AuditLog.js,low,No issues detected,N,N/A
+backend/routes/auth.js,backend/routes/auth.js,low,Import order warnings - minor style,N,pending
+backend/routes/products.js,backend/routes/products.js,low,Import order warning - minor style,N,pending
+backend/routes/admin.js,backend/routes/admin.js,low,No issues detected,N,N/A
+backend/routes/orders.js,backend/routes/orders.js,low,No issues detected,N,N/A
+backend/routes/cart.js,backend/routes/cart.js,low,No issues detected,N,N/A
+backend/routes/wishlist.js,backend/routes/wishlist.js,low,No issues detected,N,N/A
+backend/routes/upload.js,backend/routes/upload.js,low,Unused 'authorize' import,N,pending
+backend/services/emailService.js,backend/services/emailService.js,medium,1 unused error variable,N,pending
+backend/workers/emailWorker.js,backend/workers/emailWorker.js,medium,Multiple unused imports and variables,N,pending
+backend/queues/emailQueue.js,backend/queues/emailQueue.js,low,No issues detected,N,N/A
+backend/scripts/seed-admin.js,backend/scripts/seed-admin.js,low,Unused fileURLToPath import,N,pending
+backend/scripts/smoke-test.js,backend/scripts/smoke-test.js,high,Using require() in ES module - should use import,N,pending
+backend/scripts/test-auth-flows.js,backend/scripts/test-auth-flows.js,high,Using require() in ES module,N,pending
+backend/scripts/dump-user.js,backend/scripts/dump-user.js,low,Unused mongoose import,N,pending
+backend/scripts/reactivate-missing-active.js,backend/scripts/reactivate-missing-active.js,low,Unused mongoose import,N,pending
+backend/scripts/update-admin-email.js,backend/scripts/update-admin-email.js,low,Unused __dirname variable,N,pending
+backend/scripts/verify-admin-email.js,backend/scripts/verify-admin-email.js,low,Unused __dirname and error variables,N,pending
+backend/src/config/database.js,backend/src/config/database.js,low,No issues detected,N,N/A
+backend/src/config/security.js,backend/src/config/security.js,medium,Unused error variables and empty catch blocks,N,pending
+backend/src/config/validateEnv.js,backend/src/config/validateEnv.js,low,No issues detected,N,N/A
+backend/tests/health.test.js,backend/tests/health.test.js,medium,Multiple unused variables in test,N,pending
+backend/utils/jwtGenerator.js,backend/utils/jwtGenerator.js,low,No issues detected,N,N/A
+frontend/src/App.tsx,frontend/src/App.tsx,low,No issues detected,N,N/A
+frontend/src/main.tsx,frontend/src/main.tsx,low,No issues detected,N,N/A
+frontend/src/api.ts,frontend/src/api.ts,low,No issues detected,N,N/A
+frontend/src/layouts/AdminLayout/Sidebar.tsx,frontend/src/layouts/AdminLayout/Sidebar.tsx,low,Unused 'motion' import,N,pending
+frontend/src/layouts/AdminLayout/AdminLayout.tsx,frontend/src/layouts/AdminLayout/AdminLayout.tsx,low,No issues detected,N,N/A
+frontend/src/pages/AuthPage.tsx,frontend/src/pages/AuthPage.tsx,low,Unused 'resendIsCooling' variable,N,pending
+frontend/src/pages/admin/AdminDashboard.tsx,frontend/src/pages/admin/AdminDashboard.tsx,low,Unused 'useMemo' import,N,pending
+frontend/src/pages/admin/AdminAudits.tsx,frontend/src/pages/admin/AdminAudits.tsx,medium,7 unused icon imports and variables,N,pending
+frontend/src/pages/admin/AdminOrderDetail.tsx,frontend/src/pages/admin/AdminOrderDetail.tsx,medium,7 unused imports and variables,N,pending
+frontend/src/pages/admin/AdminProducts.tsx,frontend/src/pages/admin/AdminProducts.tsx,low,4 unused icon imports,N,pending
+frontend/src/pages/admin/AdminProductEdit.tsx,frontend/src/pages/admin/AdminProductEdit.tsx,low,Unused useRef and product variable,N,pending
+frontend/src/pages/admin/AdminUsers.tsx,frontend/src/pages/admin/AdminUsers.tsx,low,Unused 'Edit' icon import,N,pending
+frontend/src/utils/token.ts,frontend/src/utils/token.ts,low,Unused '_token' variable,N,pending
+frontend/src/components/ProductCard.tsx,frontend/src/components/ProductCard.tsx,low,No issues detected,N,N/A
+frontend/src/components/cart/CartDrawer.tsx,frontend/src/components/cart/CartDrawer.tsx,low,No issues detected,N,N/A
+frontend/src/context/AuthContext.tsx,frontend/src/context/AuthContext.tsx,low,No issues detected,N,N/A
+frontend/src/context/CartContext.tsx,frontend/src/context/CartContext.tsx,low,No issues detected,N,N/A
+docker-compose.yml,./docker-compose.yml,low,No issues detected,N,N/A
+.env.example,./.env.example,low,No issues detected,N,N/A
+README.md,./README.md,low,No issues detected,N,N/A

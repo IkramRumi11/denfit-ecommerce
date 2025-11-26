@@ -35,7 +35,6 @@ const QuickLinks: React.FC = () => {
             <button
               key={m.to}
               onClick={() => navigate(m.to)}
-              role="listitem"
               aria-label={`Go to ${m.label}`}
               className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm hover:bg-gray-50 transition flex items-center gap-2"
             >

@@ -1,0 +1,43 @@
+{
+  "generated": "2025-11-26",
+  "backend": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "status": "CLEAN"
+  },
+  "frontend": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 1,
+      "critical": 0,
+      "total": 2
+    },
+    "issues": [
+      {
+        "package": "glob",
+        "severity": "high",
+        "title": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+        "cvss": 7.5,
+        "range": "10.2.0 - 10.4.5",
+        "fixAvailable": true
+      },
+      {
+        "package": "js-yaml",
+        "severity": "moderate",
+        "title": "js-yaml has prototype pollution in merge (<<)",
+        "cvss": 5.3,
+        "range": "4.0.0 - 4.1.0",
+        "fixAvailable": true
+      }
+    ],
+    "status": "NEEDS_FIX"
+  }
+}

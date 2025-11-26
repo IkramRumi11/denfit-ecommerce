@@ -1,0 +1,21 @@
+# docker-compose.override.yml
+# Optional overrides for development. This file is intended to be used locally
+# and should not be committed with secrets. It configures forwarded ports and
+# developer-friendly settings.
+
+version: '3.8'
+services:
+  backend:
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend:/usr/src/app
+  frontend:
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/usr/src/app

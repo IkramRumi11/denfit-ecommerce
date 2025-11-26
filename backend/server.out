@@ -1,0 +1,8 @@
+✅ SMTP config detected: smtp.gmail.com
+[INFO] 2025-10-29T15:57:08.940Z - 📡 Mongoose connected to database
+[SUCCESS] 2025-10-29T15:57:08.944Z - ✅ MongoDB connected: localhost
+[SUCCESS] 2025-10-29T15:57:08.982Z - ✅ Database initialization complete
+🚀 DENFiT backend running at https://localhost:3003 (HTTPS)
+🧠 Environment: development
+✅ SMTP transport ready (smtp.gmail.com:587)
+📩 Email sent to smoketestfinal@example.com — id=<a19a835b-2b71-ddc0-a07c-b1e24cf3735a@gmail.com>

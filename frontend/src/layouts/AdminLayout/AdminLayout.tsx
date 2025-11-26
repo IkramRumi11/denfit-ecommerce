@@ -35,7 +35,7 @@ const useResponsiveLayout = () => {
     if (sidebarOpenMobile) {
       setSidebarOpenMobile(false);
     }
-  }, [location]);
+  }, [location, sidebarOpenMobile]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -127,7 +127,7 @@ const AdminLayout: React.FC = () => {
 
   const handleCloseMobileSidebar = useCallback(() => {
     setSidebarOpenMobile(false);
-  }, []);
+  }, [setSidebarOpenMobile]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-blue-900/10 text-slate-800 dark:text-slate-100 transition-colors duration-300">

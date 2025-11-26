@@ -3,6 +3,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import mongoose from 'mongoose';
+
 import User from '../models/User.js';
 import { connectDB } from '../src/config/database.js';
 

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Welcome to DENFiT</title>
+  <style>
+    /* Mobile-first, email-safe styles */
+    body { margin:0; padding:0; background:#f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:#263238; }
+    .wrap { max-width: 680px; margin: 24px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 6px 30px rgba(3,10,18,0.08); }
+    .header { padding: 28px; background: linear-gradient(135deg,#000,#333); color: #fff; text-align:center; }
+    .logo { display:inline-block; vertical-align:middle; max-height:56px; }
+    .brand { display:inline-block; margin-left:12px; vertical-align:middle; font-weight:700; letter-spacing:0.6px; font-size:20px; }
+    .tag { display:block; font-size:13px; color:rgba(255,255,255,0.85); margin-top:6px; font-weight:500; }
+    .content { padding: 32px; }
+    h1 { font-size:20px; margin:0 0 12px; color:#0b1220; }
+    p { color:#455a64; font-size:15px; line-height:1.6; margin:0 0 14px; }
+    .cta { display:block; width: fit-content; margin: 18px auto; background:#000; color:#fff; padding:12px 22px; border-radius:8px; text-decoration:none; font-weight:600; }
+    .muted { font-size:13px; color:#90a4ae; }
+    .code { background:#f7fafb; border:1px solid #e6eef2; padding:12px; border-radius:8px; font-size:13px; color:#546e7a; word-break:break-word; margin:14px 0; text-align:center; }
+    .list { margin:14px 0 22px 18px; color:#455a64; }
+    .footer { background:#fbfcfd; padding:20px; text-align:center; color:#9aa7af; font-size:13px; }
+    a.textlink { color:#374151; text-decoration:underline; }
+    @media (max-width:520px){ .content{padding:20px} .header{padding:20px} .brand{display:block; margin-left:0; margin-top:10px} }
+  </style>
+</head>
+<body>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <div class="wrap" role="article" aria-label="Welcome to DENFiT">
+          <div class="header">
+            <img src="<%= brand.logo %>" alt="<%= brand.name %> logo" class="logo" width="120" style="display:inline-block; object-fit:contain;" />
+            <div class="brand"><%= brand.name %></div>
+            <div class="tag">Elevate Your Style</div>
+          </div>
+
+          <div class="content">
+            <h1>Welcome to <%= brand.name %>, <%= name %> 👋</h1>
+
+            <p>Thanks for joining <strong><%= brand.name %></strong> — we're really happy to have you. To activate your account, please verify your email address by clicking the button below.</p>
+
+            <p style="text-align:center;">
+              <a href="<%= verificationUrl %>" class="cta" target="_blank" rel="noopener noreferrer">Verify Email Address</a>
+            </p>
+
+            <div class="code" aria-hidden="false">
+              <strong>Quick link:</strong><br />
+              If the button doesn't work, paste this in your browser:<br />
+              <a href="<%= verificationUrl %>" class="textlink"><%= verificationUrl %></a>
+            </div>
+
+            <p class="muted">Once verified you'll enjoy:</p>
+            <ul class="list">
+              <li>Exclusive member discounts</li>
+              <li>Fast & secure checkout</li>
+              <li>Order tracking & history</li>
+              <li>Personalized style picks</li>
+            </ul>
+
+            <p class="muted">If you need help, contact <a href="mailto:<%= supportEmail %>"><%= supportEmail %></a></p>
+          </div>
+
+          <div class="footer">
+            &copy; <%= year %> <strong><%= brand.name %></strong> — Karachi, Pakistan
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

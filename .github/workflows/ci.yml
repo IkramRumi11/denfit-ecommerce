@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongo --eval \"db.adminCommand('ping')\" || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping || exit 1" --health-interval=10s --health-timeout=5s --health-retries=5
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          npm ci
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: |
+          npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm run build
+
+      - name: TypeScript check (frontend)
+        working-directory: frontend
+        run: |
+          npx tsc --noEmit -p tsconfig.json
+
+      - name: Smoke test frontend build
+        run: |
+          if [ -d frontend/dist ]; then echo "frontend build exists"; else echo "frontend build missing"; exit 1; fi
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: |
+          npm run lint
+
+      - name: Lint backend
+        working-directory: backend
+        run: |
+          npm run lint
+
+      - name: Run backend health test
+        working-directory: backend
+        run: |
+          npm run test:health
+
+      - name: Start backend (for smoke test)
+        env:
+          NODE_ENV: development
+          PORT: 3002
+          MONGODB_URI: mongodb://localhost:27017/denfit_ci
+          JWT_SECRET: ci_jwt_secret
+          REDIS_URL: redis://localhost:6379
+        working-directory: backend
+        run: |
+          npm ci
+          # Start backend in background and wait for it to respond
+          nohup node server.js > backend.out 2>&1 &
+          for i in {1..30}; do
+            if curl -sS http://localhost:3002/api/v1/health | grep -q "DENFiT API Server"; then
+              echo "backend health OK"; break;
+            fi
+            echo "waiting for backend... ($i)"; sleep 2;
+          done
+
+      - name: Check backend logs
+        working-directory: backend
+        run: |
+          echo "--- backend logs ---"
+          tail -n 200 backend.out || true
+          echo "--- end logs ---"
+

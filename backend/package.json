@@ -1,0 +1,52 @@
+{
+  "name": "denfit-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "worker": "node workers/emailWorker.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:health": "node --test tests/health.test.js",
+    "seed-admin": "node ./scripts/seed-admin.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.64.1",
+    "chalk": "^5.3.0",
+    "cloudinary": "^2.8.0",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "denfit-frontend": "file:../frontend",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "hpp": "^0.2.3",
+    "ioredis": "^5.3.2",
+    "js-yaml": "^4.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.29.4",
+    "mongoose": "^8.20.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.10",
+    "uuid": "^9.0.1",
+    "validator": "^13.11.0",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "eslint": "^9.39.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-node": "^11.1.0",
+    "nodemon": "^3.1.0",
+    "typescript": "^5.9.3"
+  }
+}

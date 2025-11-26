@@ -1,0 +1,70 @@
+# docker-compose.yml - Local development example
+# Usage:
+# 1. Copy .env.example -> .env and set any required values.
+# 2. Run: docker-compose up --build
+# 3. Backend: http://localhost:3002
+#    Frontend (Vite dev): http://localhost:3000
+
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /usr/src/app
+    env_file:
+      - ./.env
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: sh -c "npm ci && npm run dev"
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - denfit-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    working_dir: /usr/src/app
+    env_file:
+      - ./.env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    depends_on:
+      - backend
+    networks:
+      - denfit-net
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  denfit-net:
+    driver: bridge
