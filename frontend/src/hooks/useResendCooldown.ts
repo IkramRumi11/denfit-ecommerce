@@ -6,31 +6,7 @@ export default function useResendCooldown(initialEmail?: string) {
   const timerRef = useRef<number | null>(null);
   const emailRef = useRef<string | undefined>(initialEmail?.toLowerCase());
 
-  useEffect(() => {
-    emailRef.current = initialEmail?.toLowerCase();
-    if (!emailRef.current) return;
-    try {
-      const v = localStorage.getItem(`resendCooldown:${emailRef.current}`);
-      if (!v) return;
-      const expiry = Number(v);
-      if (Number.isNaN(expiry)) return;
-      const remainingSec = Math.max(0, Math.ceil((expiry - Date.now()) / 1000));
-      if (remainingSec > 0) start(remainingSec, emailRef.current);
-    } catch (e) {
-      // Ignore localStorage errors (e.g., user denied storage or safari private mode)
-      console.debug('useResendCooldown: localStorage read failed', e);
-    }
-  }, [initialEmail, start]);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, []);
-
+  // Define start callback first, before using it in effects
   const start = useCallback((secs: number, email?: string) => {
     const normalized = (email || emailRef.current || '').toLowerCase();
     setRemaining(secs);
@@ -61,6 +37,33 @@ export default function useResendCooldown(initialEmail?: string) {
         return s - 1;
       });
     }, 1000);
+  }, []);
+
+  // Load cooldown from localStorage on mount or when email changes
+  useEffect(() => {
+    emailRef.current = initialEmail?.toLowerCase();
+    if (!emailRef.current) return;
+    try {
+      const v = localStorage.getItem(`resendCooldown:${emailRef.current}`);
+      if (!v) return;
+      const expiry = Number(v);
+      if (Number.isNaN(expiry)) return;
+      const remainingSec = Math.max(0, Math.ceil((expiry - Date.now()) / 1000));
+      if (remainingSec > 0) start(remainingSec, emailRef.current);
+    } catch (e) {
+      // Ignore localStorage errors (e.g., user denied storage or safari private mode)
+      console.debug('useResendCooldown: localStorage read failed', e);
+    }
+  }, [initialEmail, start]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, []);
 
   const clear = useCallback(() => {

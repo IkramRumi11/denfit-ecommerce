@@ -21,6 +21,22 @@ export const AdminNoteModal: React.FC<ModalProps> = ({
   const [loading, setLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Define handleSubmit first before using it in effects
+  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    
+    setLoading(true);
+    try {
+      await onConfirm(note.trim() || undefined);
+      // Don't close here - let parent handle it after confirmation
+    } catch (error) {
+      console.error("Failed to confirm status change:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, onConfirm, note]);
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -49,21 +65,6 @@ export const AdminNoteModal: React.FC<ModalProps> = ({
       document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose, loading, handleSubmit]);
-
-  const handleSubmit = React.useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
-    
-    setLoading(true);
-    try {
-      await onConfirm(note.trim() || undefined);
-      // Don't close here - let parent handle it after confirmation
-    } catch (error) {
-      console.error("Failed to confirm status change:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, onConfirm, note]);
 
   const getTargetStatusConfig = () => {
     const config = {
