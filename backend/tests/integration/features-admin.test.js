@@ -34,6 +34,16 @@ test('Admin can set global flag and user override works as expected', async () =
   const g = await (await fetch(`${baseURL}/api/v1/features`)).json();
   assert.strictEqual(g.flags.raptorMini, false);
 
+  // Check audit logs contain feature_flag entries
+  const auditsRes = await (await fetch(`${baseURL}/api/v1/admin/audits?type=feature_flag`, { headers: { 'Authorization': `Bearer ${admin.token}` } })).json();
+  assert.strictEqual(Array.isArray(auditsRes.data.audits), true);
+
+  // Check audit logs include this change
+  const auditsRes = await fetch(`${baseURL}/api/v1/admin/audits?type=feature_flag`, { headers: { 'Authorization': `Bearer ${admin.token}` } });
+  const auditsData = await auditsRes.json();
+  const recent = auditsData?.data?.audits || [];
+  if (recent.length === 0) throw new Error('No audit logs found for feature flag change');
+
   // Create user override enabling it for the newly created user
   await fetch(`${baseURL}/api/v1/admin/features`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${admin.token}` }, body: JSON.stringify({ name: 'RAPTOR_MINI', enabled: true, target: 'user', userId }) });
 

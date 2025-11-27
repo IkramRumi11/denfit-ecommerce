@@ -115,7 +115,7 @@ export default function Header(): JSX.Element {
   };
 
   const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
-  const features = useFeatures();
+  const { flags: features } = useFeatures();
 
   // ---------------------------------------------
   // RENDER

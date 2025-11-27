@@ -1,12 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { useToast } from '../../context/ToastContext';
+import { useFeatures } from '../../context/FeatureContext';
 
 const AdminFeatures: React.FC = () => {
   const { showToast } = useToast();
   const [flags, setFlags] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [newFlag, setNewFlag] = useState({ name: 'RAPTOR_MINI', enabled: true, target: 'global', envName: '', userId: '' });
+  const [userSearch, setUserSearch] = useState('');
+  const [userResults, setUserResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!userSearch) return;
+    const timer = setTimeout(async () => {
+      try {
+        const res: any = await api.admin.getAllUsers({ search: userSearch, limit: 10 });
+        if (!active) return;
+        setUserResults(res?.data?.users || []);
+      } catch (e) { setUserResults([]); }
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [userSearch]);
 
   const load = async () => {
     setLoading(true);
@@ -20,6 +36,7 @@ const AdminFeatures: React.FC = () => {
     }
   };
 
+  const { refresh } = useFeatures();
   useEffect(() => { load(); }, []);
 
   const createFlag = async () => {
@@ -30,6 +47,9 @@ const AdminFeatures: React.FC = () => {
       showToast('Flag created/updated', 'success');
       setNewFlag({ name: 'RAPTOR_MINI', enabled: true, target: 'global', envName: '', userId: '' });
       load();
+      // notify UI to refetch flags and use refresh for direct update
+      try { refresh(); } catch {}
+      window.dispatchEvent(new CustomEvent('features:changed'));
     } catch (e: any) { showToast(e?.message || 'Failed to create flag', 'error'); }
   };
 
@@ -38,6 +58,8 @@ const AdminFeatures: React.FC = () => {
       const res: any = await api.admin.updateFeatureFlag(flag._id, { enabled: !flag.enabled });
       showToast('Flag updated', 'success');
       load();
+      try { refresh(); } catch {}
+      window.dispatchEvent(new CustomEvent('features:changed'));
     } catch (e: any) { showToast(e?.message || 'Failed to update', 'error'); }
   };
 
@@ -47,6 +69,8 @@ const AdminFeatures: React.FC = () => {
       await api.admin.deleteFeatureFlag(flag._id);
       showToast('Flag removed', 'success');
       load();
+      try { refresh(); } catch {}
+      window.dispatchEvent(new CustomEvent('features:changed'));
     } catch (e: any) { showToast(e?.message || 'Failed to delete', 'error'); }
   };
 
@@ -69,7 +93,18 @@ const AdminFeatures: React.FC = () => {
           </select>
           <div className="flex gap-2">
             <input className="border p-2" placeholder="envName (e.g. production)" value={newFlag.envName} onChange={(e) => setNewFlag({ ...newFlag, envName: e.target.value })} />
-            <input className="border p-2" placeholder="userId (optional)" value={newFlag.userId} onChange={(e) => setNewFlag({ ...newFlag, userId: e.target.value })} />
+            <div className="relative">
+              <input className="border p-2" placeholder="search user" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
+              {userResults.length > 0 && (
+                <div className="absolute bg-white shadow rounded mt-1 z-20 max-h-64 overflow-auto w-full">
+                  {userResults.map(u => (
+                    <div key={u._id} className="p-2 hover:bg-gray-50 cursor-pointer" onClick={() => { setNewFlag({ ...newFlag, userId: u._id }); setUserSearch(u.name); setUserResults([]); }}>
+                      {u.name} — {u.email}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2">

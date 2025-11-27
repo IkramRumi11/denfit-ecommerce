@@ -20,7 +20,8 @@ export async function getFeatureFlagsEffective(req) {
   const flags = getFeatureFlags();
   try {
     if (!FeatureFlag || !FeatureFlag.find) return flags;
-    const allDbFlags = await FeatureFlag.find({ name: Object.keys(flags).length ? { $in: Object.keys(flags) } : undefined }).lean().catch(() => []);
+    // Fetch all persisted flags and let them define new names as well as overrides
+    const allDbFlags = await FeatureFlag.find({}).lean().catch(() => []);
     const overrideMap = {};
     (allDbFlags || []).forEach((f) => {
       if (!overrideMap[f.name]) overrideMap[f.name] = [];
@@ -42,6 +43,7 @@ export async function getFeatureFlagsEffective(req) {
         if (globalEntry) applied = globalEntry.enabled;
       }
       if (applied !== null) flags[name] = applied;
+      else if (typeof flags[name] === 'undefined') flags[name] = false;
     }
   } catch (e) {
     console.warn('getFeatureFlagsEffective: failed to merge DB flags', e?.message || e);
