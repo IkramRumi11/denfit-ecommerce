@@ -32,6 +32,7 @@ import AdminProductCreate from './pages/admin/AdminProductCreate';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import AdminAudits from './pages/admin/AdminAudits';
+import AdminFeatures from './pages/admin/AdminFeatures';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -78,6 +79,7 @@ function AppContent() {
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:id" element={<AdminOrderDetail />} />
             <Route path="audits" element={<AdminAudits />} />
+            <Route path="features" element={<AdminFeatures />} />
           </Route>
         </Routes>
       </AnimatePresence>

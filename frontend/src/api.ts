@@ -514,6 +514,11 @@ export const adminAPI = {
 
   // System
   getSystemHealth: () => handleRequest<any>("/admin/system/health"),
+  // Feature flags management
+  getFeatureFlags: () => handleRequest<{ data: { flags: any[] } }>("/admin/features"),
+  createFeatureFlag: (payload: any) => handleRequest<{ flag: any }>("/admin/features", { method: 'POST', body: JSON.stringify(payload) }),
+  updateFeatureFlag: (id: string, payload: any) => handleRequest<{ flag: any }>(`/admin/features/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteFeatureFlag: (id: string) => handleRequest(`/admin/features/${id}`, { method: 'DELETE' }),
   
   clearCache: () =>
     handleRequest("/admin/system/cache/clear", {

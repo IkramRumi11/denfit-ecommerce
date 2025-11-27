@@ -23,6 +23,7 @@ import {
   updateProduct,
   deleteProduct,
   bulkUpdateProducts,
+  bulkDeleteProducts,
   
   // Order Management
   getAllOrders,
@@ -48,7 +49,10 @@ import {
   getSystemHealth,
   clearCache,
   backupDatabase
+  ,
+  // Feature flags will be handled by a separate controller
 } from '../controllers/adminController.js';
+import { getAllFlags, createFlag, updateFlag, deleteFlag } from '../controllers/adminFeatureController.js';
 
 const router = express.Router();
 
@@ -108,6 +112,7 @@ router.route('/products/:id')
   .delete(deleteProduct);
 
 router.patch('/products/bulk/update', bulkUpdateProducts);
+router.delete('/products/bulk', bulkDeleteProducts);
 
 // ========================
 // ORDER MANAGEMENT ROUTES
@@ -128,27 +133,32 @@ router.patch('/orders/:id/refund', refundOrder);
 // Uploads (admin only) - accept multiple images
 router.post('/uploads', upload.array('files', 10), async (req, res, next) => {
   try {
-    // If CLOUDINARY configured, prefer using Cloudinary (optional)
+    const files = req.files || [];
+    console.debug(`/admin/uploads called; files: ${files.length}, user: ${req.user?.email || 'anonymous'}`);
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const cloudApiKey = process.env.CLOUDINARY_API_KEY;
     const cloudApiSecret = process.env.CLOUDINARY_API_SECRET;
-    const files = req.files || [];
     const results = [];
+
     if (cloudName && cloudApiKey && cloudApiSecret) {
-      // lazy-load cloudinary to avoid hard dependency when not configured
-      const cloudinary = await import('cloudinary');
-      cloudinary.v2.config({ cloud_name: cloudName, api_key: cloudApiKey, api_secret: cloudApiSecret });
-      let i = 0;
-      for (const f of files) {
-        const r = await cloudinary.v2.uploader.upload(f.path, { folder: 'denfit' });
-        results.push({
-          url: r.secure_url,
-          filename: r.public_id ? `${r.public_id}.${r.format}` : f.filename,
-          publicId: r.public_id || null,
-          isPrimary: i === 0,
-          order: i
-        });
-        i++;
+      try {
+        const cloudinary = await import('cloudinary');
+        cloudinary.v2.config({ cloud_name: cloudName, api_key: cloudApiKey, api_secret: cloudApiSecret });
+        let i = 0;
+        for (const f of files) {
+          const r = await cloudinary.v2.uploader.upload(f.path, { folder: 'denfit' });
+          results.push({ url: r.secure_url, filename: r.public_id ? `${r.public_id}.${r.format}` : f.filename, publicId: r.public_id || null, isPrimary: i === 0, order: i });
+          i++;
+        }
+      } catch (cloudErr) {
+        console.warn('Cloudinary upload failed, falling back to local storage', cloudErr?.message || cloudErr);
+        // Fallback to local file url if cloudinary or upload fails
+        let i = 0;
+        for (const f of files) {
+          const url = `/uploads/${f.filename}`;
+          results.push({ url, filename: f.filename, publicId: null, isPrimary: i === 0, order: i });
+          i++;
+        }
       }
     } else {
       let i = 0;
@@ -158,8 +168,13 @@ router.post('/uploads', upload.array('files', 10), async (req, res, next) => {
         i++;
       }
     }
+
+    console.debug('/admin/uploads results:', results.map(r => r.filename));
     res.status(200).json({ success: true, data: { files: results } });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('/admin/uploads error:', err);
+    next(err);
+  }
 });
 
 // ========================
@@ -186,5 +201,13 @@ router.get('/analytics/products', getProductAnalytics);
 router.get('/system/health', getSystemHealth);
 router.post('/system/cache/clear', clearCache);
 router.post('/system/backup', backupDatabase);
+
+// ========================
+// FEATURE FLAGS Management (Admin)
+// ========================
+router.get('/features', getAllFlags);
+router.post('/features', createFlag);
+router.patch('/features/:id', updateFlag);
+router.delete('/features/:id', deleteFlag);
 
 export default router;

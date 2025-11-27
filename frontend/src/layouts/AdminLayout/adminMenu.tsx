@@ -17,6 +17,7 @@ const adminMenu: AdminMenuItem[] = [
   { to: '/admin/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, permission: 'orders.view' },
   { to: '/admin/audits', label: 'Audits', icon: <Shield className="w-5 h-5" />, permission: 'audits.view' },
   { to: '/admin/settings', label: 'Settings', icon: <Settings className="w-5 h-5" />, permission: 'settings.view' },
+  { to: '/admin/features', label: 'Features', icon: <Settings className="w-5 h-5" />, permission: 'settings.view' },
 ];
 
 export default adminMenu;
