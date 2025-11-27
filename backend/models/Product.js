@@ -32,6 +32,15 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  sku: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    trim: true,
+    maxlength: [60, 'SKU cannot exceed 60 characters']
+  },
+  // Auto-generated human-friendly slug is stored under seo.slug; sku is unique ID for inventory
   images: [{
     url: {
       type: String,
@@ -71,6 +80,13 @@ const productSchema = new mongoose.Schema({
   trending: {
     type: Boolean,
     default: false
+  },
+  // Publication status: draft/published/archived
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'archived'],
+    default: 'published',
+    index: true
   },
   tags: [String],
   specifications: {
