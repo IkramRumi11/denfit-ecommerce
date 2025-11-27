@@ -19,6 +19,7 @@ import { connectDB } from "./src/config/database.js";
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
 import adminRoutes from "./routes/admin.js";
+import featuresRoutes from './routes/features.js';
 import errorHandler, { notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -144,6 +145,7 @@ app.get("/api/v1/health", (req, res) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use('/api/v1/features', featuresRoutes);
 
 // ==============================
 // ⚠️ Error Handling

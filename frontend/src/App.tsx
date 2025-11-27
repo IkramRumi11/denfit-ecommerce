@@ -36,6 +36,7 @@ import AdminAudits from './pages/admin/AdminAudits';
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider, useSearch } from './context/SearchContext';
+import { FeatureProvider } from './context/FeatureContext';
 
 function AppContent() {
   useSearch();
@@ -100,7 +101,9 @@ function App() {
   return (
     <AuthProvider>
       <SearchProvider>
+        <FeatureProvider>
         <RouterProvider router={router} />
+        </FeatureProvider>
       </SearchProvider>
     </AuthProvider>
   );

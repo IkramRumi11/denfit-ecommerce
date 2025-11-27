@@ -11,6 +11,7 @@ import { useWishlist } from "../../context/WishlistContext";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useToast } from "../../context/ToastContext";
+import { useFeatures } from '../../context/FeatureContext';
 import { mockProducts } from "../../data/mockProducts";
 import { productId, primaryImage, priceNumber, slugify } from '../../utils/productHelpers';
 import { megaMenuData } from "../../data/megaMenuData";
@@ -114,6 +115,7 @@ export default function Header(): JSX.Element {
   };
 
   const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
+  const features = useFeatures();
 
   // ---------------------------------------------
   // RENDER
@@ -149,6 +151,12 @@ export default function Header(): JSX.Element {
               className="h-10 w-auto object-contain"
             />
           </Link>
+          {/* Quick feature indicator for Raptor mini (Preview) when enabled */}
+          {features?.raptorMini && (
+            <div className="absolute right-4 top-2 hidden md:flex items-center gap-2 text-xs bg-yellow-100 border border-yellow-300 text-yellow-800 px-2 py-1 rounded-md">
+              <span className="font-semibold">Raptor mini (Preview)</span>
+            </div>
+          )}
 
           {/* Mobile right */}
           <div className="flex items-center gap-3 md:hidden ml-auto">

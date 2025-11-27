@@ -392,6 +392,11 @@ export const adminAPI = {
       method: "PATCH",
       body: JSON.stringify({ productIds, updateData }),
     }),
+  bulkDeleteProducts: (productIds: string[]) =>
+    handleRequest<{ deletedCount: number }>("/admin/products/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ productIds }),
+    }),
 
   // Orders
   getAllOrders: (params?: {
@@ -535,6 +540,10 @@ export const adminAPI = {
   },
 };
 
+export const systemAPI = {
+  getFeatures: () => handleRequest<{ flags: { raptorMini: boolean } }>("/features"),
+};
+
 // Root export
 export const api = {
   auth: authAPI,
@@ -543,6 +552,7 @@ export const api = {
   wishlist: wishlistAPI,
   orders: ordersAPI,
   admin: adminAPI,
+  system: systemAPI,
   healthCheck: () => handleRequest("/health"),
 };
 

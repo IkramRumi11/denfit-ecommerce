@@ -33,3 +33,18 @@ $env:SKIP_CSRF='true'; npm run dev --prefix backend
 
 Security note: Never enable `SKIP_CSRF` in staging or production. Ensure `JWT_SECRET` and other sensitive keys are set through environment variables and never checked into source control.
 
+## Feature Flags
+
+The backend exposes a lightweight feature flag endpoint for runtime toggles. The most common flag is `RAPTOR_MINI` which controls the 'Raptor mini (Preview)' UI behavior.
+
+- To enable Raptor mini globally in development or production environment, set:
+
+```powershell
+$env:RAPTOR_MINI='true'
+```
+
+- The server exposes a GET endpoint at `/api/v1/features` (e.g. `http://localhost:3002/api/v1/features`) which returns the current runtime flags.
+
+By default, `RAPTOR_MINI` is enabled if not explicitly set. You can disable it by setting `RAPTOR_MINI=false` in your environment.
+
+
