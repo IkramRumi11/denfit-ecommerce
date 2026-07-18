@@ -1,0 +1,584 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Invoice - <%= order.orderNumber || order._id %></title>
+    <style>
+      :root {
+        --brand-primary: #111827;
+        --brand-accent: #111827;
+        --brand-muted: #6b7280;
+        --border-soft: #e5e7eb;
+        --bg-soft: #f9fafb;
+        --bg-card: #ffffff;
+        --pill-bg: #111827;
+        --pill-text: #f9fafb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Arial, sans-serif;
+        color: var(--brand-primary);
+        margin: 0;
+        padding: 32px;
+        background: #f3f4f6;
+      }
+
+      .invoice-shell {
+        max-width: 960px;
+        margin: 0 auto;
+        background: linear-gradient(135deg, #f9fafb 0%, #ffffff 40%, #f3f4f6 100%);
+        border-radius: 16px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+        padding: 24px;
+        border: 1px solid rgba(17, 24, 39, 0.06);
+      }
+
+      .invoice-inner {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px 24px;
+        border: 1px solid var(--border-soft);
+      }
+
+      .flex {
+        display: flex;
+      }
+
+      .left {
+        flex: 1.4;
+        min-width: 0;
+        padding-right: 20px;
+        border-right: 1px solid var(--border-soft);
+      }
+
+      .right {
+        flex: 0.9;
+        min-width: 260px;
+        padding-left: 20px;
+      }
+
+      .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 18px;
+        gap: 20px;
+      }
+
+      .brand-left {
+        flex: 0 0 auto;
+      }
+
+      .invoice-barcode-container {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        min-width: 0;
+      }
+
+      .invoice-info {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-right: 0;
+      }
+
+      .barcode-right {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        margin-left: 40px;
+      }
+
+      .barcode-right img {
+        max-width: 150px;
+        height: auto;
+        display: block;
+        margin-top: 5px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand img {
+        max-width: 160px;
+        height: auto;
+        display: block;
+      }
+
+      .brand-name-fallback {
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: var(--pill-bg);
+        color: var(--pill-text);
+        margin-bottom: 4px;
+      }
+
+      h1, h2, h3, h4 {
+        margin: 0;
+        font-weight: 700;
+        color: var(--brand-primary);
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      .order-title {
+        font-size: 18px;
+        margin-top: 4px;
+        word-break: break-all;
+      }
+
+      .small {
+        font-size: 12px;
+        color: var(--brand-muted);
+        line-height: 1.5;
+      }
+
+      .muted {
+        color: var(--brand-muted);
+      }
+
+      .section {
+        margin-top: 18px;
+      }
+
+      .section-header {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--brand-muted);
+        margin-bottom: 6px;
+      }
+
+      .card {
+        background: var(--bg-soft);
+        border-radius: 10px;
+        border: 1px solid var(--border-soft);
+        padding: 10px 12px;
+      }
+
+      .table-wrapper {
+        margin-top: 8px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--border-soft);
+        background: var(--bg-card);
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .table thead {
+        background: #f3f4f6;
+      }
+
+      .table th,
+      .table td {
+        padding: 8px 10px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .table th {
+        font-size: 11px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--brand-muted);
+        font-weight: 600;
+      }
+
+      .table tbody tr:nth-child(even) {
+        background: #f9fafb;
+      }
+
+      .table tfoot td {
+        font-weight: 600;
+      }
+
+      .align-right {
+        text-align: right;
+      }
+
+      .right-panel {
+        background: #f9fafb;
+        padding: 14px 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+      }
+
+      .right-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+
+      .right-panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--brand-muted);
+      }
+
+      .right-stat-line {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        margin-top: 3px;
+        color: var(--brand-primary);
+      }
+
+      .right-stat-label {
+        color: var(--brand-muted);
+      }
+
+      .amount-highlight {
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .barcode {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px dashed #d1d5db;
+        text-align: center;
+      }
+
+      .barcode img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+      }
+
+      footer {
+        margin-top: 20px;
+        font-size: 11px;
+        color: #4b5563;
+        text-align: center;
+        padding-top: 12px;
+        border-top: 1px dashed #d1d5db;
+      }
+
+      .footer-addr {
+        font-weight: 500;
+      }
+
+      .footer-note {
+        margin-top: 4px;
+      }
+
+      .two-col {
+        display: flex;
+        gap: 12px;
+      }
+
+      .two-col > div {
+        flex: 1;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 12px;
+        }
+        .invoice-shell {
+          padding: 16px;
+          border-radius: 12px;
+        }
+        .invoice-inner {
+          padding: 14px;
+        }
+        .flex {
+          flex-direction: column;
+        }
+        .left {
+          border-right: none;
+          padding-right: 0;
+          border-bottom: 1px solid var(--border-soft);
+          padding-bottom: 14px;
+          margin-bottom: 14px;
+        }
+        .right {
+          padding-left: 0;
+        }
+        .header-container {
+          flex-direction: column;
+          gap: 16px;
+        }
+        .invoice-barcode-container {
+          flex-direction: column;
+          width: 100%;
+        }
+        .invoice-info {
+          padding-right: 0;
+          width: 100%;
+        }
+        .barcode-right {
+          margin-left: 0;
+          margin-top: 16px;
+          align-items: flex-start;
+          width: 100%;
+        }
+        .barcode-right img {
+          max-width: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-shell">
+      <div class="invoice-inner">
+        <div class="header-container">
+          <div class="brand-left">
+            <div class="brand">
+              <% if (brand.logoDataUri) { %>
+                <img src="<%= brand.logoDataUri %>" alt="<%= brand.name %> logo" style="max-height: 48px; width: auto; border-radius: 8px;">
+              <% } else if (brand.logo) { %>
+                <img src="<%= brand.logo %>" alt="<%= brand.name %> logo" style="max-height: 48px; width: auto; border-radius: 8px;">
+              <% } %>
+              <div class="brand-name-fallback" style="font-size: 26px; font-weight: 800; color: #111827; letter-spacing: 0.05em; text-transform: uppercase;">DENFiT</div>
+            </div>
+          </div>
+
+          <div class="invoice-barcode-container">
+            <div class="invoice-info">
+              <div class="pill">Invoice</div>
+              <h2 class="order-title">Order #<%= order.orderNumber || order._id %></h2>
+              <div class="small">
+                Issued:
+                <%= (new Date(date || order.createdAt)).toLocaleString('en-US', { timeZone: 'Asia/Karachi' }) %>
+              </div>
+            </div>
+
+            <div class="barcode-right">
+              <% if (barcodeDataUri) { %>
+                <img src="<%= barcodeDataUri %>" alt="barcode">
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex">
+          <div class="left">
+            <div class="section">
+              <div class="section-header">Shipping To</div>
+              <div class="card small">
+                <% const s = order.shippingAddress || {}; %>
+                <% const present = [];
+                   if (s.name) present.push('Name');
+                   if (s.street) present.push('Address');
+                   if (s.city) present.push('City');
+                   if (s.postalCode) present.push('Postal Code');
+                   if (s.province || s.state) present.push('State/Province');
+                   if (s.phone) present.push('Phone');
+                %>
+                <% if (s.name) { %>
+                  <div><strong>Name:</strong> <%= s.name %></div>
+                <% } %>
+                <% if (s.street) { %>
+                  <div><strong>Address:</strong> <%= s.street %></div>
+                <% } %>
+                <% if (s.city || s.postalCode) { %>
+                  <div>
+                    <% if (s.city) { %><strong>City:</strong> <span><%= s.city %></span><% } %>
+                    <% if (s.postalCode) { %> &nbsp; <strong>Postal Code:</strong> <span><%= s.postalCode %></span><% } %>
+                  </div>
+                <% } %>
+                <% if (s.province || s.state) { %>
+                  <div><strong>State/Province:</strong> <%= s.province || s.state %></div>
+                <% } %>
+                <% if (s.phone) { %>
+                  <div><strong>Phone:</strong> <%= s.phone %></div>
+                <% } %>
+                <!-- Summary line removed per request: do not display aggregated 'Customer information included' line -->
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">Items Summary</div>
+              <div class="table-wrapper">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th style="width: 50%;">Product</th>
+                      <th style="width: 20%;">SKU</th>
+                      <th style="width: 10%;">Qty</th>
+                      <th style="width: 20%;" class="align-right">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% (order.items || []).forEach(function(it){ %>
+                      <tr>
+                        <td>
+                          <div style="display: flex; align-items: center; gap: 12px;">
+                            <% 
+                              let itemImg = it.image;
+                              if (!itemImg && it.product && it.product.images && it.product.images.length > 0) {
+                                const pri = it.product.images.find(img => img.isPrimary);
+                                itemImg = pri ? pri.url : it.product.images[0].url;
+                              }
+                              if (!itemImg) {
+                                itemImg = 'https://i.ibb.co/GQG243Rb/DENFiT.jpg'; // fallback
+                              }
+                            %>
+                            <img src="<%= itemImg %>" alt="Product thumbnail" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; flex-shrink: 0;">
+                            <div>
+                              <strong style="display: block; font-size: 13px; margin-bottom: 2px;">
+                                <%= (it.name || it.title || (it.product && it.productName) || 'Product') %>
+                              </strong>
+                              <% 
+                                const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
+                                const colorName = it.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
+                                const variantHex = it.variantHex || (colorObj ? (colorObj.hex || undefined) : undefined);
+                                const colorValue = typeof it.color === 'string' ? it.color : (variantHex || undefined);
+                                const label = colorName || colorValue || '';
+                                const displayLabel = getColorName(label);
+                                const resolvedHex = resolveColorHex(colorValue || label);
+                              %>
+                              <% if (it.size || displayLabel) { %>
+                                <div class="small" style="font-size: 11px; color: var(--brand-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px;">
+                                  <% if (it.size) { %><span>Size: <%= it.size %></span><% } %>
+                                  <% if (it.size && displayLabel) { %><span>•</span><% } %>
+                                  <% if (displayLabel) { %>
+                                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                      Color:
+                                      <% if (resolvedHex) { %>
+                                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: <%= resolvedHex %>; border: 1px solid #ddd;"></span>
+                                      <% } %>
+                                      <span style="text-transform: capitalize;"><%= displayLabel %></span>
+                                    </span>
+                                  <% } %>
+                                </div>
+                              <% } %>
+                            </div>
+                          </div>
+                        </td>
+                        <td><%= it.sku || (it.product && it.product.sku) || '' %></td>
+                        <td><%= it.quantity || 0 %></td>
+                        <td class="align-right">
+                          <%= it.price ? ("Rs " + Number(it.price).toFixed(2)) : '' %>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3" class="align-right" style="padding:8px;border-top:1px solid #e5e7eb">Subtotal</td>
+                      <td class="align-right" style="padding:8px;border-top:1px solid #e5e7eb">
+                        Rs <%= typeof subtotal !== 'undefined' ? Number(subtotal).toFixed(2) : (order.subtotal ? Number(order.subtotal).toFixed(2) : '0.00') %>
+                      </td>
+                    </tr>
+                    <!-- TAX FEATURE TEMPORARILY DISABLED FOR CUSTOMER-INVOICES
+                         Original GST row preserved below for future reactivation. -->
+                    <% if (typeof storedTax !== 'undefined' && storedTax != null) { %>
+                      <!-- Stored tax preserved (not shown to customer) -->
+                    <% } %>
+                    <!-- Customer-facing tax row intentionally omitted -->
+                    <tr>
+                      <td colspan="3" class="align-right" style="padding:8px">Shipping</td>
+                      <td class="align-right" style="padding:8px">
+                        Rs <%= typeof shipping !== 'undefined' ? Number(shipping).toFixed(2) : (order.shippingCost ? Number(order.shippingCost).toFixed(2) : '0.00') %>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colspan="3" class="align-right" style="padding:8px;border-top:1px solid #e5e7eb"><strong>Total</strong></td>
+                      <td class="align-right" style="padding:8px;border-top:1px solid #e5e7eb">
+                        <strong>Rs <%= typeof total !== 'undefined' ? Number(total).toFixed(2) : '0.00' %></strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- footer removed from left column; will render after the invoice content to appear at document end -->
+          </div>
+
+          <div class="right">
+            <div class="right-panel">
+              <div class="right-panel-header">
+                <div class="right-panel-title">Order Details</div>
+              </div>
+
+              <div class="right-stat-line">
+                <span class="right-stat-label">Order Number</span>
+                <span>#<%= order.orderNumber || order._id %></span>
+              </div>
+              <div class="right-stat-line">
+                <span class="right-stat-label">Order Date</span>
+                <span><%= (new Date(order.createdAt || date)).toLocaleString('en-US', { timeZone: 'Asia/Karachi' }) %></span>
+              </div>
+              <div class="right-stat-line">
+                <span class="right-stat-label">Total Items</span>
+                <span><%= totalItems %></span>
+              </div>
+              <!-- Weight removed per request -->
+              <div class="right-stat-line">
+                <span class="right-stat-label">Shipment Type</span>
+                <span><%= order.shipmentType || 'Standard' %></span>
+              </div>
+              <div class="right-stat-line">
+                <span class="right-stat-label">Courier</span>
+                <span><%= courier %></span>
+              </div>
+              <div class="right-stat-line">
+                <span class="right-stat-label">Payment Method</span>
+                <span><%= order.formattedPaymentMethod || '' %></span>
+              </div>
+
+              <div style="margin-top: 10px; border-top: 1px dashed #d1d5db; padding-top: 8px;">
+                <div class="right-stat-line">
+                  <span class="right-stat-label">Amount Due</span>
+                  <span class="amount-highlight">
+                    <%= amount ? ("Rs " + Number(amount).toFixed(2)) : 'Rs 0.00' %>
+                  </span>
+                </div>
+              </div>
+
+              <!-- barcode moved to header to align opposite brand logo -->
+            </div>
+          </div>
+        </div>
+        <footer style="margin-top:20px;font-size:11px;color:#4b5563;text-align:center;padding-top:12px;border-top:1px dashed #d1d5db;">
+          <div class="footer-addr" style="font-weight:500;">
+            Return Address: 191-A, Attaturk Block, New Garden Town, Lahore, Pakistan.
+          </div>
+          <div class="footer-note" style="margin-top:4px;">
+            Thank you for shopping with <strong><%= brand.name %></strong>. We hope you enjoy your new pieces.
+          </div>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>

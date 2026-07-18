@@ -1,4 +1,4 @@
-﻿import jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 import User from '../models/User.js';
 
@@ -29,6 +29,15 @@ export const protect = async (req, res, next) => {
     // 3) Check if user still exists
     const currentUser = await User.findById(decoded.id);
     if (!currentUser) {
+      // Clear stale cookie so client doesn't keep sending an invalid token
+      try {
+        res.cookie('jwt', 'loggedout', {
+          expires: new Date(Date.now() + 10 * 1000),
+          httpOnly: true
+        });
+      } catch (e) {
+        // ignore cookie set errors
+      }
       return res.status(401).json({
         success: false,
         message: 'The user belonging to this token no longer exists.'
@@ -97,6 +106,9 @@ export const authorize = (...roles) => {
   };
 };
 
+// Backwards-compatible alias used in some routes
+export const restrictTo = (...roles) => authorize(...roles);
+
 // Optional auth - doesn't throw error if no token
 export const optionalAuth = async (req, res, next) => {
   try {
@@ -112,7 +124,7 @@ export const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const currentUser = await User.findById(decoded.id);
       
-      if (currentUser && !currentUser.changedPasswordAfter(decoded.iat)) {
+      if (currentUser && (typeof currentUser.changedPasswordAfter !== 'function' || !currentUser.changedPasswordAfter(decoded.iat))) {
         req.user = currentUser;
         res.locals.user = currentUser;
       }

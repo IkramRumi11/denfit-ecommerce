@@ -2,9 +2,13 @@
 import { Product, User, CartItem, Order, ApiResponse } from "./types";
 
 const env = (import.meta as any).env;
-const API_BASE_URL = env.PROD
-  ? (env.VITE_API_URL || "").replace(/\/$/, "")
-  : "/api/v1";
+// Prefer an explicit VITE_API_URL when present; otherwise fall back to the backend on localhost:3002.
+const rawApiUrl = (env?.VITE_API_URL || 'http://localhost:3002').toString().trim();
+const baseApiUrl = rawApiUrl.replace(/\/$/, '');
+export const API_BASE_URL = /\/api\/v1$/i.test(baseApiUrl) ? baseApiUrl : `${baseApiUrl}/api/v1`;
+const DEFAULT_FETCH_OPTIONS: RequestInit = {
+  credentials: 'include',
+};
 
 // --------------------
 // Helpers
@@ -41,7 +45,8 @@ const handleRequest = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE_URL}${normalizedEndpoint}`;
 
   try {
     const headers: Record<string, any> = {
@@ -70,9 +75,9 @@ const handleRequest = async <T>(
     }
 
     const response = await fetch(url, {
+      ...DEFAULT_FETCH_OPTIONS,
       ...options,
       headers,
-      credentials: "include", // always send cookies
     });
 
     const data = await response.json().catch(() => ({}));
@@ -98,7 +103,28 @@ const handleRequest = async <T>(
           return data;
         }
 
-        // clear invalid jwt by calling logout (with CSRF)
+        // Attempt silent token refresh before logging out
+        // Skip if this IS the refresh request (prevent infinite loop)
+        if (!endpoint.includes('/auth/refresh-token') && !endpoint.includes('/auth/logout')) {
+          try {
+            const refreshXsrf = (await ensureXsrfCookie()) || getXsrfToken();
+            const refreshHeaders: Record<string, string> = refreshXsrf ? { "x-xsrf-token": refreshXsrf } : {};
+            const refreshResp = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+              method: "POST",
+              credentials: "include",
+              headers: refreshHeaders,
+            });
+            if (refreshResp.ok) {
+              // Refresh succeeded — retry the original request with fresh token
+              if (!(import.meta as any).env?.PROD) console.debug('[API] Token refreshed, retrying', endpoint);
+              return handleRequest<T>(endpoint, options);
+            }
+          } catch (refreshErr) {
+            if (!(import.meta as any).env?.PROD) console.debug('[API] Token refresh failed', refreshErr);
+          }
+        }
+
+        // Refresh failed or not applicable — clear invalid jwt by calling logout (with CSRF)
         try {
           const xsrf = (await ensureXsrfCookie()) || getXsrfToken();
           const logoutHeaders: Record<string, string> = xsrf ? { "x-xsrf-token": xsrf } : {};
@@ -133,7 +159,14 @@ const handleRequest = async <T>(
           console.debug('[API] app:loggedOut dispatch failed', e);
         }
       }
-      throw new Error(data?.message || `Request failed (${response.status})`);
+      const err = new Error(data?.message || `Request failed (${response.status})`);
+      try {
+        // Attach raw error details (validation errors or body) for client-side handling
+        (err as any).details = data?.errors ?? data;
+      } catch (e) {
+        // ignore attach error
+      }
+      throw err;
     }
 
     return data;
@@ -212,23 +245,101 @@ export const authAPI = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  requestEmailChange: (desiredEmail: string, reason?: string) =>
+    handleRequest('/auth/request-email-change', {
+      method: 'POST',
+      body: JSON.stringify({ desiredEmail, reason }),
+    }),
 };
 
 // ======================
 // PRODUCTS, CART, WISHLIST, ORDERS
 // ======================
 export const productsAPI = {
-  getAll: (params?: { category?: string; search?: string; page?: number; limit?: number }) => {
+  getAll: (params?: Record<string, any>) => {
     const query = new URLSearchParams();
-    Object.entries(params || {}).forEach(([k, v]) => v && query.append(k, String(v)));
-    return handleRequest<{ products: Product[]; total: number }>(
-      `/products${query.size ? "?" + query.toString() : ""}`
-    );
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === '') return;
+      if (Array.isArray(v)) return v.forEach(x => query.append(k, String(x)));
+      return query.append(k, String(v));
+    });
+    return handleRequest<{ products: Product[]; total: number }>(`/products${query.toString() ? "?" + query.toString() : ""}`);
   },
+  getFilters: () => handleRequest<any>(`/products/filters`),
   getById: (id: string) => handleRequest<Product>(`/products/${id}`),
   getBySlug: (slug: string) => handleRequest<Product>(`/products/slug/${slug}`),
   getFeatured: () => handleRequest<Product[]>("/products/featured"),
   getRelated: (id: string) => handleRequest<Product[]>(`/products/${id}/related`),
+};
+
+// ─── FILTERS API ─── Dynamic filtering system
+export const filtersAPI = {
+  // Public: Get faceted counts for filter sidebar
+  getFacets: (params?: { gender?: string; categorySlug?: string; search?: string }) => {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v) query.append(k, String(v));
+    });
+    return handleRequest<any>(`/filters/facets${query.toString() ? '?' + query.toString() : ''}`);
+  },
+  // Public: Get filter config for a category (which filters to show)
+  getConfig: (categorySlug: string, gender?: string) => {
+    const query = gender ? `?gender=${gender}` : '';
+    return handleRequest<any>(`/filters/config/${categorySlug}${query}`);
+  },
+  // Public: List all filter groups
+  getGroups: (enabledOnly?: boolean) =>
+    handleRequest<any>(`/filters/groups${enabledOnly ? '?enabled=true' : ''}`),
+  // Admin: Create filter group
+  createGroup: (data: any) =>
+    handleRequest<any>('/filters/groups', { method: 'POST', body: JSON.stringify(data) }),
+  // Admin: Update filter group
+  updateGroup: (id: string, data: any) =>
+    handleRequest<any>(`/filters/groups/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Admin: Delete filter group
+  deleteGroup: (id: string) =>
+    handleRequest<any>(`/filters/groups/${id}`, { method: 'DELETE' }),
+  // Admin: Add option to group
+  createOption: (groupId: string, data: any) =>
+    handleRequest<any>(`/filters/groups/${groupId}/options`, { method: 'POST', body: JSON.stringify(data) }),
+  // Admin: Update option
+  updateOption: (id: string, data: any) =>
+    handleRequest<any>(`/filters/options/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Admin: Delete option
+  deleteOption: (id: string) =>
+    handleRequest<any>(`/filters/options/${id}`, { method: 'DELETE' }),
+  // Admin: Reorder options
+  reorderOptions: (groupId: string, order: { id: string; displayOrder: number }[]) =>
+    handleRequest<any>(`/filters/groups/${groupId}/options/reorder`, { method: 'POST', body: JSON.stringify({ order }) }),
+  // Admin: List all category filter configs
+  getConfigs: () => handleRequest<any>('/filters/configs'),
+  // Admin: Set config for a category
+  setConfig: (categorySlug: string, data: any) =>
+    handleRequest<any>(`/filters/config/${categorySlug}`, { method: 'PUT', body: JSON.stringify(data) }),
+};
+// Minimal low-level HTTP client used by service wrappers
+export const httpClient = {
+  get: (endpoint: string) => handleRequest(endpoint),
+  post: (endpoint: string, body: any) => handleRequest(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  patch: (endpoint: string, body?: any) => handleRequest(endpoint, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  delete: (endpoint: string) => handleRequest(endpoint, { method: 'DELETE' })
+};
+
+export const reviewsAPI = {
+  create: (payload: { product: string; rating: number; title?: string; body?: string; images?: any[] }) =>
+    handleRequest('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
+  listForProduct: (productId: string, page = 1, limit = 10) =>
+    handleRequest<{ reviews: any[]; pagination: any }>(`/reviews/product/${productId}?page=${page}&limit=${limit}`),
+  summary: (productId: string) => handleRequest<{ summary: { average: number; count: number } }>(`/reviews/summary/${productId}`),
+  update: (id: string, payload: { rating?: number; title?: string; body?: string; images?: any[] }) =>
+    handleRequest(`/reviews/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  delete: (id: string) =>
+    handleRequest(`/reviews/${id}`, { method: 'DELETE' }),
+};
+
+// Public Styled By You
+export const styleByYouAPI = {
+  getAll: () => handleRequest<{ items: any[] }>(`/style-by-you`),
 };
 
 export const cartAPI = {
@@ -269,7 +380,13 @@ export const ordersAPI = {
       method: "POST",
       body: JSON.stringify(order),
     }),
-  getAll: () => handleRequest<{ orders: Order[] }>("/orders"),
+  // Return a top-level { orders } shape for legacy callers (Profile expects res.orders)
+  getAll: async () => {
+    const res: any = await handleRequest<{ orders: Order[] }>("/orders");
+    // backend returns { success: true, data: { orders } } or { orders }
+    const orders = (res && res.data && Array.isArray(res.data.orders)) ? res.data.orders : (Array.isArray(res?.orders) ? res.orders : []);
+    return { orders };
+  },
   getById: (id: string) => handleRequest<{ order: Order }>(`/orders/${id}`),
 };
 
@@ -289,6 +406,12 @@ export const adminAPI = {
       yearlyRevenue: number;
       lowStockProducts: number;
       pendingOrders: number;
+      growth: {
+        users: number;
+        products: number;
+        orders: number;
+        revenue: number;
+      };
     };
     charts: {
       weeklySales: any[];
@@ -324,6 +447,16 @@ export const adminAPI = {
   },
   
   getUserById: (id: string) => handleRequest<{ user: User; recentOrders: any[] }>(`/admin/users/${id}`),
+  // Filters (admin)
+  getFilterGroups: () => handleRequest<any>(`/filters/groups`),
+  getCategoryFilterConfigs: () => handleRequest<any>(`/filters/configs`),
+  getCategoryFilterConfig: (categorySlug: string) => handleRequest<any>(`/filters/config/${encodeURIComponent(categorySlug)}`),
+  setCategoryFilterConfig: (categorySlug: string, payload: any) => handleRequest(`/filters/config/${encodeURIComponent(categorySlug)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  createFilterGroup: (payload: any) => handleRequest(`/filters/groups`, { method: 'POST', body: JSON.stringify(payload) }),
+  updateFilterGroup: (id: string, payload: any) => handleRequest(`/filters/groups/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteFilterGroup: (id: string) => handleRequest(`/filters/groups/${id}`, { method: 'DELETE' }),
+  createFilterOption: (groupId: string, payload: any) => handleRequest(`/filters/groups/${groupId}/options`, { method: 'POST', body: JSON.stringify(payload) }),
+  reorderFilterOptions: (groupId: string, order: any[]) => handleRequest(`/filters/groups/${groupId}/options/reorder`, { method: 'POST', body: JSON.stringify({ order }) }),
   
   updateUser: (id: string, data: Partial<User>) =>
     handleRequest<{ user: User }>(`/admin/users/${id}`, {
@@ -367,19 +500,34 @@ export const adminAPI = {
       };
     }>(`/admin/products${query.size ? "?" + query.toString() : ""}`);
   },
+  // Reviews (admin)
+  listReviews: (params?: { page?: number; limit?: number; status?: string; product?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.status) q.set('status', params.status);
+    if (params?.product) q.set('product', params.product);
+    return handleRequest(`/admin/reviews${q.toString() ? `?${q.toString()}` : ''}`);
+  },
+  approveReview: (id: string) => handleRequest(`/admin/reviews/${id}/approve`, { method: 'PATCH' }),
+  rejectReview: (id: string) => handleRequest(`/admin/reviews/${id}/reject`, { method: 'PATCH' }),
+  featureReview: (id: string, featured = true) => handleRequest(`/admin/reviews/${id}/feature`, { method: 'PATCH', body: JSON.stringify({ featured }) }),
+  deleteReview: (id: string) => handleRequest(`/admin/reviews/${id}`, { method: 'DELETE' }),
   
   getProductById: (id: string) => handleRequest<{ product: Product }>(`/admin/products/${id}`),
   
   createProduct: (productData: any) =>
     handleRequest<{ product: Product }>("/admin/products", {
       method: "POST",
-      body: JSON.stringify(productData),
+      body: productData instanceof FormData ? productData : JSON.stringify(productData),
+      headers: productData instanceof FormData ? {} : undefined,
     }),
   
   updateProduct: (id: string, productData: any) =>
     handleRequest<{ product: Product }>(`/admin/products/${id}`, {
       method: "PATCH",
-      body: JSON.stringify(productData),
+      body: productData instanceof FormData ? productData : JSON.stringify(productData),
+      headers: productData instanceof FormData ? {} : undefined,
     }),
   
   deleteProduct: (id: string) =>
@@ -397,6 +545,21 @@ export const adminAPI = {
       method: "DELETE",
       body: JSON.stringify({ productIds }),
     }),
+
+  suggestRelatedProducts: (params?: { section?: string; subcategory?: string; tags?: string; excludeId?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => v && query.append(k, String(v)));
+    return handleRequest<{ products: any[] }>(`/admin/products/suggestions${query.size ? "?" + query.toString() : ""}`);
+  },
+
+  // Recommendation mapping endpoints
+  getRecommendationMappings: (params?: { category?: string; subcategory?: string }) => {
+    const q = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => v && q.append(k, String(v)));
+    return handleRequest<{ mappings: any[] }>(`/admin/recommendation-mappings${q.size ? "?" + q.toString() : ""}`);
+  },
+  createRecommendationMapping: (payload: any) => handleRequest<{ mapping: any }>(`/admin/recommendation-mappings`, { method: 'POST', body: JSON.stringify(payload) }),
+  deleteRecommendationMapping: (id: string) => handleRequest(`/admin/recommendation-mappings/${id}`, { method: 'DELETE' }),
 
   // Orders
   getAllOrders: (params?: {
@@ -445,6 +608,7 @@ export const adminAPI = {
     trackingNumber?: string;
     carrier?: string;
     estimatedDelivery?: string;
+    trackingUrl?: string;
   }) =>
     handleRequest<{ order: Order }>(`/admin/orders/${id}/tracking`, {
       method: "PATCH",
@@ -504,6 +668,13 @@ export const adminAPI = {
       method: "DELETE",
     }),
 
+  // Size profiles
+  getSizeProfiles: (params?: { category?: string; gender?: string; type?: string }) => {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => v && query.append(k, String(v)));
+    return handleRequest<{ profiles: any[] }>(`/admin/size-profiles${query.size ? "?" + query.toString() : ""}`);
+  },
+
   // Analytics
   getSalesAnalytics: (period?: string) =>
     handleRequest<any>(`/admin/analytics/sales${period ? `?period=${period}` : ""}`),
@@ -543,6 +714,53 @@ export const adminAPI = {
       }
     );
   },
+  // Style By You (admin)
+  getStyleByYou: () => handleRequest<{ items: any[] }>("/admin/style-by-you"),
+  createStyleByYou: (formData: FormData) => handleRequest<{ item: any }>("/admin/style-by-you", { method: 'POST', body: formData, headers: {} }),
+  updateStyleByYou: (id: string, formData: FormData) => handleRequest<{ item: any }>(`/admin/style-by-you/${id}`, { method: 'PATCH', body: formData, headers: {} }),
+  deleteStyleByYou: (id: string) => handleRequest(`/admin/style-by-you/${id}`, { method: 'DELETE' }),
+  searchProductsForLink: (q: string) => handleRequest<{ products: any[] }>(`/admin/style-by-you/search/products?q=${encodeURIComponent(q)}`),
+  uploadFromUrl: (url: string) => {
+    return handleRequest<{ files: Array<{ url: string; filename: string; publicId?: string; isPrimary: boolean; order: number }> }>(
+      "/admin/uploads/from-url",
+      {
+        method: "POST",
+        body: JSON.stringify({ url }),
+      }
+    );
+  },
+  // Detail Templates (admin)
+  getDetailTemplates: () => handleRequest<{ templates: any[] }>(`/admin/detail-templates`),
+  createDetailTemplate: (payload: any) => handleRequest<{ template: any }>(`/admin/detail-templates`, { method: 'POST', body: JSON.stringify(payload) }),
+  getDetailTemplate: (id: string) => handleRequest<{ template: any }>(`/admin/detail-templates/${id}`),
+  updateDetailTemplate: (id: string, payload: any) => handleRequest<{ template: any }>(`/admin/detail-templates/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteDetailTemplate: (id: string) => handleRequest(`/admin/detail-templates/${id}`, { method: 'DELETE' }),
+  updateProductDetailSections: (productId: string, payload: any) => handleRequest<{ product: any }>(`/admin/products/${productId}/detail-sections`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  // Email Marketing
+  getSubscribers: (params?: { page?: number; limit?: number; q?: string; source?: string; verified?: boolean; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => (v !== undefined && v !== null) && q.append(k, String(v)));
+    return handleRequest<{ data: { items: any[]; pagination?: any } }>(`/admin/email-marketing/subscribers${q.toString() ? `?${q.toString()}` : ''}`);
+  },
+  createCampaign: (payload: { subject: string; content: string; recipientType: string }) =>
+    handleRequest(`/admin/email-marketing/campaigns`, { method: 'POST', body: JSON.stringify(payload) }),
+  sendCampaignTest: (payload: { to: string; subject: string; content: string }) =>
+    handleRequest(`/admin/email-marketing/campaigns/test`, { method: 'POST', body: JSON.stringify(payload) }),
+  deleteCampaign: (id: string) => handleRequest(`/admin/email-marketing/campaigns/${id}`, { method: 'DELETE' }),
+  listCampaigns: (params?: { page?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([k, v]) => (v !== undefined && v !== null) && q.append(k, String(v)));
+    return handleRequest<{ data: { items: any[]; pagination?: any } }>(`/admin/email-marketing/campaigns${q.toString() ? `?${q.toString()}` : ''}`);
+  },
+};
+
+// ======================
+// COLLECTIONS API
+// ======================
+export const collectionsAPI = {
+  // Expect backend to expose /collections that returns { collections: [...] }
+  getAll: () => handleRequest<{ collections: any[] }>(`/collections`),
+  getBySlug: (slug: string) => handleRequest<any>(`/collections/slug/${slug}`),
 };
 
 export const systemAPI = {
@@ -557,6 +775,7 @@ export const api = {
   wishlist: wishlistAPI,
   orders: ordersAPI,
   admin: adminAPI,
+  collections: collectionsAPI,
   system: systemAPI,
   healthCheck: () => handleRequest("/health"),
 };

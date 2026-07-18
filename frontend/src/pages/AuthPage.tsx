@@ -1,5 +1,5 @@
 // src/pages/AuthPage.tsx
-import React, { useEffect, useState, FormEvent, ChangeEvent } from "react";
+import React, { useEffect, useState, FormEvent, ChangeEvent, useRef } from "react";
 import useResendCooldown from "../hooks/useResendCooldown";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -66,8 +66,12 @@ const AuthPage: React.FC = () => {
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  
+  // Guard to prevent multiple verification calls on mount
+  const hasAttemptedVerify = useRef(false);
+
   // use hook for cooldown state and persistence
-  const { remaining: resendCooldown, start: startResendCooldown, isCooling: resendIsCooling } = useResendCooldown(formData.email);
+  const { remaining: resendCooldown, start: startResendCooldown } = useResendCooldown(formData.email);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,12 +103,12 @@ const AuthPage: React.FC = () => {
     if (urlMode && modes.includes(urlMode)) {
       setMode(urlMode);
       if (urlMode === "reset" && urlToken) setToken(urlToken);
-      if (urlMode === "verify" && urlToken) {
+      if (urlMode === "verify" && urlToken && !hasAttemptedVerify.current) {
+        hasAttemptedVerify.current = true;
         setToken(urlToken);
         handleVerifyEmail(urlToken);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // ------------------ Redirect if Authenticated ------------------
@@ -119,15 +123,15 @@ const AuthPage: React.FC = () => {
 
   // ------------------ Check Email Existence ------------------
   useEffect(() => {
-    if (!formData.email || mode !== "signup") return;
+    // BUG FIX: Only check email if it follows valid email format
+    if (!formData.email || mode !== "signup" || !validateEmail(formData.email)) return;
+    
     let active = true;
     const timer = setTimeout(async () => {
       setCheckingEmail(true);
       try {
-        // Use centralized API helper so XSRF cookie/header logic runs correctly
         const res = await api.auth.checkEmail(formData.email);
         if (!active) return;
-        // API may return either `{ exists }` or `{ success: true, data: { exists } }` depending on server
         const exists = (res && (res as any).exists) ?? (res?.data && (res.data as any).exists) ?? false;
         if (exists) {
           setErrors((prev) => ({ ...prev, email: "This email already exists" }));
@@ -136,7 +140,6 @@ const AuthPage: React.FC = () => {
         }
       } catch (err) {
         if (!active) return;
-        // On failure, do not mark as error for the user — keep silent
         setErrors((prev) => ({ ...prev, email: "" }));
       } finally {
         if (active) setCheckingEmail(false);
@@ -153,14 +156,12 @@ const AuthPage: React.FC = () => {
     try {
       setIsLoading(true);
       setVerificationMessage("Verifying your email, please wait...");
-  const res: any = await api.auth.verifyEmail(verifyToken as string);
-  if (res?.data?.user) {
-        // server auto-logged in and set cookie
+      const res: any = await api.auth.verifyEmail(verifyToken);
+      if (res?.data?.user) {
         setUser(res.data.user);
         setIsAuthenticated(true);
         showToast("Email verified and logged in — welcome!", "success");
         setVerificationMessage("Email verified successfully! Redirecting...");
-        setTimeout(() => navigate("/", { replace: true }), 1000);
         return;
       }
       showToast("Email verified! Please log in.", "success");
@@ -180,14 +181,13 @@ const AuthPage: React.FC = () => {
       showToast('Please provide a valid email to resend verification', 'error');
       return;
     }
-    if (resendCooldown > 0) return; // guard
+    if (resendCooldown > 0) return; 
     setResendLoading(true);
     setResendMessage(null);
     try {
       const res: any = await api.auth.resendVerification(targetEmail);
       setResendMessage(res?.message || 'Verification email sent');
       showToast(res?.message || 'Verification email sent', 'success');
-      // start cooldown using server-provided retryAfter if present, otherwise fallback to 60s
       const secs = Number(res?.retryAfter || 60);
       startResendCooldown(secs, targetEmail);
     } catch (err: any) {
@@ -199,8 +199,6 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // (cooldown persistence and timer handled by useResendCooldown)
-
   // ------------------ Validation ------------------
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -211,6 +209,9 @@ const AuthPage: React.FC = () => {
       if (!formData.password) newErrors.password = "New password is required";
       else if (formData.password.length < 8)
         newErrors.password = "Password must be at least 8 characters";
+      // BUG FIX: Added password confirmation for reset mode
+      if (formData.confirmPassword !== formData.password)
+        newErrors.confirmPassword = "Passwords do not match";
     } else {
       if (!formData.email) newErrors.email = "Email is required";
       else if (!validateEmail(formData.email)) newErrors.email = "Invalid email";
@@ -218,6 +219,7 @@ const AuthPage: React.FC = () => {
       else if (formData.password.length < 8)
         newErrors.password = "Password must be at least 8 characters";
     }
+
     if (mode === "signup") {
       if (!formData.name || formData.name.length < 2)
         newErrors.name = "Name must be at least 2 characters";
@@ -227,6 +229,7 @@ const AuthPage: React.FC = () => {
       if (!agree)
         newErrors.agree = "Please agree to Terms and Privacy Policy";
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -257,66 +260,32 @@ const AuthPage: React.FC = () => {
     setIsLoading(true);
     try {
       if (mode === "login") {
-        try {
-          // Use central auth context to perform login and update app state
-          const res: any = await authLogin(formData.email, formData.password);
-
-          // If server indicates email is unverified, surface a clear UI action
-          if (res && res.emailVerified === false) {
-            showToast(res.message || 'Please verify your email before logging in', 'warning');
-            // keep email prefilled and ensure resend button is available
-            setMode('login');
-            return;
-          }
-
-          if (isAuthenticated) {
-            showToast("Welcome back!", "success");
-            navigate(from || "/");
-          } else {
-            // In some flows login may succeed but client state wasn't refreshed; try /me
-            try {
-              const me = await api.auth.getMe();
-              if (me?.data?.user) {
-                setUser(me.data.user);
-                setIsAuthenticated(true);
-                showToast("Welcome back!", "success");
-                navigate(from || "/");
-              } else {
-                showToast("Login succeeded but session could not be established", "error");
-              }
-            } catch (e) {
-              showToast("Login succeeded but session could not be established", "error");
-            }
-          }
-        } catch (e: any) {
-          showToast(e?.message || "Login failed", "error");
+        const res: any = await authLogin(formData.email, formData.password);
+        if (res && res.emailVerified === false) {
+          showToast(res.message || 'Please verify your email before logging in', 'warning');
+          setMode('login');
+          return;
         }
+        // Redirection is now handled by useEffect [isAuthenticated]
       } else if (mode === "signup") {
-        try {
-          // Use auth context register which will attempt to fetch /me if server set cookie
-          const res: any = await authRegister({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            phone: formData.phone,
-          });
+        const res: any = await authRegister({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+        });
 
-          if (res?.data?.user || isAuthenticated) {
-            showToast("Account created and logged in!", "success");
-            navigate("/");
-            return;
-          }
-
-          // Most environments require email verification first
-          if (res?.verificationSent === false) {
-            showToast('Account created but verification email failed to send. Contact support.', 'error');
-          } else {
-            showToast("Account created! Please verify your email.", "success");
-          }
-          switchMode("login");
-        } catch (e: any) {
-          showToast(e?.message || "Signup failed", "error");
+        if (res?.data?.user) {
+          showToast("Account created and logged in!", "success");
+          return;
         }
+
+        if (res?.verificationSent === false) {
+          showToast('Account created but verification email failed to send.', 'error');
+        } else {
+          showToast("Account created! Please verify your email.", "success");
+        }
+        switchMode("login");
       } else if (mode === "forgot") {
         const res = await api.auth.forgotPassword(formData.email);
         const forgotRes = res as AuthResponse | null | undefined;
@@ -331,7 +300,7 @@ const AuthPage: React.FC = () => {
           switchMode("login");
         } else showToast(res?.message || "Reset failed", "error");
       }
-      } catch (err: any) {
+    } catch (err: any) {
       showToast(err?.message || "Something went wrong", "error");
     } finally {
       setIsLoading(false);
@@ -358,7 +327,6 @@ const AuthPage: React.FC = () => {
     </div>
   );
 
-  // ------------------ UI ------------------
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-gray-50 to-gray-100 px-4 py-10">
       <motion.div
@@ -367,7 +335,9 @@ const AuthPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="text-center space-y-2">
-          <img src="https://i.ibb.co/GQG243Rb/DENFiT.jpg" alt="DENFiT" className="w-24 mx-auto rounded-xl" />
+          <Link to="/">
+            <img src="https://i.ibb.co/GQG243Rb/DENFiT.jpg" alt="DENFiT" className="w-24 mx-auto rounded-xl" />
+          </Link>
           <h2 className="text-2xl font-bold text-gray-800">Welcome to DENFiT</h2>
           <p className="text-gray-500 text-sm">Elevate Your Style with Confidence 👕</p>
         </div>
@@ -397,11 +367,11 @@ const AuthPage: React.FC = () => {
             ) : (
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
             )}
-              <p className="text-gray-700">{verificationMessage}</p>
-              <div className="mt-4 space-y-3">
-                <Link to="/" className="block text-blue-600 font-semibold hover:underline">
-                  Go to Homepage
-                </Link>
+            <p className="text-gray-700">{verificationMessage}</p>
+            <div className="mt-4 space-y-3">
+              <Link to="/" className="block text-blue-600 font-semibold hover:underline">
+                Go to Homepage
+              </Link>
               <div className="text-center">
                 <button
                   type="button"
@@ -417,7 +387,7 @@ const AuthPage: React.FC = () => {
                 </button>
                 {resendMessage && <p className="text-xs text-gray-500 mt-2">{resendMessage}</p>}
               </div>
-              </div>
+            </div>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="space-y-5">
@@ -484,7 +454,7 @@ const AuthPage: React.FC = () => {
             </div>
 
             {mode !== "forgot" && (
-                <div>
+              <div>
                 <label htmlFor="password" className="block text-sm font-medium mb-1">
                   {mode === "reset" ? "New Password" : "Password"}
                 </label>
@@ -514,7 +484,7 @@ const AuthPage: React.FC = () => {
               </div>
             )}
 
-            {mode === "signup" && (
+            {(mode === "signup" || mode === "reset") && (
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">Confirm Password</label>
                 <input
@@ -669,34 +639,15 @@ const AuthPage: React.FC = () => {
       <TermsModal open={showTerms} onClose={() => setShowTerms(false)} />
       <PrivacyModal open={showPrivacy} onClose={() => setShowPrivacy(false)} />
 
-{/* ---------- Animation & Scroll Styling ---------- */}
-<style>{`
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px) scale(0.97); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-  }
-  .animate-slideUp {
-    animation: slideUp 0.4s ease-out;
-  }
-  .custom-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scroll::-webkit-scrollbar-thumb {
-    background: #b0b0b0;
-    border-radius: 10px;
-  }
-  .custom-scroll::-webkit-scrollbar-thumb:hover {
-    background: #888;
-  }
-`}</style>
-
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .animate-slideUp { animation: slideUp 0.4s ease-out; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #b0b0b0; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #888; }
+      `}</style>
     </div>
   );
 };

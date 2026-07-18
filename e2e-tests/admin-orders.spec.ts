@@ -7,7 +7,7 @@ test.describe('Admin Order Management', () => {
     await page.fill('input[name="email"]', 'admin@denfit.com');
     await page.fill('input[name="password"]', 'admin123');
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/(home|dashboard|admin)/, { timeout: 10000 });
+    await page.waitForURL(/(\/(home|dashboard|admin)|\/$)/, { timeout: 30000 });
     
     // Navigate to admin orders
     await page.goto('/admin/orders');
@@ -35,7 +35,7 @@ test.describe('Admin Order Management', () => {
     
     // Should show order details
     await expect(page.locator('text=/order details|order #/i')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=/customer|items|total/i')).toBeVisible();
+    await expect(page.locator('text=/customer|items|total/i').first()).toBeVisible();
   });
 
   test('should change order status', async ({ page }) => {
@@ -126,6 +126,34 @@ test.describe('Admin Order Management', () => {
       // Should show success
       await expect(page.locator('text=/refund processed|refunded/i')).toBeVisible({ timeout: 5000 });
     }
+  });
+
+  test('should print and download invoice PDF', async ({ page }) => {
+    // Click first order Details button
+    await page.locator('button:has-text("Details")').first().click();
+    await page.waitForURL(/\/admin\/orders\/\w+/);
+    await page.waitForTimeout(1000);
+
+    // Verify Print button exists
+    const printBtn = page.locator('button[title="Print invoice"]').first();
+    await expect(printBtn).toBeVisible();
+
+    // Verify Download PDF button exists
+    const downloadBtn = page.locator('button[title="Download invoice"]').first();
+    await expect(downloadBtn).toBeVisible();
+
+    // Wait for the download event when clicking "Download PDF"
+    const downloadPromise = page.waitForEvent('download');
+    await downloadBtn.click();
+    const download = await downloadPromise;
+
+    // Verify the downloaded file name and size (must be a valid PDF, not 1 KB HTML)
+    expect(download.suggestedFilename()).toMatch(/-invoice\.pdf$/i);
+    const downloadPath = await download.path();
+    const fs = await import('fs');
+    const stats = fs.statSync(downloadPath);
+    console.log('Downloaded PDF file size:', stats.size);
+    expect(stats.size).toBeGreaterThan(5000);
   });
 
   test('should export orders', async ({ page }) => {

@@ -30,6 +30,22 @@ const categorySchema = new mongoose.Schema({
   featured: {
     type: Boolean,
     default: false
+  },
+  // Product type determines which size system to use for this category
+  productType: {
+    type: String,
+    enum: ['clothing', 'footwear', 'accessories', 'sportswear', 'other'],
+    default: 'clothing'
+  },
+  // Link to a SizeProfile for size options relevant to this category
+  sizeProfile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SizeProfile'
+  },
+  // Link to the CategoryFilterConfig that defines which filters apply
+  filterConfig: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CategoryFilterConfig'
   }
 }, {
   timestamps: true

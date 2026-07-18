@@ -455,7 +455,7 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 SMTP_FROM=DENFiT <noreply@denfit.local>
-SUPPORT_EMAIL=support@denfit.com
+SUPPORT_EMAIL=denfitcustomercare@gmail.com
 
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key

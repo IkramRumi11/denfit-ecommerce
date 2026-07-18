@@ -12,6 +12,12 @@ interface CartItemProps {
     price: number;
     image: string;
     size: string;
+      color?: string;
+      colorName?: string;
+    variantId?: string;
+    variantName?: string;
+    variantHex?: string;
+    variantImage?: string;
     quantity: number;
   };
 }
@@ -38,7 +44,7 @@ export const CartItem: React.FC<CartItemProps> = ({ item }) => {
     <div className="flex items-center gap-4 py-4 border-b border-gray-200 last:border-b-0">
       <Link to={`/product/${item.productId}`} className="flex-shrink-0">
         <img
-          src={item.image}
+          src={item.variantImage || item.image}
           alt={item.name}
           className="w-16 h-16 object-cover rounded-lg"
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="%23f3f4f6"/></svg>' }}
@@ -52,7 +58,23 @@ export const CartItem: React.FC<CartItemProps> = ({ item }) => {
         >
           {item.name}
         </Link>
-        <p className="text-gray-500 text-sm mt-1">Size: {item.size}</p>
+        <div className="text-gray-500 text-sm mt-1">
+          <div>Size: <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
+          {(() => {
+            const variantLabel = item.variantName || item.colorName || '';
+            const colorValue = item.variantHex || item.color || '';
+            const label = variantLabel || colorValue;
+            if (!label) return null;
+            return (
+              <div className="mt-1 flex items-center gap-2">
+                {colorValue ? (
+                  <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
+                ) : null}
+                <span className="text-sm text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{label}</span></span>
+              </div>
+            );
+          })()}
+        </div>
         <p className="text-lg font-bold text-blue-600 mt-1">
           Rs {item.price.toLocaleString()}
         </p>

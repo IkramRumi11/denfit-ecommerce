@@ -43,26 +43,54 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
+  // Lock body scroll and trap focus while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const el = modalRef.current;
+    const firstFocusable = el?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') as HTMLElement | null;
+    (firstFocusable || el)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && el) {
+        const focusables = el.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])');
+        if (focusables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen]);
 
   const validateForm = () => {
     const newErrors: { name?: string; email?: string } = {};
@@ -73,11 +101,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       newErrors.name = 'Name must be at least 2 characters';
     }
 
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
-    }
+    // Email is not editable from the UI to preserve verification integrity
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -90,7 +114,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
     setIsLoading(true);
     try {
-  await updateUser(formData);
+      // Only send editable fields to the API (do not allow changing email here)
+      const payload: any = { name: formData.name, avatar: formData.avatar };
+      await updateUser(payload);
       showToast('Profile updated successfully', 'success');
       onClose();
     } catch (error: any) {
@@ -220,14 +246,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 name="email"
                 type="email"
                 value={formData.email}
-                onChange={handleChange}
-                className="input-field pl-10"
-                placeholder="Enter your email"
+                readOnly
+                disabled
+                className="input-field pl-10 bg-gray-50 cursor-not-allowed"
               />
             </div>
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-            )}
+            <p className="mt-1 text-sm text-gray-500">Email cannot be changed from the profile. Contact support to request an email change.</p>
           </div>
 
           {/* Actions */}

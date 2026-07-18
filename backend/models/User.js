@@ -1,4 +1,4 @@
-﻿// backend/models/User.js
+// backend/models/User.js
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -23,8 +23,7 @@ const userSchema = new mongoose.Schema({
         return validator.isEmail(v || '');
       },
       message: 'Please provide a valid email'
-    },
-    index: true
+    }
   },
   password: { 
     type: String, 
@@ -34,10 +33,13 @@ const userSchema = new mongoose.Schema({
   },
   role: { 
     type: String, 
-    enum: ['customer', 'admin'], 
+    enum: ['customer', 'admin', 'super_admin'], 
     default: 'customer' 
   },
   active: { type: Boolean, default: true },
+  // Soft-delete marker and timestamp for anonymized/removed accounts
+  deleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
   emailVerified: { type: Boolean, default: false },
   verificationToken: String,
   verificationExpires: Date,
@@ -60,6 +62,22 @@ const userSchema = new mongoose.Schema({
     zipCode: String,
     country: { type: String, default: 'Pakistan' },
     isDefault: { type: Boolean, default: false }
+  }],
+  // Wishlist persisted server-side: array of product references with timestamp
+  wishlist: [{
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    addedAt: { type: Date, default: Date.now }
+  }],
+  // Server-side cart: persisted so carts survive across devices/sessions
+  cart: [{
+    productId: { type: String, required: true },
+    name: { type: String, default: '' },
+    price: { type: Number, default: 0 },
+    image: { type: String, default: '' },
+    size: { type: String, default: '' },
+    color: String,
+    colorName: String,
+    quantity: { type: Number, default: 1 },
   }],
   preferences: {
     newsletter: { type: Boolean, default: true },

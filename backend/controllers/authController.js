@@ -4,12 +4,22 @@ import jwt from 'jsonwebtoken';
 
 import User from '../models/User.js';
 import EmailService from '../services/emailService.js';
+import { newCorrelationId } from '../utils/correlation.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-// Helper: sign JWT token
+const getAccessTokenSecret = () => process.env.JWT_SECRET;
+const getRefreshTokenSecret = () => process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+
+// Helper: sign short-lived access token (15 min default)
 const signToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '90d'
+  jwt.sign({ id: userId }, getAccessTokenSecret(), {
+    expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m'
+  });
+
+// Helper: sign long-lived refresh token (7 day default)
+const signRefreshToken = (userId) =>
+  jwt.sign({ id: userId, type: 'refresh' }, getRefreshTokenSecret(), {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
   });
 
 // Helper: set cookie and respond with user
@@ -17,18 +27,24 @@ const createSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id);
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const frontendIsHttps = String(frontendUrl).toLowerCase().startsWith('https');
+  const requestOrigin = String(req.headers.origin || req.headers.referer || '').split('?')[0];
+  const backendOrigin = `${req.protocol}://${req.headers.host}`;
+  const isCrossOrigin = requestOrigin && requestOrigin !== backendOrigin;
 
   // Decide secure flag: respect production and explicit SSL, but in development
   // avoid forcing `secure=true` when the frontend is plain HTTP.
   const inferredSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true' || Boolean(process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) || req.secure || req.headers['x-forwarded-proto'] === 'https';
-  const secureFlag = process.env.NODE_ENV !== 'production' ? (inferredSecure && frontendIsHttps) : inferredSecure;
+  const isLocalhostRequest = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(requestOrigin) || /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(backendOrigin);
+  const secureFlag = process.env.NODE_ENV === 'production' ? inferredSecure : false;
 
-  // Decide sameSite: prefer 'lax' in production, but for dev keep 'lax' when frontend uses http
-  let sameSite = process.env.COOKIE_SAMESITE || (process.env.NODE_ENV === 'production' ? 'lax' : 'none');
-  if (process.env.NODE_ENV !== 'production' && !frontendIsHttps) {
-    // Browsers require Secure for SameSite=None; use 'lax' for plain HTTP dev to improve reliability.
-    sameSite = 'lax';
-  }
+  // Determine SameSite behavior:
+  // - Production: respect configured value or default to 'lax'
+  // - Development: different localhost ports are "same-site" (same registrable domain)
+  //   so SameSite=Lax works correctly. Using SameSite=None without Secure is
+  //   silently rejected by modern browsers, breaking auth completely.
+  const sameSite = process.env.NODE_ENV === 'production'
+    ? process.env.COOKIE_SAMESITE || 'lax'
+    : (isCrossOrigin && !isLocalhostRequest ? 'none' : 'lax');
 
   const cookieOptions = {
     expires: new Date(
@@ -60,6 +76,15 @@ const createSendToken = (user, statusCode, req, res) => {
   user.verificationExpires = undefined;
 
   res.cookie('jwt', token, cookieOptions);
+
+  // Refresh token — longer-lived, used only to obtain new access tokens
+  const refreshToken = signRefreshToken(user._id);
+  const refreshCookieOptions = {
+    ...cookieOptions,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    path: '/api/v1/auth', // only sent to auth endpoints (reduces exposure surface)
+  };
+  res.cookie('jwt_refresh', refreshToken, refreshCookieOptions);
 
   // For secure cookie-only auth we set the httpOnly cookie and return the
   // user object only. Clients should not rely on receiving the raw token.
@@ -113,11 +138,13 @@ export const register = async (req, res, next) => {
       if (process.env.NODE_ENV !== 'production') {
         console.log(`[DEV] Verification URL for ${newUser.email}: ${verificationUrl}`);
       }
+      const cid = newCorrelationId('reg');
+      const meta = { correlationId: cid, userId: newUser._id.toString(), source: 'register' };
       if (process.env.USE_EMAIL_QUEUE === 'true') {
         const { addEmailJob } = await import('../queues/emailQueue.js');
-        await addEmailJob('sendWelcomeEmail', { userId: newUser._id.toString(), verificationUrl });
+        await addEmailJob('sendWelcomeEmail', { userId: newUser._id.toString(), verificationUrl, meta });
       } else {
-        await EmailService.sendWelcomeEmail(newUser, verificationUrl);
+        await EmailService.sendWelcomeEmail(newUser, verificationUrl, { meta });
       }
       verificationSent = true;
     } catch (emailErr) {
@@ -145,6 +172,7 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for:', email);
     if (!email || !password)
       return next(new AppError('Please provide email and password', 400));
 
@@ -152,12 +180,31 @@ export const login = async (req, res, next) => {
       email: email.toLowerCase().trim()
     }).select('+password +loginAttempts +lockUntil +emailVerified');
 
-    if (!user)
+    if (!user) {
+      console.log('[DEV] login failed: no user found for email', email);
+      if (process.env.NODE_ENV !== 'production') {
+        return res.status(401).json({
+          success: false,
+          message: 'Incorrect email or password',
+          error: 'user_not_found',
+          email: email.toLowerCase().trim()
+        });
+      }
       return next(new AppError('Incorrect email or password', 401));
+    }
 
     const correct = await user.correctPassword(password, user.password);
     if (!correct) {
       await user.incrementLoginAttempts();
+      console.log('[DEV] login failed: incorrect password for', email);
+      if (process.env.NODE_ENV !== 'production') {
+        return res.status(401).json({
+          success: false,
+          message: 'Incorrect email or password',
+          error: 'invalid_password',
+          email: email.toLowerCase().trim()
+        });
+      }
       return next(new AppError('Incorrect email or password', 401));
     }
 
@@ -172,14 +219,16 @@ export const login = async (req, res, next) => {
           lastVerificationSentAt: user.lastVerificationSentAt,
           verificationExpires: user.verificationExpires
         });
+        console.log('[DEV] bypassing email verification in development mode.');
+      } else {
+        // Don't allow login but inform client that verification is required and provide an easy resend option.
+        return res.status(401).json({
+          success: false,
+          message: 'Please verify your email before logging in',
+          emailVerified: false,
+          canResendVerification: true
+        });
       }
-      // Don't allow login but inform client that verification is required and provide an easy resend option.
-      return res.status(401).json({
-        success: false,
-        message: 'Please verify your email before logging in',
-        emailVerified: false,
-        canResendVerification: true
-      });
     }
 
     await user.resetLoginAttempts();
@@ -188,11 +237,13 @@ export const login = async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
 
     try {
+      const loginCid = newCorrelationId('login');
+      const loginMeta = { correlationId: loginCid, userId: user._id.toString(), ipAddress: req.ip, userAgent: req.headers['user-agent'], source: 'login' };
       if (process.env.USE_EMAIL_QUEUE === 'true') {
         const { addEmailJob } = await import('../queues/emailQueue.js');
-        await addEmailJob('sendLoginNotification', { userId: user._id.toString(), meta: { ipAddress: req.ip, userAgent: req.headers['user-agent'] } });
+        await addEmailJob('sendLoginNotification', { userId: user._id.toString(), meta: loginMeta });
       } else {
-        await EmailService.sendLoginNotification(user, { ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+        await EmailService.sendLoginNotification(user, { ipAddress: req.ip, userAgent: req.headers['user-agent'] }, { meta: loginMeta });
       }
     } catch (e) {
       console.warn('Login notification failed:', e);
@@ -218,8 +269,14 @@ export const login = async (req, res, next) => {
 export const logout = (req, res) => {
   // Determine cookie flags consistent with createSendToken
   const inferredSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true' || Boolean(process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH);
+  const requestOrigin = String(req.headers.origin || req.headers.referer || '').split('?')[0];
+  const backendOrigin = `${req.protocol}://${req.headers.host}`;
+  const isLocalhostRequest = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(requestOrigin) || /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(backendOrigin);
+  const isCrossOrigin = requestOrigin && requestOrigin !== backendOrigin;
   const secureFlag = inferredSecure;
-  const sameSite = process.env.NODE_ENV === 'production' ? 'lax' : 'none';
+  // Use 'lax' for localhost (different ports are same-site); 'none' requires Secure which
+  // is unavailable over plain HTTP and causes browsers to silently reject the cookie.
+  const sameSite = process.env.NODE_ENV === 'production' ? 'lax' : (isCrossOrigin && !isLocalhostRequest ? 'none' : 'lax');
 
   // Clear JWT cookie by setting a short-lived value
   res.cookie('jwt', 'loggedout', {
@@ -241,6 +298,15 @@ export const logout = (req, res) => {
   } catch (e) {
     // ignore clear cookie errors
   }
+
+  // Clear refresh token cookie
+  res.cookie('jwt_refresh', '', {
+    expires: new Date(0),
+    httpOnly: true,
+    secure: secureFlag,
+    sameSite,
+    path: '/api/v1/auth'
+  });
 
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
@@ -265,9 +331,9 @@ export const updateMe = async (req, res, next) => {
     if (req.body.password)
       return next(new AppError('This route is not for password updates', 400));
 
+    // Do NOT allow email changes from this route to preserve verification integrity.
     const allowed = [
       'name',
-      'email',
       'phone',
       'avatar',
       'dateOfBirth',
@@ -277,8 +343,6 @@ export const updateMe = async (req, res, next) => {
     allowed.forEach((f) => {
       if (req.body[f] !== undefined) filtered[f] = req.body[f];
     });
-
-    if (filtered.email) filtered.email = filtered.email.toLowerCase().trim();
 
     const updated = await User.findByIdAndUpdate(req.user._id, filtered, {
       new: true,
@@ -308,6 +372,38 @@ export const updatePassword = async (req, res, next) => {
   }
 };
 
+// -------- Request Email Change (user requests support to change email)
+export const requestEmailChange = async (req, res, next) => {
+  try {
+    if (!req.user) return next(new AppError('Not authenticated', 401));
+    const { desiredEmail, reason } = req.body || {};
+    if (!desiredEmail || !/\S+@\S+\.\S+/.test(desiredEmail)) {
+      return next(new AppError('Please provide a valid desiredEmail', 400));
+    }
+
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) return next(new AppError('User not found', 404));
+
+    // Compose support email
+    const supportSubject = `Email change request: ${user.email} -> ${desiredEmail}`;
+    const html = `
+      <p>User <strong>${user.name || user.email}</strong> (id: ${user._id}) has requested an email change.</p>
+      <p>Current email: ${user.email}</p>
+      <p>Desired email: ${desiredEmail}</p>
+      <p>Reason: ${reason || 'Not provided'}</p>
+      <p>Request time: ${new Date().toISOString()}</p>
+    `;
+
+    // Send to support team (configured in EmailService)
+    await EmailService.sendMail({ to: process.env.SUPPORT_EMAIL || 'denfitcustomercare@gmail.com', subject: supportSubject, html });
+
+    res.status(200).json({ success: true, message: 'Email change request submitted to support' });
+  } catch (err) {
+    console.error('requestEmailChange error:', err);
+    next(err);
+  }
+};
+
 // -------- Forgot Password
 export const forgotPassword = async (req, res, next) => {
   try {
@@ -325,11 +421,13 @@ export const forgotPassword = async (req, res, next) => {
 
     try {
       const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth?mode=reset&token=${resetToken}`;
+      const resetCid = newCorrelationId('reset');
+      const resetMeta = { correlationId: resetCid, userId: user._id.toString(), source: 'forgot-password' };
       if (process.env.USE_EMAIL_QUEUE === 'true') {
         const { addEmailJob } = await import('../queues/emailQueue.js');
-        await addEmailJob('sendPasswordResetEmail', { userId: user._id.toString(), resetUrl });
+        await addEmailJob('sendPasswordResetEmail', { userId: user._id.toString(), resetUrl, meta: resetMeta });
       } else {
-        await EmailService.sendPasswordResetEmail(user, resetUrl);
+        await EmailService.sendPasswordResetEmail(user, resetUrl, { meta: resetMeta });
       }
       res.status(200).json({ success: true, message: 'Password reset token sent to email!' });
     } catch (emailErr) {
@@ -398,11 +496,13 @@ export const verifyEmail = async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
 
     try {
+      const welcomeVerifiedCid = newCorrelationId('verify');
+      const welcomeVerifiedMeta = { correlationId: welcomeVerifiedCid, userId: user._id.toString(), source: 'verify-email' };
       if (process.env.USE_EMAIL_QUEUE === 'true') {
         const { addEmailJob } = await import('../queues/emailQueue.js');
-        await addEmailJob('sendWelcomeVerifiedEmail', { userId: user._id.toString() });
+        await addEmailJob('sendWelcomeVerifiedEmail', { userId: user._id.toString(), meta: welcomeVerifiedMeta });
       } else {
-        await EmailService.sendWelcomeVerifiedEmail(user);
+        await EmailService.sendWelcomeVerifiedEmail(user, { meta: welcomeVerifiedMeta });
       }
     } catch (e) {
       console.warn('Failed to send/enqueue verified welcome email:', e);
@@ -500,7 +600,14 @@ export const resendVerification = async (req, res, next) => {
 
     // Fire-and-forget sending; we already persisted lastVerificationSentAt atomically.
     try {
-      await EmailService.sendWelcomeEmail(updated, verificationUrl);
+      const resendCid = newCorrelationId('resend');
+      const resendMeta = { correlationId: resendCid, userId: updated._id.toString(), source: 'resend-verification' };
+      if (process.env.USE_EMAIL_QUEUE === 'true') {
+        const { addEmailJob } = await import('../queues/emailQueue.js');
+        await addEmailJob('sendWelcomeEmail', { userId: updated._id.toString(), verificationUrl, meta: resendMeta });
+      } else {
+        await EmailService.sendWelcomeEmail(updated, verificationUrl, { meta: resendMeta });
+      }
     } catch (e) {
       console.warn('Failed to send verification email (non-fatal):', e);
     }
@@ -532,7 +639,6 @@ export const checkEmail = async (req, res, next) => {
   }
 };
 
-// -------- Merge Guest Data
 export const mergeGuestData = async (req, res, next) => {
   try {
     const userId = req.user._id;
@@ -547,5 +653,47 @@ export const mergeGuestData = async (req, res, next) => {
     res.status(200).json({ success: true, message: 'Guest data merged' });
   } catch (err) {
     next(new AppError('Failed to merge guest data', 500));
+  }
+};
+
+// -------- Refresh Token
+// Validates the refresh token cookie and issues a new access token (+ rotated refresh token).
+export const refreshToken = async (req, res, next) => {
+  try {
+    const token = req.cookies?.jwt_refresh;
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No refresh token provided' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, getRefreshTokenSecret());
+    } catch (err) {
+      // Clear stale cookies on verification failure
+      res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
+      res.cookie('jwt_refresh', '', { httpOnly: true, expires: new Date(0), path: '/api/v1/auth' });
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+    }
+
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ success: false, message: 'Invalid token type' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || !user.active) {
+      return res.status(401).json({ success: false, message: 'User no longer exists or is deactivated' });
+    }
+
+    // Check if password was changed after token was issued
+    if (typeof user.changedPasswordAfter === 'function' && user.changedPasswordAfter(decoded.iat)) {
+      res.cookie('jwt', '', { httpOnly: true, expires: new Date(0) });
+      res.cookie('jwt_refresh', '', { httpOnly: true, expires: new Date(0), path: '/api/v1/auth' });
+      return res.status(401).json({ success: false, message: 'Password changed — please log in again' });
+    }
+
+    // Issue new tokens (rotation)
+    createSendToken(user, 200, req, res);
+  } catch (err) {
+    next(new AppError('Failed to refresh token', 500));
   }
 };

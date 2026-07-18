@@ -1,11 +1,14 @@
 // backend/services/emailService.js
 import nodemailer from "nodemailer";
+import crypto from 'crypto';
 import ejs from "ejs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { getColorName, resolveColorHex } from '../utils/colorHelper.js';
 
 dotenv.config();
+ 
 
 // ==============================
 // 🧱 Path helpers
@@ -21,10 +24,10 @@ const SMTP_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env
 const SMTP_HOST = process.env.SMTP_HOST || process.env.EMAIL_HOST || "smtp.gmail.com";
 const SMTP_PORT = Number(process.env.SMTP_PORT || process.env.EMAIL_PORT || 587);
 const FROM = process.env.SMTP_FROM || process.env.EMAIL_FROM || `DENFiT <${SMTP_USER || "no-reply@denfit.local"}>`;
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "support@denfit.com";
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "denfitcustomercare@gmail.com";
 
-// Default brand logo (user-provided)
-const BRAND_LOGO = process.env.BRAND_LOGO || "https://i.ibb.co/9HMxJXcp/denfit-logo.png";
+// Default brand logo (user-provided). Use a direct image URL so email clients can load it.
+const BRAND_LOGO = process.env.BRAND_LOGO || "https://res.cloudinary.com/doc6jwdo7/image/upload/v1770567054/Denfit_pzrih3.jpg";
 
 // ==============================
 // ✅ Create transporter (if creds available)
@@ -64,6 +67,8 @@ const renderTemplate = async (templateName, data = {}) => {
     },
     supportEmail: SUPPORT_EMAIL,
     year: new Date().getFullYear(),
+    getColorName,
+    resolveColorHex,
     ...data
   };
 
@@ -100,7 +105,7 @@ const htmlToTextFallback = (html, fallbackText) => {
 // ==============================
 // 📤 Send email (with console fallback)
 // ==============================
-const sendMail = async ({ to, subject, html, text }) => {
+const sendMail = async ({ to, subject, html, text }, opts = {}) => {
   // minimal validation
   if (!to || !subject) throw new Error("sendMail missing required `to` or `subject`");
 
@@ -112,6 +117,12 @@ const sendMail = async ({ to, subject, html, text }) => {
     text: text || htmlToTextFallback(html, "Please view this email in an HTML-capable client.")
   };
 
+  const meta = opts.meta || {};
+  // Ensure correlationId exists even for inline sends (helpful for tracing)
+  if (!meta.correlationId) {
+    meta.correlationId = `inline:${crypto.randomUUID()}`;
+  }
+  meta.source = meta.source || (opts && opts.source) || 'inline';
   if (!transporter) {
     // Development fallback: log nicely and return a fake info object
     console.log("\n--- EMAIL FALLBACK ---");
@@ -123,13 +134,52 @@ const sendMail = async ({ to, subject, html, text }) => {
     console.log("----------------------\n");
     return { fallback: true };
   }
+    try {
+      // Optionally embed the brand logo as a CID attachment for clients
+      // that block remote images. Enable by setting EMAIL_EMBED_LOGO=true.
+      if (String(process.env.EMAIL_EMBED_LOGO || '').toLowerCase() === 'true' && BRAND_LOGO) {
+        try {
+          // download image
+          const res = await fetch(BRAND_LOGO);
+          if (res.ok) {
+            const arrayBuffer = await res.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const cid = 'denfit-logo@denfit';
+            // replace remote URL occurrences with cid reference
+            if (payload.html && payload.html.includes(BRAND_LOGO)) {
+              payload.html = payload.html.split(BRAND_LOGO).join(`cid:${cid}`);
+            }
+            // attach image
+            payload.attachments = payload.attachments || [];
+            payload.attachments.push({
+              filename: 'denfit-logo.jpg',
+              content: buffer,
+              cid
+            });
+          } else {
+            console.warn('EMAIL_EMBED_LOGO: failed to fetch logo, status', res.status);
+          }
+        } catch (err) {
+          console.warn('EMAIL_EMBED_LOGO: error fetching/attaching logo', err?.message || err);
+        }
+      }
 
-  try {
-    const info = await transporter.sendMail(payload);
-    console.log(`📩 Email sent to ${to} — id=${info.messageId}`);
-    return info;
-  } catch (err) {
+      const info = await transporter.sendMail(payload);
+      // Include correlation in log if provided
+      const { correlationId, userId, orderId } = meta;
+      console.log(`📩 Email sent to ${to} — id=${info.messageId} accepted=${JSON.stringify(info.accepted)} rejected=${JSON.stringify(info.rejected)} correlation=${correlationId || 'none'} userId=${userId || 'none'} orderId=${orderId || 'none'}`);
+      return info;
+    } catch (err) {
+    // Provide more helpful debugging details for SMTP failures:
     console.error("❌ Failed to send email:", err?.message || err);
+    if (err && typeof err === 'object') {
+      console.error('SMTP error details:', {
+        code: err.code,
+        responseCode: err.responseCode,
+        response: err.response,
+        rejected: err.rejected,
+      });
+    }
     // Do not throw for critical flows — return error object so callers can handle
     return { error: err };
   }
@@ -139,16 +189,31 @@ const sendMail = async ({ to, subject, html, text }) => {
 // 🎯 Public API (specific emails)
 // ==============================
 const EmailService = {
-  sendWelcomeEmail: async (user, verificationUrl) => {
+  sendWelcomeEmail: async (user, verificationUrl, opts = {}) => {
     // Defensive dedupe: if the user's `lastVerificationSentAt` is very recent
     // (e.g. within the last few seconds), skip sending to avoid accidental duplicates
     try {
       const lastSent = user?.lastVerificationSentAt ? new Date(user.lastVerificationSentAt).getTime() : 0;
       const now = Date.now();
       const DEDUPE_MS = Number(process.env.EMAIL_DEDUPE_WINDOW_MS || 3000);
-      if (lastSent && (now - lastSent) < DEDUPE_MS) {
-        console.log(`[EMAIL] Skipping welcome email to ${user.email} — last sent ${Math.round((now - lastSent) / 1000)}s ago`);
-        return { skipped: true };
+      // Allow callers to bypass the in-service dedupe when they have
+      // performed their own atomic cooldown/update (e.g. register/resend flows)
+      // by setting a source in opts.meta. For 'register' and 'resend-verification'
+      // flows the DB-level `lastVerificationSentAt` is already set before
+      // calling this function, so the naive dedupe check would incorrectly
+      // skip the outgoing email. Respect an explicit env override as well.
+      const source = (opts && opts.meta && opts.meta.source) || '';
+      const bypassForSources = ['register', 'resend-verification'];
+      // Also allow bypass if this send was queued for a welcome/resend job
+      // (the queue often sets sources like 'queue:sendWelcomeEmail').
+      const lowerSource = String(source || '').toLowerCase();
+      const isQueuedWelcome = lowerSource.includes('sendwelcomeemail') || lowerSource.includes('queue:sendwelcomeemail');
+      const allowDedupe = String(process.env.ENFORCE_EMAIL_DEDUPE || 'true').toLowerCase() === 'true';
+      if (allowDedupe && !(bypassForSources.includes(source) || isQueuedWelcome)) {
+        if (lastSent && (now - lastSent) < DEDUPE_MS) {
+          console.log(`[EMAIL] Skipping welcome email to ${user.email} — last sent ${Math.round((now - lastSent) / 1000)}s ago`);
+          return { skipped: true };
+        }
       }
     } catch (e) {
       // ignore parsing errors and proceed to send
@@ -162,10 +227,10 @@ const EmailService = {
       to: user.email,
       subject: "Welcome to DENFiT — Verify your email",
       html
-    });
+    }, opts);
   },
 
-  sendPasswordResetEmail: async (user, resetUrl) => {
+  sendPasswordResetEmail: async (user, resetUrl, opts = {}) => {
     const html = await renderTemplate("password-reset", {
       name: user?.name || user?.email,
       resetUrl
@@ -174,10 +239,10 @@ const EmailService = {
       to: user.email,
       subject: "DENFiT — Password reset instructions",
       html
-    });
+    }, opts);
   },
 
-  sendLoginNotification: async (user, { ipAddress, userAgent } = {}) => {
+  sendLoginNotification: async (user, { ipAddress, userAgent } = {}, opts = {}) => {
     const html = `
       <p>Hi ${user?.name || user?.email},</p>
       <p>We noticed a sign-in to your account from IP <strong>${ipAddress || "unknown"}</strong> with agent: ${userAgent || "unknown"}.</p>
@@ -187,64 +252,131 @@ const EmailService = {
       to: user.email,
       subject: "New sign-in to your DENFiT account",
       html
-    });
+    }, opts);
   },
 
-  sendWelcomeVerifiedEmail: async (user) => {
+  sendWelcomeVerifiedEmail: async (user, opts = {}) => {
     const ctaUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/account`;
     const html = await renderTemplate("welcome-verified", {
       name: user?.name || user?.email,
       // Provide a post-verification CTA (account/dashboard) to the template.
       ctaUrl
     });
+    // Attempt to upsert the subscriber record (do not fail the email send if this fails)
+    try {
+      const NS = await import('../models/NewsletterSubscriber.js');
+      const NewsletterSubscriberModel = NS.default;
+      if (NewsletterSubscriberModel) {
+        await NewsletterSubscriberModel.findOneAndUpdate(
+          { email: String(user.email).toLowerCase().trim() },
+          {
+            $set: { source: 'customer', isVerified: true, status: 'active' },
+            $setOnInsert: { subscribedAt: user.createdAt || new Date() }
+          },
+          { upsert: true }
+        );
+      }
+    } catch (e) {
+      console.warn('Failed to upsert NewsletterSubscriber on verified welcome:', e?.message || e);
+    }
+
     return sendMail({
       to: user.email,
       subject: "Your email is verified — Welcome to DENFiT",
       html
-    });
+    }, opts);
   }
   ,
 
-  // Order status change email
-  sendOrderStatusChange: async (user, order, { oldStatus, newStatus } = {}) => {
+  // Order confirmation (when an order is first placed)
+  sendOrderConfirmation: async (user, order, opts = {}) => {
     try {
+      // Resolve recipient safely: prefer order-level contact info (contactEmail or shippingAddress.email),
+      // then logged-in user's email, then guestEmail. This ensures the email entered at checkout
+      // is used for order communications and does NOT overwrite the user's profile email.
+      const recipientEmail = order?.contactEmail || order?.shippingAddress?.email || user?.email || order?.guestEmail || order?.email;
+      const recipientName = (order && (order.shippingAddress && order.shippingAddress.name)) || user?.name || user?.email || 'Customer';
+
+      if (!recipientEmail) {
+        console.error(`sendOrderConfirmation: no recipient email for order ${order?._id || 'unknown'}`);
+        return { error: 'no-recipient' };
+      }
+
+      const html = await renderTemplate('order-confirmation', {
+        name: recipientName,
+        order,
+        ctaUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${order._id}`
+      });
+      return sendMail({
+        to: recipientEmail,
+        subject: `Order ${order.orderNumber} — confirmation`,
+        html
+      }, opts);
+    } catch (err) {
+      console.error('Error rendering/sending order confirmation email', err);
+      return { error: err };
+    }
+  },
+
+  // Order status change email
+  sendOrderStatusChange: async (user, order, { oldStatus, newStatus } = {}, opts = {}) => {
+    try {
+      const recipientEmail = order?.contactEmail || order?.shippingAddress?.email || user?.email || order?.guestEmail || order?.email;
+      const recipientName = (order && (order.shippingAddress && order.shippingAddress.name)) || user?.name || user?.email || 'Customer';
+
+      if (!recipientEmail) {
+        console.error(`sendOrderStatusChange: no recipient email for order ${order?._id || 'unknown'}`);
+        return { error: 'no-recipient' };
+      }
+
       const html = await renderTemplate('order-status-update', {
-        name: user?.name || user?.email,
+        name: recipientName,
         order,
         oldStatus,
         newStatus,
         ctaUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${order._id}`
       });
       return sendMail({
-        to: user.email,
+        to: recipientEmail,
         subject: `Order ${order.orderNumber} — status updated to ${newStatus}`,
         html
-      });
+      }, opts);
     } catch (err) {
       console.error('Error rendering/sending order status email', err);
       return { error: err };
     }
   },
 
-  sendShippingConfirmation: async (user, order) => {
+  sendShippingConfirmation: async (user, order, opts = {}) => {
     try {
+      const recipientEmail = order?.contactEmail || order?.shippingAddress?.email || user?.email || order?.guestEmail || order?.email;
+      const recipientName = (order && (order.shippingAddress && order.shippingAddress.name)) || user?.name || user?.email || 'Customer';
+
+      if (!recipientEmail) {
+        console.error(`sendShippingConfirmation: no recipient email for order ${order?._id || 'unknown'}`);
+        return { error: 'no-recipient' };
+      }
+
       const html = await renderTemplate('order-status-update', {
-        name: user?.name || user?.email,
+        name: recipientName,
         order,
         oldStatus: 'processing',
         newStatus: 'shipped',
         ctaUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${order._id}`
       });
       return sendMail({
-        to: user.email,
+        to: recipientEmail,
         subject: `Your order ${order.orderNumber} has shipped`,
         html
-      });
+      }, opts);
     } catch (err) {
       console.error('Error rendering/sending shipping email', err);
       return { error: err };
     }
   }
 };
+
+// Expose sendMail for direct debug use
+EmailService.sendMail = sendMail;
 
 export default EmailService;

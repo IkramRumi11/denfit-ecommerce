@@ -44,16 +44,6 @@ export const FeatureProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await fetchFlags();
   };
 
-  useEffect(() => {
-    const listener = () => {
-      // refetch when admin toggles flags
-      api.system.getFeatures().then((res: any) => {
-        if (res?.flags) setFlags(res.flags);
-      }).catch(() => {});
-    };
-    window.addEventListener('features:changed', listener as EventListener);
-    return () => window.removeEventListener('features:changed', listener as EventListener);
-  }, []);
 
   return <FeatureContext.Provider value={{ flags, refresh }}>{children}</FeatureContext.Provider>;
 };

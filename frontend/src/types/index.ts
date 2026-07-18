@@ -71,8 +71,27 @@ export interface Product {
     origin?: string;
   };
   tags?: string[];
+  sizeGuide?: {
+    image?: string;
+    description?: string;
+    tableHtml?: string;
+  };
+  availableSizes?: string[];
+  // New variant-aware structure
+  variants?: Variant[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Variant {
+  id?: string;
+  _id?: string;
+  name?: string; // display name e.g. 'Black'
+  hex?: string; // swatch color
+  swatchImage?: { url: string } | string;
+  images?: Array<string | { url: string }>;
+  availableSizes?: string[];
+  inventory?: number;
 }
 
 export interface CartItem {
@@ -80,7 +99,11 @@ export interface CartItem {
   product: Product;
   quantity: number;
   size: string;
-  color: string;
+  // variant snapshot stored at add-to-cart time
+  variantId?: string;
+  variantName?: string;
+  variantHex?: string;
+  variantImage?: string;
 }
 
 export interface Order {

@@ -31,8 +31,8 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    return (
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">⚠️</span>
@@ -56,7 +56,14 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// HMR-safe root creation: store root on window to avoid double `createRoot` calls
+const container = document.getElementById('root')!;
+const globalWin: any = typeof window !== 'undefined' ? window : globalThis;
+if (!globalWin.__REACT_ROOT__) {
+  globalWin.__REACT_ROOT__ = ReactDOM.createRoot(container);
+}
+
+globalWin.__REACT_ROOT__.render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
@@ -73,5 +80,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </CartProvider>
       </AuthProvider>
     </ErrorBoundary>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);

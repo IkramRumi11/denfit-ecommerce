@@ -1,5 +1,5 @@
 ﻿// src/pages/LuxuryHomePage.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Product } from "../types";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -9,12 +9,22 @@ import {
   ArrowRight,
   Star,
   TrendingUp,
+  Plus,
+  X,
+  Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
+import { useWishlist } from "../context/WishlistContext";
 import { api } from "../api";
-import { primaryImage, productId } from "../utils/productHelpers";
+import { primaryImage, productId, priceNumber } from "../utils/productHelpers";
+import {
+  getCategoryGroup,
+  getDisplaySizesForProduct,
+  getAvailableSizesForProduct,
+} from "../utils/sizeRules";
+import { isOutOfStock, isLowStock, getAvailableQuantity } from '../utils/stockHelpers';
 
 const LuxuryHomePage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -26,13 +36,20 @@ const LuxuryHomePage = () => {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  // Quick-add overlay state
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [qaSelectedSize, setQaSelectedSize] = useState<string>("");
+  const [qaSelectedColor, setQaSelectedColor] = useState<string>("");
+  const [qaSelectedColorName, setQaSelectedColorName] = useState<string>("");
+  const [qaSelectedVariantId, setQaSelectedVariantId] = useState<string>("");
+
   const heroSlides = useMemo(
     () => [
       {
         image:
           "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&q=90",
         title: "TIMELESS ELEGANCE",
-        subtitle: "Fall / Winter 2025 Maison Collection",
+        subtitle: "Fall / Winter 2026 Maison Collection",
         tagline: "Tailored silhouettes, sculpted in light.",
         cta: "Discover Women",
         link: "/shop?gender=women",
@@ -59,7 +76,7 @@ const LuxuryHomePage = () => {
     []
   );
 
-  const collections = useMemo(
+  const defaultCollections = useMemo(
     () => [
       {
         image:
@@ -87,6 +104,14 @@ const LuxuryHomePage = () => {
       },
       {
         image:
+          "https://images.unsplash.com/photo-1519744792095-2f2205e87b6f?w=800&q=80",
+        title: "Accessories Edit",
+        category: "accessories",
+        description: "Finishing touches, everyday essentials.",
+        badge: "NEW",
+      },
+      {
+        image:
           "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80",
         title: "Private Sale",
         category: "sale",
@@ -96,6 +121,8 @@ const LuxuryHomePage = () => {
     ],
     []
   );
+
+  const [collectionsState, setCollectionsState] = useState(() => defaultCollections);
 
   // Fetch products
   useEffect(() => {
@@ -136,27 +163,185 @@ const LuxuryHomePage = () => {
   }, [heroSlides.length]);
 
   const handleAddToCart = (product: Product) => {
-    if (!product.inStock || product.inventory === 0) {
+    // Open quick-add overlay for user to pick size/color
+    if (isOutOfStock(product)) {
       showToast("Product is out of stock", "error");
       return;
     }
+    setQaSelectedSize("");
+    setQaSelectedColor("");
+    setQaSelectedColorName("");
+    setQaSelectedVariantId("");
+    setQuickAddProduct(product);
+  };
+
+  const closeQuickAdd = () => {
+    setQuickAddProduct(null);
+    setQaSelectedSize("");
+    setQaSelectedColor("");
+    setQaSelectedColorName("");
+    setQaSelectedVariantId("");
+  };
+
+  const confirmQuickAdd = (product: Product) => {
+    if (!qaSelectedSize) {
+      showToast("Please select a size", "error");
+      return;
+    }
+
+    // If product has colors/variants, require explicit color/variant selection
+    const hasColors = (product as any).variants?.length || (product as any).colors?.length;
+    if (hasColors && !qaSelectedVariantId && !qaSelectedColor) {
+      showToast('Please select a color', 'error');
+      return;
+    }
+
     const imageSrc = primaryImage(product) || "https://via.placeholder.com/300";
+    const price = priceNumber(product);
+
+    // Resolve variant if qaSelectedVariantId or qaSelectedColor provided
+    let variantSnapshot: any = undefined;
+    if ((product as any).variants) {
+      variantSnapshot = (product as any).variants.find((v: any) => {
+        const key = String(qaSelectedVariantId || qaSelectedColor || '').toLowerCase();
+        return key && (String(v._id || v.id).toLowerCase() === key || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === key || String(v.name || '').toLowerCase() === key);
+      });
+    }
+
+    const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (qaSelectedColorName || qaSelectedColor || undefined);
 
     addItem({
       productId: product._id ?? product.id ?? "",
-      name: product.name,
-      price: product.price,
+      name: String(product.name),
+      price,
       image: imageSrc,
-      size: "M",
+      size: qaSelectedSize,
+      color: colorNormalized,
+      colorName: variantSnapshot?.name || qaSelectedColorName || undefined,
+      variantId: variantSnapshot?.id || qaSelectedVariantId || undefined,
+      variantName: variantSnapshot?.name || undefined,
+      variantHex: variantSnapshot?.hex || undefined,
       quantity: 1,
     });
-    showToast(`${product.name} added to cart!`, "success");
+
+    showToast(`${String(product.name)} added to cart!`, "success");
+    closeQuickAdd();
   };
 
   const formatPrice = (price: number) => `₨${price.toLocaleString()}`;
 
+  // Carousel refs + state for featured & trending
+  const featuredRef = useRef<HTMLDivElement | null>(null);
+  const trendingRef = useRef<HTMLDivElement | null>(null);
+  const collectionsRef = useRef<HTMLDivElement | null>(null);
+  const [featuredHover, setFeaturedHover] = useState(false);
+  const [trendingHover, setTrendingHover] = useState(false);
+  const [collectionsHover, setCollectionsHover] = useState(false);
+
+  const scrollByAmount = useCallback((container: HTMLElement | null, amount: number) => {
+    if (!container) return;
+    container.scrollBy({ left: amount, behavior: "smooth" });
+  }, []);
+
+  const scrollNext = useCallback((container: HTMLElement | null) => {
+    if (!container) return;
+    const item = container.querySelector('[data-carousel-item]') as HTMLElement | null;
+    const step = (item?.clientWidth || container.clientWidth) ;
+    scrollByAmount(container, step);
+  }, [scrollByAmount]);
+
+  const scrollPrev = useCallback((container: HTMLElement | null) => {
+    if (!container) return;
+    const item = container.querySelector('[data-carousel-item]') as HTMLElement | null;
+    const step = (item?.clientWidth || container.clientWidth) ;
+    scrollByAmount(container, -step);
+  }, [scrollByAmount]);
+
+  // Autoplay: advance every 5s when not hovered
+  useEffect(() => {
+    const container = featuredRef.current;
+    if (!container) return;
+    const id = window.setInterval(() => {
+      if (!featuredHover) scrollNext(container);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [featuredRef, featuredHover, scrollNext]);
+
+  useEffect(() => {
+    const container = collectionsRef.current;
+    if (!container) return;
+    const id = window.setInterval(() => {
+      if (!collectionsHover) scrollNext(container);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [collectionsRef, collectionsHover, scrollNext]);
+
+  // Fetch collections from API (fallback to defaults)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res: any = await api.collections.getAll();
+        // API may return { data: { collections } } or { collections }
+        const cols = (res && res.data && Array.isArray(res.data.collections)) ? res.data.collections : (Array.isArray(res?.collections) ? res.collections : []);
+        if (!mounted) return;
+        if (cols && cols.length) {
+          const mapped = cols.slice(0, 5).map((c: any) => ({
+            image: c.image || c.banner || c.imageUrl || c.featuredImage || defaultCollections[0].image,
+            title: c.title || c.name || c.handle || c.slug || 'Collection',
+            category: c.slug || c.handle || c.id || (c.name || '').toLowerCase(),
+            description: c.description || '',
+            badge: c.badge || c.tag || '',
+          }));
+          setCollectionsState(mapped);
+        }
+      } catch (e) {
+        // keep defaults
+        console.debug('Collections API failed, using defaults', e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const container = trendingRef.current;
+    if (!container) return;
+    const id = window.setInterval(() => {
+      if (!trendingHover) scrollNext(container);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [trendingRef, trendingHover, scrollNext]);
+
   const ProductCard = ({ product }: { product: Product }) => {
     const imageSrc = primaryImage(product) || "https://via.placeholder.com/300";
+        const isQuickOpen = quickAddProduct && (quickAddProduct._id ?? quickAddProduct.id) === (product._id ?? product.id);
+
+        // compute pricing/discount for badge
+        const pPrice = priceNumber(product);
+        const pOriginal = (product as any).originalPrice || (product as any).compareAtPrice || undefined;
+        const pDiscount = pOriginal && pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+
+        const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+        const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(productId(product)) : false;
+
+        const handleWishlistToggle = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isWishlisted) {
+            removeFromWishlist(productId(product));
+            showToast('Removed from wishlist', 'info');
+          } else {
+            addToWishlist({
+              id: productId(product),
+              name: product.name,
+              price: priceNumber(product),
+              image: primaryImage(product),
+              category: product.category ?? '',
+              rating: (product as any).rating,
+            });
+            showToast('Added to wishlist!', 'success');
+          }
+        };
 
     return (
       <motion.div
@@ -173,7 +358,9 @@ const LuxuryHomePage = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-          <div className="absolute top-4 left-4 flex flex-col gap-2 text-[11px] uppercase tracking-[0.18em] text-white/80">
+            {/* Mobile: use the main Add button to open quick-add overlay; no separate plus button */}
+
+          <div className="absolute top-4 left-4 flex flex-col gap-2 text-[11px] uppercase tracking-[0.001em] text-white/80">
             {product?.inStock ? (
               <span className="rounded-full bg-black/40 px-3 py-1 backdrop-blur-sm">
                 In stock
@@ -183,21 +370,43 @@ const LuxuryHomePage = () => {
                 Waitlist
               </span>
             )}
-            {((product as any).ratings || (product as any).rating) && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
-                <Star
-                  size={12}
-                  className="fill-yellow-400 text-yellow-400 shrink-0"
-                />
-                {((product as any).ratings?.average ?? (product as any).rating)
-                  ? Number(((product as any).ratings?.average ?? (product as any).rating)).toFixed(1)
-                  : "-"}{" "}
-                • {(product as any).ratings?.count ?? ""}
-              </span>
-            )}
+            {pDiscount > 0 && (
+  <span className="inline-flex items-center justify-center rounded-full bg-white/10 px-3 py-1 backdrop-blur-sm text-black text-[13px] font-bold uppercase tracking-wider">
+    -{pDiscount}%
+  </span>
+)}
+
+            {((product as any).ratings || (product as any).rating) && (() => {
+                const avg = (product as any).ratings?.average ?? (product as any).rating;
+                const count = (product as any).ratings?.count;
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
+                    <Star
+                      size={12}
+                      className="fill-yellow-400 text-yellow-400 shrink-0"
+                    />
+                    {avg ? Number(avg).toFixed(1) : "-"}
+                    {count > 0 ? (
+                      <>
+                        {' '}
+                        • {count}
+                      </>
+                    ) : null}
+                  </span>
+                );
+              })()}
           </div>
 
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4 opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+          {/* Wishlist button */}
+          <button
+            onClick={handleWishlistToggle}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-gray-800 transition-all z-10"
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+          </button>
+
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4 opacity-100 translate-y-0 md:opacity-0 md:translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
             <div className="flex gap-3 w-full max-w-xs">
               <button
                 onClick={() => navigate(`/product/${productId(product)}`)}
@@ -206,7 +415,7 @@ const LuxuryHomePage = () => {
               >
                 View details
               </button>
-              {product.inStock && (
+              {!isOutOfStock(product) && (
                 <button
                   onClick={() => handleAddToCart(product)}
                   className="flex items-center justify-center gap-2 bg-black/80 text-white px-5 py-2 text-xs md:text-sm rounded-full uppercase tracking-[0.18em] hover:bg-black transition border border-white/10"
@@ -221,7 +430,7 @@ const LuxuryHomePage = () => {
         </div>
 
         <div className="px-1">
-            <h3 className="text-[13px] md:text-sm mb-1 text-neutral-100 tracking-[0.16em] uppercase line-clamp-2">
+            <h3 className="text-[13px] md:text-sm mb-1 text-gray-900 tracking-[0.16em] uppercase line-clamp-2">
             {product.name}
           </h3>
           <div className="flex items-baseline gap-3 mb-1">
@@ -236,7 +445,7 @@ const LuxuryHomePage = () => {
               )}
           </div>
             <p className="text-[11px] text-neutral-500 uppercase tracking-[0.22em]">
-            Denfit Studio • Edition 2025
+            Denfit Studio • Edition 2026
           </p>
         </div>
       </motion.div>
@@ -244,7 +453,7 @@ const LuxuryHomePage = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-black via-neutral-950 to-black text-white overflow-hidden">
+    <div className="bg-gradient-to-b from-black via-neutral-950 to-black text-black overflow-hidden">
       {/* Hero Section */}
       <section className="relative h-[75vh] sm:h-[85vh] md:h-screen overflow-hidden">
         <AnimatePresence mode="wait">
@@ -265,7 +474,7 @@ const LuxuryHomePage = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/50 to-black/90" />
 
-                  <div className="relative h-full max-w-7xl mx-auto flex flex-col justify-between px-6 pt-24 pb-16 md:px-10">
+                  <div className="relative h-full max-w-7xl mx-auto flex flex-col justify-between px-6 pt-12 md:pt-20 pb-16 md:px-10 text-white">
                     {/* Top mini-bar */}
                     <div className="flex items-center justify-between text-[11px] tracking-[0.22em] uppercase text-neutral-300">
                       <span className="flex items-center gap-2">
@@ -274,7 +483,7 @@ const LuxuryHomePage = () => {
                       </span>
                       <span className="hidden md:inline-flex items-center gap-3">
                         <span className="h-[1px] w-10 bg-neutral-500" />
-                        Edition 2025 • Online Exclusive
+                        Edition 2026 • Online Exclusive
                       </span>
                     </div>
 
@@ -386,15 +595,15 @@ const LuxuryHomePage = () => {
       </section>
 
       {/* Brand Strip */}
-      <section className="border-y border-white/5 bg-black/60 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 md:px-10 py-5 flex flex-wrap items-center justify-between gap-4 text-[10px] md:text-[11px] tracking-[0.26em] uppercase text-neutral-400">
+      <section className="border-y border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto px-6 md:px-10 py-5 flex flex-wrap items-center justify-between gap-4 text-[10px] md:text-[11px] tracking-[0.26em] uppercase text-gray-500">
           <span className="flex items-center gap-2">
             <span className="h-[1px] w-6 bg-neutral-500" />
             Ethically sourced fabrics
           </span>
           <span className="flex items-center gap-2">
             <span className="h-[1px] w-6 bg-neutral-500" />
-            Free shipping over ₨15,000
+            Free shipping over ₨5,000
           </span>
           <span className="flex items-center gap-2">
             <span className="h-[1px] w-6 bg-neutral-500" />
@@ -407,122 +616,183 @@ const LuxuryHomePage = () => {
         </div>
       </section>
 
-      {/* Collections */}
-      <section className="py-16 md:py-20 px-6 md:px-10 bg-gradient-to-b from-black via-neutral-950 to-black">
-        <div className="max-w-7xl mx-auto">
+        {/* Collections */}
+        <section className="py-16 md:py-20 px-6 md:px-10 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-10 mb-10 md:mb-12">
             <div>
-              <p className="text-[11px] tracking-[0.32em] uppercase text-neutral-400 mb-3">
+              <p className="text-[11px] tracking-[0.32em] uppercase text-gray-600 mb-3">
                 Curated Universes
               </p>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.25em]">
                 SHOP BY CATEGORY
               </h2>
             </div>
-            <p className="max-w-md text-sm text-neutral-300">
+              <p className="max-w-md text-sm text-gray-600">
               Discover tailored edits for every chapter of your day: elevated
               essentials, statement pieces, and effortless layers.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7">
-            {collections.map((c, i) => (
-              <Link
-                key={i}
-                to={`/shop?gender=${c.category}`}
-                className="relative group overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5"
-              >
-                <div className="relative overflow-hidden aspect-[3/4]">
-                  <img
-                    src={c.image}
-                    alt={c.title}
-                    className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/85 group-hover:via-black/60 transition-colors" />
-                  <div className="absolute top-5 left-5">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-[0.26em] text-neutral-100">
-                      <span className="h-1 w-1 rounded-full bg-emerald-300" />
-                      {c.badge}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-7 left-6 right-6 text-left">
-                    <h3 className="text-2xl font-light mb-1 tracking-[0.16em] uppercase">
-                      {c.title}
-                    </h3>
-                    <p className="text-sm text-neutral-300 mb-4">
-                      {c.description}
-                    </p>
-                    <span className="inline-flex items-center gap-3 text-[11px] tracking-[0.26em] uppercase text-neutral-100">
-                      Shop the edit
-                      <ArrowRight
-                        size={16}
-                        className="transform group-hover:translate-x-1 transition-transform"
+          <div className="relative">
+            <button
+              aria-label="Collections prev"
+              onClick={() => {
+                const c = collectionsRef.current;
+                if (!c) return;
+                scrollPrev(c);
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2"
+            >
+              <ChevronLeft size={18} />
+            </button>
+
+            <div
+              ref={collectionsRef}
+              onMouseEnter={() => setCollectionsHover(true)}
+              onMouseLeave={() => setCollectionsHover(false)}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {collectionsState.map((c, i) => (
+                <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
+                  <a
+                      href={typeof window !== 'undefined' ? `http://${window.location.host}${(['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}` : (['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}
+                      className="relative group overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5"
+                    >
+                    <div className="relative overflow-hidden aspect-[3/4]">
+                      <img
+                        src={c.image}
+                        alt={c.title}
+                        className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-110"
                       />
-                    </span>
-                  </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/85 group-hover:via-black/60 transition-colors" />
+                      <div className="absolute top-5 left-5">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-[0.26em] text-neutral-100">
+                          <span className="h-1 w-1 rounded-full bg-emerald-300" />
+                          {c.badge}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-7 left-6 right-6 text-left">
+                        <h3 className="text-2xl font-light mb-1 tracking-[0.16em] uppercase text-white">
+                          {c.title}
+                        </h3>
+                        <p className="text-sm text-neutral-300 mb-4">
+                          {c.description}
+                        </p>
+                        <span className="inline-flex items-center gap-3 text-[11px] tracking-[0.26em] uppercase text-neutral-100">
+                          Shop the edit
+                          <ArrowRight
+                            size={16}
+                            className="transform group-hover:translate-x-1 transition-transform"
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  </a>
                 </div>
-              </Link>
-            ))}
+              ))}
+            </div>
+
+            <button
+              aria-label="Collections next"
+              onClick={() => {
+                const c = collectionsRef.current;
+                if (!c) return;
+                scrollNext(c);
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}`}</style>
           </div>
         </div>
       </section>
 
       {/* Featured Products */}
-      <section className="py-16 md:py-20 px-6 md:px-10 bg-black">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-16 md:py-20 px-6 md:px-10 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-10 md:mb-12">
             <div>
-              <p className="text-[11px] tracking-[0.32em] uppercase text-neutral-400 mb-3">
+              <p className="text-[11px] tracking-[0.32em] uppercase text-gray-600 mb-3">
                 Editor’s Spotlight
               </p>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.2em]">
                 FEATURED PIECES
               </h2>
-              <p className="mt-3 text-sm text-neutral-300 max-w-md">
+              <p className="mt-3 text-sm text-gray-600 max-w-md">
                 A handpicked selection of signature silhouettes, crafted in
                 luxurious fabrics and refined finishes.
               </p>
             </div>
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-neutral-200 hover:text-white"
+            <a
+              href={typeof window !== 'undefined' ? `http://${window.location.host}/shop` : '/shop'}
+              className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-gray-700 hover:text-black"
             >
               View entire collection
               <ArrowRight size={16} />
-            </Link>
+            </a>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7">
-            {loading
-              ? [...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4]"
-                  />
-                ))
+          <div className="relative">
+            <button
+              aria-label="Featured prev"
+              onClick={() => scrollPrev(featuredRef.current)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div
+              ref={featuredRef}
+              onMouseEnter={() => setFeaturedHover(true)}
+              onMouseLeave={() => setFeaturedHover(false)}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {loading
+                ? [...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2"
+                    >
+                      <div className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4]" />
+                    </div>
+                  ))
                 : featuredProducts.map((p) => (
-                  <ProductCard key={productId(p)} product={p} />
-                ))}
+                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
+                      <ProductCard product={p} />
+                    </div>
+                  ))}
+            </div>
+            <button
+              aria-label="Featured next"
+              onClick={() => scrollNext(featuredRef.current)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2"
+            >
+              <ChevronRight size={18} />
+            </button>
+            <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}`}</style>
           </div>
         </div>
       </section>
 
-      {/* Trending Products */}
-      <section className="py-16 md:py-20 px-6 md:px-10 bg-gradient-to-b from-neutral-950 via-black to-black">
-        <div className="max-w-7xl mx-auto">
+        {/* Trending Products */}
+        <section className="py-16 md:py-20 px-6 md:px-10 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-10 md:mb-12">
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-amber-400 text-black">
                 <TrendingUp size={22} />
               </div>
               <div>
-                <p className="text-[11px] tracking-[0.32em] uppercase text-neutral-400 mb-2">
+                <p className="text-[11px] tracking-[0.32em] uppercase text-gray-500 mb-2">
                   Community Favourites
                 </p>
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.2em]">
                   TRENDING NOW
                 </h2>
-                <p className="mt-2 text-sm text-neutral-300 max-w-md">
+                <p className="mt-2 text-sm text-gray-600 max-w-md">
                   Pieces our clients reach for again and again – high‑rotation
                   essentials and statement icons.
                 </p>
@@ -530,27 +800,160 @@ const LuxuryHomePage = () => {
             </div>
             <Link
               to="/shop"
-              className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-neutral-200 hover:text-white"
+              className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.26em] text-gray-700 hover:text-black"
             >
               Explore more
               <ArrowRight size={16} />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-7">
-            {loading
-              ? [...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4]"
-                  />
-                ))
+          <div className="relative">
+            <button
+              aria-label="Trending prev"
+              onClick={() => scrollPrev(trendingRef.current)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 ml-2"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div
+              ref={trendingRef}
+              onMouseEnter={() => setTrendingHover(true)}
+              onMouseLeave={() => setTrendingHover(false)}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {loading
+                ? [...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                              className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2"
+                    >
+                              <div className="animate-pulse rounded-3xl border border-gray-100 bg-gradient-to-b from-neutral-100 via-neutral-50 to-neutral-100 aspect-[3/4]" />
+                    </div>
+                  ))
                 : trendingProducts.map((p) => (
-                  <ProductCard key={productId(p)} product={p} />
-                ))}
+                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
+                      <ProductCard product={p} />
+                    </div>
+                  ))}
+            </div>
+            <button
+              aria-label="Trending next"
+              onClick={() => scrollNext(trendingRef.current)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 mr-2"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Quick Add Overlay */}
+      {quickAddProduct && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={closeQuickAdd}
+            aria-hidden
+          />
+
+          <div className="relative w-full md:max-w-xl bg-white rounded-t-xl md:rounded-xl shadow-lg p-4 md:p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">{String(quickAddProduct.name)}</h3>
+                <p className="text-sm text-gray-600 mt-1">Rs. {priceNumber(quickAddProduct).toLocaleString()}</p>
+              </div>
+              <button onClick={closeQuickAdd} className="text-gray-500 ml-4" aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            {/* Size selection */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-normal text-gray-700 uppercase tracking-wider">Size</span>
+                {qaSelectedSize && (
+                  <span className="text-xs text-gray-500">Selected: <span className="font-medium">{String(qaSelectedSize)}</span></span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const sizes = getDisplaySizesForProduct(quickAddProduct as any);
+                  const variant = (quickAddProduct as any).variants && qaSelectedVariantId
+                    ? (quickAddProduct as any).variants.find((x: any) => String(x._id || x.id) === String(qaSelectedVariantId))
+                    : undefined;
+                  const avail = getAvailableSizesForProduct(quickAddProduct as any, variant);
+                  return sizes.map((s) => {
+                    const isAvailable = avail.includes(s);
+                    const isSelected = qaSelectedSize === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => isAvailable && setQaSelectedSize(String(s))}
+                        disabled={!isAvailable}
+                        className={`h-9 min-w-[44px] px-3 rounded text-xs font-normal border transition-all duration-200 ${isSelected ? 'bg-black text-white' : isAvailable ? 'bg-white text-gray-800 border-gray-300' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                      >
+                        {String(s)}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Color selection */}
+            {((quickAddProduct.variants && quickAddProduct.variants.length) || (quickAddProduct.colors && quickAddProduct.colors.length)) && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-normal text-gray-700 uppercase tracking-wider">Color</span>
+                  {qaSelectedColorName ? (
+                    <span className="text-xs text-gray-500">Selected: <span className="font-medium">{String(qaSelectedColorName)}</span></span>
+                  ) : qaSelectedColor ? (
+                    <span className="text-xs text-gray-500">Selected: <span className="font-medium">{String(qaSelectedColor)}</span></span>
+                  ) : null}
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                  {(quickAddProduct.variants || quickAddProduct.colors || []).map((v: any, idx: number) => {
+                    const swatchImage = v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined;
+                    const hex = v?.hex || v?.normalizedHex || v?.value || undefined;
+                    const name = v?.name || v?.displayName || v?.value || hex || `Color ${idx + 1}`;
+                    const id = String(v._id || v.id || idx);
+                    const isSelected = qaSelectedVariantId === id || qaSelectedColor === (hex || name);
+
+                    return (
+                      <div key={id} className="flex flex-col items-center gap-1.5 min-w-[60px]">
+                        <button
+                          onClick={() => {
+                            if (quickAddProduct.variants) setQaSelectedVariantId(id);
+                            setQaSelectedColor(hex || name);
+                            setQaSelectedColorName(String(name || hex || ''));
+                          }}
+                          className={`w-9 h-9 md:w-11 md:h-11 rounded-sm border border-gray-300 overflow-hidden transition-all flex items-center justify-center ${isSelected ? 'border-black shadow-sm' : 'hover:border-gray-400'}`}
+                          style={hex && !swatchImage ? { backgroundColor: hex } : undefined}
+                          aria-label={String(name)}
+                        >
+                          {swatchImage ? <img src={swatchImage} alt={String(name)} className="w-full h-full object-cover" /> : null}
+                        </button>
+                        <span className="text-[10px] text-gray-600 font-normal text-center leading-tight px-1">{String(name)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <button
+                onClick={() => confirmQuickAdd(quickAddProduct)}
+                disabled={!qaSelectedSize || (((quickAddProduct as any).variants?.length || (quickAddProduct as any).colors?.length) && !qaSelectedVariantId && !qaSelectedColor)}
+                className="w-full bg-black text-white py-3 rounded text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add to cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       
     </div>

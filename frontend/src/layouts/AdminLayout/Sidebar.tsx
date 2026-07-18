@@ -1,17 +1,12 @@
+// frontend/src/layouts/AdminLayout/Sidebar.tsx
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LogOut, Menu } from "lucide-react";
+import { Menu, LogOut, Home } from "lucide-react";
 import adminMenu from "./adminMenu";
 import { useAuth } from "../../context/AuthContext";
-import { motion } from "framer-motion";
-
-/**
- * NOTE: shadcn/ui components path used here as project convention.
- * If your project uses a different import path, adjust these imports.
- */
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { Separator } from "@/components/ui/Separator";
 
 interface Props {
   collapsed?: boolean;
@@ -19,15 +14,17 @@ interface Props {
   mobileOverlay?: boolean;
 }
 
-const Sidebar: React.FC<Props> = ({ collapsed = false, onToggleCollapse, mobileOverlay = false }) => {
+const Sidebar: React.FC<Props> = ({ 
+  collapsed = false, 
+  onToggleCollapse, 
+  mobileOverlay = false 
+}) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Keep menu structure but filter by permissions/role as before
-  const allowedMenu = adminMenu.filter((m) => {
-    if (!m.permission) return user?.role === "admin"; // default to admin-only if permission missing
-    if (Array.isArray(user?.permissions)) return user.permissions.includes(m.permission) || user.role === "admin";
-    return user?.role === "admin";
+  const allowedMenu = adminMenu.filter((item) => {
+    if (!item.permission) return user?.role === "admin";
+    return user?.role === "admin" || (user?.permissions || []).includes(item.permission);
   });
 
   const handleLogout = async () => {
@@ -39,113 +36,125 @@ const Sidebar: React.FC<Props> = ({ collapsed = false, onToggleCollapse, mobileO
     }
   };
 
-  const getAvatarUrl = () => {
-    if (user?.avatar) return user.avatar;
-    const name = user?.name || "Admin User";
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=111827&color=fff&bold=true`;
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return "A";
+    const parts = name.trim().split(/\s+/);
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   };
 
   return (
-    <nav
-      aria-label="Admin primary"
-      className="h-full bg-white dark:bg-slate-800 border-r border-slate-100 dark:border-slate-700 flex flex-col justify-between"
-      role="navigation"
+    <nav 
+      aria-label="Main navigation"
+      className="flex h-full flex-col justify-between bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700"
     >
+      {/* 🔝 Top Section */}
       <div className="p-4">
+        {/* Logo */}
         <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-          <div
-            aria-hidden
-            className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-white bg-gradient-to-br from-slate-700 to-slate-500"
+          <div 
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold text-lg shadow-sm"
+            aria-hidden="true"
           >
             D
           </div>
-
           {!collapsed && (
-            <div className="flex flex-col">
-              <div className="text-lg font-bold">DENFiT</div>
-              <div className="text-xs text-slate-500">Admin Console</div>
+            <div>
+              <div className="text-lg font-bold text-slate-900 dark:text-white">DENFiT</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Admin</div>
             </div>
           )}
 
-          {/* collapse/expand control for desktop */}
-          <div className="ml-auto md:flex hidden">
+          {/* Desktop collapse toggle */}
+          {!mobileOverlay && !collapsed && (
             <Button
               variant="ghost"
               size="icon"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={onToggleCollapse}
-              className="p-1"
+              aria-label="Collapse sidebar"
+              className="ml-auto p-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
             >
-              <Menu className="w-4 h-4" />
+              <Menu className="h-4 w-4" />
             </Button>
-          </div>
+          )}
         </div>
 
-        <div className="mt-6">
-          <div className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
-            {allowedMenu.map((m) => (
-              <NavLink
-                key={m.to}
-                to={m.to}
-                title={m.label}
-                end
-                onClick={() => mobileOverlay && onToggleCollapse && onToggleCollapse()}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-                    ${isActive ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white" : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`
-                }
-              >
-                <div aria-hidden className="w-5 h-5 text-slate-600 dark:text-slate-300">
-                  {m.icon}
-                </div>
-                {!collapsed && <span>{m.label}</span>}
-              </NavLink>
+        {/* Menu */}
+        <div className="mt-8">
+          <ul className={`space-y-1 ${collapsed ? "items-center" : ""}`}>
+            {allowedMenu.map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end
+                  onClick={() => mobileOverlay && onToggleCollapse?.()}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                        : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                    } ${collapsed ? "justify-center px-2 py-3" : ""}`
+                  }
+                  title={collapsed ? item.label : undefined}
+                >
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                    {item.icon}
+                  </span>
+                  {!collapsed && <span>{item.label}</span>}
+                </NavLink>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </div>
 
-      <Separator />
+      <Separator className="dark:bg-slate-700" />
 
-      <div className="p-4 border-t border-slate-100 dark:border-slate-700">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Avatar>
-              <img src={getAvatarUrl()} alt={user?.name || "Admin"} />
+      {/* 👇 Bottom User */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={user?.avatar} alt={user?.name} />
+              <AvatarFallback className="bg-gradient-to-br from-slate-700 to-slate-600 text-white text-xs font-medium">
+                {getInitials(user?.name)}
+              </AvatarFallback>
             </Avatar>
 
             {!collapsed && (
-              <div>
-                <div className="text-sm font-semibold">{user?.name || "Admin User"}</div>
-                <div className="text-xs text-slate-500">{user?.role === "admin" ? "Admin" : "User"}</div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                  {user?.name || "Admin"}
+                </div>
+                <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {user?.role === "admin" ? "Administrator" : "Staff"}
+                </div>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Mobile toggle (visible only on mobile) */}
-            <div className="md:hidden">
+          <div className="flex items-center gap-1">
+            {/* Mobile close */}
+            {mobileOverlay && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onToggleCollapse}
-                aria-label="Close sidebar"
-                className="p-1"
+                aria-label="Close menu"
+                className="p-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="h-4 w-4" />
               </Button>
-            </div>
+            )}
 
             {/* Logout */}
             <Button
               variant="ghost"
               size="icon"
               onClick={handleLogout}
-              title="Sign out"
               aria-label="Sign out"
-              className="p-1"
+              className="p-1 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>

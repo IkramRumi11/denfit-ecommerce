@@ -28,8 +28,10 @@ test('GET /api/v1/features returns feature flags (raptorMini default enabled)', 
   let serverProcess;
   try {
     // Try direct fetch first (if already running externally)
+    const port = process.env.PORT || 3002;
+    const base = `http://localhost:${port}`;
     try {
-      const res = await fetch('http://localhost:3002/api/v1/features');
+      const res = await fetch(`${base}/api/v1/features`);
       if (res.ok) {
         const body = await res.json();
         assert.equal(body.success, true);
@@ -43,7 +45,7 @@ test('GET /api/v1/features returns feature flags (raptorMini default enabled)', 
     }
 
     serverProcess = await startLocalServer();
-    const res2 = await fetch('http://localhost:3002/api/v1/features');
+    const res2 = await fetch(`${base}/api/v1/features`);
     assert.equal(res2.status, 200);
     const body2 = await res2.json();
     assert.equal(body2.success, true);

@@ -82,6 +82,10 @@ const errorHandler = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, req, res);
   } else {
+    // Allow forcing verbose errors in non-production via DEBUG_ERRORS=true
+    if (String(process.env.DEBUG_ERRORS).toLowerCase() === 'true') {
+      return sendErrorDev(err, req, res);
+    }
     let error = { ...err };
     error.message = err.message;
 

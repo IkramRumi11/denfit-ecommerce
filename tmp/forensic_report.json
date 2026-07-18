@@ -1,0 +1,900 @@
+{
+  "success": true,
+  "timestamp": "2026-06-14T01:55:04.897Z",
+  "snapshotPath": "C:\\denfit-ecommerce 3\\tmp\\verify-products.json",
+  "snapshotCount": 4,
+  "products": [
+    {
+      "id": "698f36d4a147e9896b55eda3",
+      "name": "DenfiT Database",
+      "slug": "denfit-database",
+      "category": "men",
+      "price": 6789,
+      "imageCount": 4
+    },
+    {
+      "id": "698557899aa127a8ee9df542",
+      "name": "Canvas Messenger Bag",
+      "slug": "canvas-messenger-bag",
+      "category": "men",
+      "price": 5499,
+      "imageCount": 4
+    },
+    {
+      "id": "6985512f9aa127a8ee9df1b7",
+      "name": "Leather Wallet with ID Window",
+      "slug": "leather-wallet-with-id-window",
+      "category": "men",
+      "price": 2099.3,
+      "imageCount": 4
+    },
+    {
+      "id": "69842561fb5b110cb8edfcae",
+      "name": "Urban Chrono Watch",
+      "slug": "urban-chrono-watch",
+      "category": "men",
+      "price": 6000,
+      "imageCount": 4
+    }
+  ],
+  "dbPresence": {
+    "presentIds": [],
+    "missingIds": [
+      "698f36d4a147e9896b55eda3",
+      "698557899aa127a8ee9df542",
+      "6985512f9aa127a8ee9df1b7",
+      "69842561fb5b110cb8edfcae"
+    ],
+    "invalidIds": []
+  },
+  "categories": [
+    {
+      "category": "men",
+      "exists": false,
+      "found": null
+    }
+  ],
+  "ordersReferencingSnapshotProducts": {
+    "count": 48,
+    "orders": [
+      {
+        "_id": "6984275efb5b110cb8ee1a79",
+        "orderNumber": "ORD-510893650",
+        "createdAt": "2026-02-05T05:15:10.893Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69843895fb5b110cb8ee1fe2",
+        "orderNumber": "ORD-917603114",
+        "createdAt": "2026-02-05T06:28:37.603Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698439dea8d2213cb3c711ad",
+        "orderNumber": "ORD-246313956",
+        "createdAt": "2026-02-05T06:34:06.312Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69843b5afa5fec6f402ce176",
+        "orderNumber": "ORD-626199626",
+        "createdAt": "2026-02-05T06:40:26.199Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698459e3ffa5d31f043fe769",
+        "orderNumber": "ORD-443063089",
+        "createdAt": "2026-02-05T08:50:43.062Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6986b1f9dcf05c85804027d6",
+        "orderNumber": "ORD-065536547",
+        "createdAt": "2026-02-07T03:31:05.536Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          },
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 3,
+            "price": 1499
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6986b6abdcf05c8580402fd5",
+        "orderNumber": "ORD-267216783",
+        "createdAt": "2026-02-07T03:51:07.216Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          },
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698761e627d08d1a3ebd55b6",
+        "orderNumber": "ORD-102268407",
+        "createdAt": "2026-02-07T16:01:42.268Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6987694f27d08d1a3ebd567d",
+        "orderNumber": "ORD-999464594",
+        "createdAt": "2026-02-07T16:33:19.463Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69876aab27d08d1a3ebd5728",
+        "orderNumber": "ORD-347109397",
+        "createdAt": "2026-02-07T16:39:07.109Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "69876b109bc0486a26cd0e7c",
+        "orderNumber": "ORD-448210825",
+        "createdAt": "2026-02-07T16:40:48.210Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "69876e056748c7b251123a60",
+        "orderNumber": "ORD-205764192",
+        "createdAt": "2026-02-07T16:53:25.763Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69877149666ed1fce24df729",
+        "orderNumber": "ORD-041021715",
+        "createdAt": "2026-02-07T17:07:21.021Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6988154e9417968994415d7a",
+        "orderNumber": "ORD-030913810",
+        "createdAt": "2026-02-08T04:47:10.913Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6988189290875e7e3fed9691",
+        "orderNumber": "ORD-866328736",
+        "createdAt": "2026-02-08T05:01:06.328Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69881a5290875e7e3fed983b",
+        "orderNumber": "ORD-314993334",
+        "createdAt": "2026-02-08T05:08:34.993Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69881b59a0c11e0a0ce7c61c",
+        "orderNumber": "ORD-577412987",
+        "createdAt": "2026-02-08T05:12:57.412Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "69881e04e37f88d57365e79a",
+        "orderNumber": "ORD-260108863",
+        "createdAt": "2026-02-08T05:24:20.108Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6988247ee37f88d57365ec1b",
+        "orderNumber": "ORD-918049732",
+        "createdAt": "2026-02-08T05:51:58.049Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698830bca03c7b7dbd7fdd31",
+        "orderNumber": "ORD-052786108",
+        "createdAt": "2026-02-08T06:44:12.786Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698834f4d716d33bf01958bd",
+        "orderNumber": "ORD-132762351",
+        "createdAt": "2026-02-08T07:02:12.761Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69883d0744b396ce5e312aff",
+        "orderNumber": "ORD-199443693",
+        "createdAt": "2026-02-08T07:36:39.443Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69883ffebfc3bb5a48ee2a13",
+        "orderNumber": "ORD-958533283",
+        "createdAt": "2026-02-08T07:49:18.531Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "69887fc1da123eb1c2faae39",
+        "orderNumber": "ORD-281211969",
+        "createdAt": "2026-02-08T12:21:21.211Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "69888027da123eb1c2faaecb",
+        "orderNumber": "ORD-383168804",
+        "createdAt": "2026-02-08T12:23:03.168Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6988b1e951c6e554dd875d65",
+        "orderNumber": "ORD-121596387",
+        "createdAt": "2026-02-08T15:55:21.596Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6988b60c431ae8b6e161242b",
+        "orderNumber": "ORD-180884292",
+        "createdAt": "2026-02-08T16:13:00.884Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6988bd3319b12fd8d739b4b3",
+        "orderNumber": "ORD-011306654",
+        "createdAt": "2026-02-08T16:43:31.306Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "6988d5dc4b7ebfc9cb9b4960",
+        "orderNumber": "ORD-324156947",
+        "createdAt": "2026-02-08T18:28:44.156Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "6989ee76d043447d325abd6c",
+        "orderNumber": "ORD-158593806",
+        "createdAt": "2026-02-09T14:25:58.593Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          },
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 2,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "698a9c376d062e7de8387ca9",
+        "orderNumber": "ORD-639090947",
+        "createdAt": "2026-02-10T02:47:19.090Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698b431df71fdb05bb7d06d2",
+        "orderNumber": "ORD-365221289",
+        "createdAt": "2026-02-10T14:39:25.221Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698b52380c95fc65b62f3f20",
+        "orderNumber": "ORD-232569951",
+        "createdAt": "2026-02-10T15:43:52.569Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "698b53fd0c95fc65b62f4114",
+        "orderNumber": "ORD-685514413",
+        "createdAt": "2026-02-10T15:51:25.514Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698b544e0c95fc65b62f4264",
+        "orderNumber": "ORD-766614443",
+        "createdAt": "2026-02-10T15:52:46.614Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "698b5a83d233d4c70b765d68",
+        "orderNumber": "ORD-355539545",
+        "createdAt": "2026-02-10T16:19:15.539Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698c16891d420bcbdbe54497",
+        "orderNumber": "ORD-489424724",
+        "createdAt": "2026-02-11T05:41:29.423Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698c17e0cdfcff0cb763d9d6",
+        "orderNumber": "ORD-833000590",
+        "createdAt": "2026-02-11T05:47:12.999Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698c2d39d500547c46dbf1bc",
+        "orderNumber": "ORD-297463302",
+        "createdAt": "2026-02-11T07:18:17.462Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          },
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698c700abec1c9e46d29e841",
+        "orderNumber": "ORD-402072912",
+        "createdAt": "2026-02-11T12:03:22.069Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 1499
+          }
+        ]
+      },
+      {
+        "_id": "698d4adbbec1c9e46d2a0798",
+        "orderNumber": "ORD-419618379",
+        "createdAt": "2026-02-12T03:36:59.617Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 3,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "698feb56a147e9896b55f4a9",
+        "orderNumber": "ORD-574168247",
+        "createdAt": "2026-02-14T03:26:14.168Z",
+        "items": [
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 2,
+            "price": 6000
+          },
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 2,
+            "price": 1499
+          },
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 2,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "699a9ef7be99a17b304cb92c",
+        "orderNumber": "ORD-920019455",
+        "createdAt": "2026-02-22T06:15:20.019Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 2,
+            "price": 2099.3
+          },
+          {
+            "product": "698f36d4a147e9896b55eda3",
+            "name": "DenfiT Database",
+            "quantity": 1,
+            "price": 6789
+          },
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 1,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6a1c3f96930ff669e0503a3b",
+        "orderNumber": "ORD-182988690",
+        "createdAt": "2026-05-31T14:03:02.988Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 10,
+            "price": 2099.3
+          }
+        ]
+      },
+      {
+        "_id": "6a2bab3ac39262de81098586",
+        "orderNumber": "ORD-778081094",
+        "createdAt": "2026-06-12T06:46:18.081Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 11,
+            "price": 5499
+          },
+          {
+            "product": "698f36d4a147e9896b55eda3",
+            "name": "DenfiT Database",
+            "quantity": 1,
+            "price": 6789
+          },
+          {
+            "product": "69842561fb5b110cb8edfcae",
+            "name": "Urban Chrono Watch",
+            "quantity": 4,
+            "price": 6000
+          }
+        ]
+      },
+      {
+        "_id": "6a2bb004c39262de8109878d",
+        "orderNumber": "ORD-004648486",
+        "createdAt": "2026-06-12T07:06:44.648Z",
+        "items": [
+          {
+            "product": "6985512f9aa127a8ee9df1b7",
+            "name": "Leather Wallet with ID Window",
+            "quantity": 1,
+            "price": 2099.3
+          },
+          {
+            "product": "698f36d4a147e9896b55eda3",
+            "name": "DenfiT Database",
+            "quantity": 1,
+            "price": 6789
+          }
+        ]
+      },
+      {
+        "_id": "6a2bb05b34ba9520ece0644a",
+        "orderNumber": "ORD-091364251",
+        "createdAt": "2026-06-12T07:08:11.364Z",
+        "items": [
+          {
+            "product": "698557899aa127a8ee9df542",
+            "name": "Canvas Messenger Bag",
+            "quantity": 1,
+            "price": 5499
+          }
+        ]
+      },
+      {
+        "_id": "6a2bb44c3fcc947454908b86",
+        "orderNumber": "ORD-100317934",
+        "createdAt": "2026-06-12T07:25:00.316Z",
+        "items": [
+          {
+            "product": "698f36d4a147e9896b55eda3",
+            "name": "DenfiT Database",
+            "quantity": 1,
+            "price": 6789
+          }
+        ]
+      }
+    ]
+  },
+  "images": {
+    "totalImages": 16,
+    "cloudinaryCount": 1,
+    "imageChecks": [
+      {
+        "productId": "698f36d4a147e9896b55eda3",
+        "url": "data:image/jpeg;base64,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",
+        "base": "9k=",
+        "localExists": false,
+        "cloudinary": false
+      },
+      {
+        "productId": "698f36d4a147e9896b55eda3",
+        "url": "https://res.cloudinary.com/doc6jwdo7/image/upload/v1770567054/Denfit_pzrih3.jpg",
+        "base": "denfit_pzrih3.jpg",
+        "localExists": false,
+        "cloudinary": true
+      },
+      {
+        "productId": "698f36d4a147e9896b55eda3",
+        "url": "data:image/jpeg;base64,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",
+        "base": "2q==",
+        "localExists": false,
+        "cloudinary": false
+      },
+      {
+        "productId": "698f36d4a147e9896b55eda3",
+        "url": "data:image/jpeg;base64,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",
+        "base": "9k=",
+        "localExists": false,
+        "cloudinary": false
+      },
+      {
+        "productId": "698557899aa127a8ee9df542",
+        "url": "http://localhost:3002/uploads/1770346048714-i8ilqi.jpeg",
+        "base": "1770346048714-i8ilqi.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "698557899aa127a8ee9df542",
+        "url": "http://localhost:3002/uploads/1770346058403-khwcvh.jpeg",
+        "base": "1770346058403-khwcvh.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "698557899aa127a8ee9df542",
+        "url": "http://localhost:3002/uploads/1770346072666-kx0gej.jpeg",
+        "base": "1770346072666-kx0gej.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "698557899aa127a8ee9df542",
+        "url": "http://localhost:3002/uploads/1770346088547-buvkub.jpeg",
+        "base": "1770346088547-buvkub.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "6985512f9aa127a8ee9df1b7",
+        "url": "http://localhost:3002/uploads/1770344590370-xu6zrd.jpeg",
+        "base": "1770344590370-xu6zrd.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "6985512f9aa127a8ee9df1b7",
+        "url": "http://localhost:3002/uploads/1770344600090-ukmks6.jpeg",
+        "base": "1770344600090-ukmks6.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "6985512f9aa127a8ee9df1b7",
+        "url": "http://localhost:3002/uploads/1770344609427-cf8bf3.jpeg",
+        "base": "1770344609427-cf8bf3.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "6985512f9aa127a8ee9df1b7",
+        "url": "http://localhost:3002/uploads/1770344633195-qi6p0b.jpeg",
+        "base": "1770344633195-qi6p0b.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "69842561fb5b110cb8edfcae",
+        "url": "http://localhost:3002/uploads/1770267831668-guzzcv.jpeg",
+        "base": "1770267831668-guzzcv.jpeg",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "69842561fb5b110cb8edfcae",
+        "url": "http://localhost:3002/uploads/1770267838370-dse3i9.png",
+        "base": "1770267838370-dse3i9.png",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "69842561fb5b110cb8edfcae",
+        "url": "http://localhost:3002/uploads/1770267849902-dba5n0.png",
+        "base": "1770267849902-dba5n0.png",
+        "localExists": true,
+        "cloudinary": false
+      },
+      {
+        "productId": "69842561fb5b110cb8edfcae",
+        "url": "http://localhost:3002/uploads/1770267856277-pnglcv.png",
+        "base": "1770267856277-pnglcv.png",
+        "localExists": true,
+        "cloudinary": false
+      }
+    ]
+  }
+}

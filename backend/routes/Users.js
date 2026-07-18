@@ -2,7 +2,7 @@
 import asyncHandler from 'express-async-handler';
 
 import { getMe, updateMe, updatePassword } from '../controllers/userController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 

@@ -1,4 +1,4 @@
-﻿// backend/routes/auth.js
+// backend/routes/auth.js
 import express from 'express';
 
 import { authLimiter } from '../src/config/security.js';
@@ -14,9 +14,11 @@ import {
   verifyEmail,
   resendVerification,
   checkEmail,
-  mergeGuestData
+  mergeGuestData,
+  requestEmailChange,
+  refreshToken
 } from '../controllers/authController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -34,6 +36,8 @@ router.post('/resend-verification', resendVerification);
 router.post('/check-email', authLimiter, checkEmail);
 // Allow logout to clear cookie even if token is invalid/stale
 router.post('/logout', logout);
+// Token refresh: silent re-authentication using refresh cookie
+router.post('/refresh-token', refreshToken);
 
 // Protected routes (require valid session)
 router.use(protect);
@@ -41,5 +45,6 @@ router.get('/me', getMe);
 router.patch('/update-me', updateMe);
 router.patch('/update-password', updatePassword);
 router.post('/merge-guest', mergeGuestData);
+router.post('/request-email-change', requestEmailChange);
 
 export default router;

@@ -29,8 +29,8 @@ export default function ProductModal({
 
   useEffect(() => {
     if (isOpen && product) {
-      const firstSize = product.sizes[0] || null;
-      setSelectedSize(firstSize);
+      // Do not auto-select a size; require explicit user selection
+      setSelectedSize(null);
       setError(null);
     } else {
       setSelectedSize(null);

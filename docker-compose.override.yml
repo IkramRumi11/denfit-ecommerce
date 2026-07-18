@@ -2,19 +2,21 @@
 # Optional overrides for development. This file is intended to be used locally
 # and should not be committed with secrets. It configures forwarded ports and
 # developer-friendly settings.
+#
+# IMPORTANT: Use mapping syntax (key: value) for environment, NOT list syntax (- KEY=value).
+# List syntax REPLACES the entire environment from docker-compose.yml instead of merging.
 
-version: '3.8'
 services:
   backend:
     environment:
-      - NODE_ENV=development
+      NODE_ENV: development
     ports:
       - "3002:3002"
     volumes:
       - ./backend:/usr/src/app
   frontend:
     environment:
-      - NODE_ENV=development
+      NODE_ENV: development
     ports:
       - "3000:3000"
     volumes:

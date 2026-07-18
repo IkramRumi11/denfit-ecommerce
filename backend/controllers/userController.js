@@ -44,21 +44,15 @@ export const updateMe = asyncHandler(async (req, res) => {
     throw new Error('This route is not for password updates. Please use /update-password.');
   }
 
-  // Filter allowed fields
+  // Filter allowed fields — disallow email changes via this endpoint to preserve verification
   const filteredBody = {};
-  const allowedFields = ['name', 'email', 'phone', 'avatar', 'dateOfBirth', 'gender', 'addresses', 'preferences'];
+  const allowedFields = ['name', 'phone', 'avatar', 'dateOfBirth', 'gender', 'addresses', 'preferences'];
 
   Object.keys(req.body).forEach((key) => {
     if (allowedFields.includes(key)) {
       filteredBody[key] = req.body[key];
     }
   });
-
-  // If email is updated, reset verification status
-  if (filteredBody.email && filteredBody.email !== req.user.email) {
-    filteredBody.emailVerified = false;
-    // TODO: Send new verification email
-  }
 
   // Update user
   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {

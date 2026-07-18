@@ -3,8 +3,20 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter, Youtube, ArrowUp } from "lucide-react";
 
+// Inline Snapchat icon (simple ghost silhouette, inherits currentColor)
+const SnapIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden style={{ display: 'block' }}>
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C9.613 2 7.5 3.343 6.282 5.293 5.623 6.459 4.333 7 3 7v1c1.333 0 2.01.54 2.665 1.707C6.953 11.657 9.08 12.5 12 12.5c2.92 0 5.047-.843 6.335-2.793C18.99 8.54 19.667 8 21 8V7c-1.333 0-2.623-.541-3.282-1.707C16.5 3.343 14.387 2 12 2zM7.5 17.1c.9-.4 2.2-.9 4.5-.9 2.3 0 3.6.5 4.5.9.3.1.5.3.5.6v.5c0 .3-.2.6-.5.7-.9.5-2.2 1.1-4.5 1.1-2.3 0-3.6-.6-4.5-1.1-.3-.1-.5-.4-.5-.7v-.5c0-.3.2-.5.5-.6z" fill="currentColor"/>
+  </svg>
+);
+import Chatbot from "../Chatbot/Chatbot";
+
 export default function Footer() {
   const [showButton, setShowButton] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+  const [newsletterType, setNewsletterType] = useState<"success"|"error"|"info"|null>(null);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
@@ -27,19 +39,25 @@ export default function Footer() {
           <p className="text-sm text-gray-400 leading-relaxed mb-4">
             Redefining modern clothing. Premium, sustainable, and designed to empower your style.
           </p>
-          <div className="flex gap-4 mt-4">
+          <div className="flex gap-4 mt-4 items-center">
+            {/* Snapchat (added first) */}
+            <a href="https://www.snapchat.com/add/denfitdesigns?share_id=1bW2smAtGGw&locale=en-US" target="_blank" rel="noopener noreferrer" aria-label="Visit our Snapchat" className="hover:text-white transition-transform transform hover:scale-110">
+              <span className="inline-flex items-center justify-center w-6 h-6 text-yellow-400">
+                <SnapIcon size={18} />
+              </span>
+            </a>
             {[{
               Icon: Facebook,
-              href: 'https://facebook.com/denfit'
+              href: 'https://www.facebook.com/share/17RhiUapmV/'
             }, {
               Icon: Instagram,
-              href: 'https://instagram.com/denfit'
+              href: 'https://www.instagram.com/denfitdesigns?igsh=NnM3MWVza3JudTNn'
             }, {
               Icon: Twitter,
-              href: 'https://twitter.com/denfit'
+              href: 'https://x.com/denfitdesigns'
             }, {
               Icon: Youtube,
-              href: 'https://youtube.com/denfit'
+              href: 'https://youtube.com/@denfitcollection?si=23IsLRk3h7Rzmcrl'
             }].map(({ Icon, href }, idx) => (
               <a key={idx} href={href} target="_blank" rel="noopener noreferrer" aria-label={`Visit our ${href.split('//')[1].split('.')[0]} page`} className="hover:text-white transition-transform transform hover:scale-110">
                 <Icon size={20} />
@@ -52,13 +70,18 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">Shop</h3>
           <ul className="space-y-2">
-            {["men", "women", "kids", "sale"].map((cat) => (
-              <li key={cat}>
-                <Link to={`/shop?gender=${cat}`} className="hover:text-white transition-colors">
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </Link>
-              </li>
-            ))}
+            {["men", "women", "kids", "accessories", "sale"].map((cat) => {
+              const path = ["men", "women", "kids", "accessories", "sale"].includes(cat)
+                ? `/${cat}`
+                : `/shop?gender=${cat}`;
+              return (
+                <li key={cat}>
+                  <Link to={path} className="hover:text-white transition-colors">
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
 
@@ -71,6 +94,8 @@ export default function Footer() {
               { label: "Careers", link: "/careers" },
               { label: "Contact", link: "/contact" },
               { label: "Privacy Policy", link: "/privacy" },
+              { label: "Terms of Service", link: "/terms" },
+              { label: "Return & Exchange", link: "/returns" },
             ].map((item) => (
               <li key={item.label}>
                 <Link to={item.link} className="hover:text-white transition-colors">
@@ -101,13 +126,45 @@ export default function Footer() {
                     </p>
 
                     <form
-                      onSubmit={(e) => {
+                      onSubmit={async (e) => {
                         e.preventDefault();
-                        alert("Thank you for subscribing to DENFiT!");
+                        setNewsletterMessage('');
+                        setNewsletterType(null);
+                        setNewsletterLoading(true);
+                        try {
+                          const xsMatch = document.cookie.match(/(^|;)\s*XSRF-TOKEN=([^;]+)/);
+                          const xsrf = xsMatch ? decodeURIComponent(xsMatch[2]) : null;
+                          const res = await fetch('/api/v1/newsletter/subscribe', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              ...(xsrf ? { 'x-xsrf-token': xsrf } : {}),
+                            },
+                            body: JSON.stringify({ email: newsletterEmail, source: 'footer' }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) throw new Error(data?.message || 'Failed to subscribe');
+                          // Use server-provided message when available so we can show
+                          // "already subscribed" notices and avoid duplicate welcomes.
+                          const msg = (data && data.message) ? String(data.message) : 'Thanks for subscribing to DENFiT';
+                          const isAlready = String(msg).toLowerCase().includes('already');
+                          setNewsletterMessage(msg);
+                          setNewsletterType(isAlready ? 'info' : 'success');
+                          if (!isAlready) setNewsletterEmail('');
+                        } catch (err: any) {
+                          console.error('Subscribe error', err);
+                          setNewsletterMessage(err?.message || 'Subscription failed');
+                          setNewsletterType('error');
+                        } finally {
+                          setNewsletterLoading(false);
+                        }
                       }}
                       className="flex flex-col gap-3"
                     >
                       <input
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
                         type="email"
                         placeholder="Email address"
                         required
@@ -115,10 +172,16 @@ export default function Footer() {
                       />
                       <button
                         type="submit"
-                        className="bg-white text-black px-8 py-3 rounded-full text-[10px] uppercase tracking-[0.22em] hover:bg-neutral-200 transition"
+                        disabled={newsletterLoading}
+                        className="bg-white text-black px-8 py-3 rounded-full text-[10px] uppercase tracking-[0.22em] hover:bg-neutral-200 transition disabled:opacity-60"
                       >
-                        Join now
+                        {newsletterLoading ? 'Joining...' : 'Join now'}
                       </button>
+                      {newsletterMessage && (
+                        <p className={`text-sm ${newsletterType === 'success' ? 'text-emerald-400' : 'text-red-400'} mt-2`}>
+                          {newsletterMessage}
+                        </p>
+                      )}
                     </form>
                   </div>
                 </div>
@@ -143,12 +206,14 @@ export default function Footer() {
       {showButton && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-8 right-6 bg-black text-white p-3 rounded-full shadow-lg hover:scale-110 hover:bg-gray-800 transition-transform duration-300"
+          className="fixed bottom-8 left-6 z-50 bg-black text-white p-3 rounded-full shadow-lg hover:scale-110 hover:bg-gray-800 transition-transform duration-300"
           aria-label="Back to top"
         >
           <ArrowUp size={20} />
         </button>
       )}
+      {/* Floating Chatbot (bottom-left) */}
+      <Chatbot />
     </footer>
   );
 }

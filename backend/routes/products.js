@@ -4,6 +4,7 @@ import {
   getAllProducts,
   getProduct,
   getFeaturedProducts,
+  getFilters,
   getProductsByCategory,
   searchProducts
 } from '../controllers/productController.js';
@@ -15,6 +16,9 @@ router.get('/', getAllProducts);
 
 // ✅ GET /api/v1/products/featured
 router.get('/featured', getFeaturedProducts);
+
+// ✅ GET /api/v1/products/filters
+router.get('/filters', getFilters);
 
 // ✅ GET /api/v1/products/search
 router.get('/search', searchProducts);

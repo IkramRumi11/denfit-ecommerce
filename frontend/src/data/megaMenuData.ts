@@ -21,6 +21,7 @@ export const megaMenuData: MegaMenuData = {
       'Clothing': [
         'T-Shirts',
         'Shirts',
+        'Polo',
         'Hoodies & Sweatshirts',
         'Jackets & Coats',
         'Jeans',
@@ -71,6 +72,7 @@ export const megaMenuData: MegaMenuData = {
         'Jeans',
         'Pants & Trousers',
         'Skirts',
+        'Co-Ord Sets',
         'Jumpsuits & Rompers'
       ],
       'Footwear': [
@@ -178,6 +180,50 @@ export const megaMenuData: MegaMenuData = {
       image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop",
       title: "Up to 60% Off",
       link: "/shop?gender=sale"
+    }
+  }
+  ,
+  accessories: {
+    title: "Accessories",
+    categories: {
+      'Men': [
+        'Watches',
+        'Belts',
+        'Wallets',
+        'Bags',
+        'Sunglasses',
+        'Hats & Caps',
+        'Ties'
+      ],
+      'Women': [
+        'Handbags',
+        'Jewelry',
+        'Scarves',
+        'Sunglasses',
+        'Hats',
+        'Belts',
+        'Watches'
+      ],
+      'Kids': [
+        'Bags',
+        'Hats',
+        'Sunglasses',
+        'Socks',
+        'Hair Accessories'
+      ],
+      'By Type': [
+        'Bags & Backpacks',
+        'Watches & Jewelry',
+        'Eyewear',
+        'Small Leather Goods',
+        'Hats & Caps',
+        'Tech Accessories'
+      ]
+    },
+    featured: {
+      image: "https://images.unsplash.com/photo-1526178615686-93011b63a0b7?w=400&h=500&fit=crop",
+      title: "Complete the Look",
+      link: "/accessories"
     }
   }
 };

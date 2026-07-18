@@ -1,5 +1,5 @@
 // frontend/src/pages/admin/AdminDashboard.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import AdminNoteModal from "../../components/admin/AdminNoteModal";
@@ -116,6 +116,7 @@ const AdminDashboard: React.FC = () => {
 
   // Fetch dashboard data
   useEffect(() => {
+    let mounted = true;
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
@@ -136,10 +137,10 @@ const AdminDashboard: React.FC = () => {
             orders: overview.totalOrders || 0,
             revenue: overview.totalRevenue || 0,
             growth: {
-              users: 8.2, // TODO: Calculate from historical data
-              products: 3.4,
-              orders: 12.7,
-              revenue: 15.3,
+              users: overview.growth?.users ?? 0,
+              products: overview.growth?.products ?? 0,
+              orders: overview.growth?.orders ?? 0,
+              revenue: overview.growth?.revenue ?? 0,
             }
           });
 
@@ -162,7 +163,8 @@ const AdminDashboard: React.FC = () => {
               category: item.product?.category || 'Uncategorized',
               sales: item.sold || item.totalSold || 0,
               revenue: item.totalRevenue || 0,
-              image: item.product?.images?.[0] || item.image || '🛍️',
+              // Normalize image to a string URL (the API may return an image object)
+              image: (item.product?.images?.[0]?.url) || (typeof item.product?.images?.[0] === 'string' ? item.product?.images?.[0] : undefined) || item.image || '🛍️',
               stock: item.product?.stockQuantity || 0,
               trend: 'up' as const,
               rating: item.product?.rating || 4.5,
@@ -173,9 +175,16 @@ const AdminDashboard: React.FC = () => {
           // Convert recent orders
           if (recent.recentOrders) {
             const orders = recent.recentOrders.map((order: any) => ({
+              // Keep the database _id as the navigation identifier
               id: order._id || order.orderNumber || '',
-              customer: order.customer?.name || 'Unknown',
-              email: order.customer?.email || '',
+              // Expose the human-friendly order number separately for display
+              orderNumber: order.orderNumber || order._id || '',
+              // For the dashboard, show the checkout name (shippingAddress.name or contactName) when available,
+              // otherwise fall back to the linked customer profile name. This ensures guest orders surface the
+              // name the customer entered at checkout.
+              customer: order.shippingAddress?.name || order.contactName || order.customer?.name || 'Guest',
+              // For email, prefer the order-level contact email (contactEmail/shippingAddress.email/guestEmail)
+              email: order.contactEmail || order.shippingAddress?.email || order.guestEmail || order.customer?.email || '',
               items: order.items?.length || 0,
               total: order.total || 0,
               status: (order.status || 'pending') as RecentOrder['status'],
@@ -206,7 +215,15 @@ const AdminDashboard: React.FC = () => {
       }
     };
 
+    // initial fetch
     fetchDashboardData();
+
+    // Poll every 30 seconds for near real-time updates
+    const iv = setInterval(() => {
+      if (mounted) fetchDashboardData();
+    }, 30000);
+
+    return () => { mounted = false; clearInterval(iv); };
   }, [showToast]);
 
   const exportCSV = useCallback(() => {

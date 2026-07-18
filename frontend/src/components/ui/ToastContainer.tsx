@@ -18,13 +18,14 @@ const toastIcons = {
 const toastStyles = {
   success: 'bg-green-50 border-green-200 text-green-800',
   error: 'bg-red-50 border-red-200 text-red-800',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+  warning: 'bg-orange-50 border-orange-200 text-orange-800',
   info: 'bg-blue-50 border-blue-200 text-blue-800',
 };
 
 export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end pointer-events-none">
+      <div className="w-full max-w-sm space-y-2">
       <AnimatePresence>
         {toasts.map((toast) => {
           const Icon = toastIcons[toast.type];
@@ -33,11 +34,11 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, x: 300, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 300, scale: 0.8 }}
-              transition={{ duration: 0.3, type: 'spring' }}
-              className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${style}`}
+              initial={{ opacity: 0, x: 36, y: 24, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 36, y: 24, scale: 0.98 }}
+              transition={{ duration: 0.28, type: 'spring' }}
+              className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg ${style} pointer-events-auto`}
             >
               <Icon className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -54,6 +55,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
           );
         })}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

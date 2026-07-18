@@ -1,23 +1,36 @@
+// frontend/src/layouts/AdminLayout/adminMenu.ts
 import React from 'react';
-import { Home, Users, Box, ShoppingCart, Settings, Shield } from 'lucide-react';
+import { 
+  Home, 
+  Users, 
+  Package, 
+  ShoppingCart, 
+  ShieldCheck, 
+  Mail,
+  Settings, 
+  Zap 
+} from 'lucide-react';
 
 export type AdminMenuItem = {
   to: string;
   label: string;
   icon: React.ReactNode;
-  // Optional permission key required to view this menu item. If omitted, visible to admins.
   permission?: string;
 };
 
-// Canonical admin menu used across layout and pages to avoid duplication
+// ✅ Real-world enterprise menu — ordered by usage frequency
 const adminMenu: AdminMenuItem[] = [
   { to: '/admin', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
-  { to: '/admin/users', label: 'Users', icon: <Users className="w-5 h-5" />, permission: 'users.view' },
-  { to: '/admin/products', label: 'Products', icon: <Box className="w-5 h-5" />, permission: 'products.view' },
   { to: '/admin/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, permission: 'orders.view' },
-  { to: '/admin/audits', label: 'Audits', icon: <Shield className="w-5 h-5" />, permission: 'audits.view' },
-  { to: '/admin/settings', label: 'Settings', icon: <Settings className="w-5 h-5" />, permission: 'settings.view' },
-  { to: '/admin/features', label: 'Features', icon: <Settings className="w-5 h-5" />, permission: 'settings.view' },
+  { to: '/admin/reviews', label: 'Reviews', icon: <Users className="w-5 h-5" />, permission: 'reviews.manage' },
+  { to: '/admin/products', label: 'Products', icon: <Package className="w-5 h-5" />, permission: 'products.view' },
+  { to: '/admin/users', label: 'Customers', icon: <Users className="w-5 h-5" />, permission: 'users.view' },
+  { to: '/admin/audits', label: 'Security Logs', icon: <ShieldCheck className="w-5 h-5" />, permission: 'audits.view' },
+  { to: '/admin/features', label: 'Feature Flags', icon: <Zap className="w-5 h-5" />, permission: 'features.manage' },
+  { to: '/admin/email-marketing', label: 'Email Marketing', icon: <Mail className="w-5 h-5" />, permission: 'email.marketing' },
+  { to: '/admin/settings', label: 'System Settings', icon: <Settings className="w-5 h-5" />, permission: 'settings.view' },
+  { to: '/admin/style-by-you', label: 'Style By You', icon: <Package className="w-5 h-5" />, permission: 'products.view' },
+  { to: '/admin/detail-templates', label: 'Detail Templates', icon: <Zap className="w-5 h-5" />, permission: 'products.view' },
 ];
 
 export default adminMenu;

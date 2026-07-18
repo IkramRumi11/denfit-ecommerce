@@ -1,0 +1,1633 @@
+{
+  "config": {
+    "configFile": "C:\\denfit-ecommerce 3\\playwright.config.ts",
+    "rootDir": "C:/denfit-ecommerce 3/e2e-tests",
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "e2e-tests/test-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "e2e-tests/test-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/denfit-ecommerce 3/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/denfit-ecommerce 3/e2e-tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": false,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "admin-products.spec.ts",
+      "file": "admin-products.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Admin Product Management",
+          "file": "admin-products.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should display products list",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 31873,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\u001b[2m    - waiting for\" http://localhost:3000/auth\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://localhost:3000/auth\"\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:50:18.746Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 34868,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:50:56.486Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33546,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T04:51:33.519Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-0c798-hould-display-products-list-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-c3cd323307aa8da06082",
+              "file": "admin-products.spec.ts",
+              "line": 16,
+              "column": 7
+            },
+            {
+              "title": "should create new product",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33170,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:52:09.195Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 34500,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:52:46.034Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33235,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T04:53:23.403Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-dbb7f-t-should-create-new-product-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-8417205f6a232180d459",
+              "file": "admin-products.spec.ts",
+              "line": 20,
+              "column": 7
+            },
+            {
+              "title": "should edit existing product",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 32824,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:53:59.160Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33520,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:54:34.443Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33896,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T04:55:10.742Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-29686-hould-edit-existing-product-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-b01d5adce7e4875bd68d",
+              "file": "admin-products.spec.ts",
+              "line": 43,
+              "column": 7
+            },
+            {
+              "title": "should delete product",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 32971,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:55:46.734Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 10,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33157,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:56:22.326Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 11,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33353,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T04:56:57.703Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-42a9c-ement-should-delete-product-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-e12a960577f323fe0d3b",
+              "file": "admin-products.spec.ts",
+              "line": 58,
+              "column": 7
+            },
+            {
+              "title": "should update product inventory",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 12,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 34639,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:57:33.236Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 13,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 32840,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:58:11.363Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 14,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33052,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T04:58:46.483Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-d75e6-ld-update-product-inventory-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-7c54542b1ff652b88598",
+              "file": "admin-products.spec.ts",
+              "line": 69,
+              "column": 7
+            },
+            {
+              "title": "should search products",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 15,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33639,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T04:59:21.551Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 16,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33233,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T04:59:57.988Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 17,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33570,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T05:00:33.174Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-a38d8-ment-should-search-products-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-4966a8017208631feeb5",
+              "file": "admin-products.spec.ts",
+              "line": 81,
+              "column": 7
+            },
+            {
+              "title": "should bulk update products",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 18,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33082,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-18T05:01:08.854Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 19,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33019,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-07-18T05:01:44.098Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    },
+                    {
+                      "workerIndex": 20,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 33124,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8",
+                        "location": {
+                          "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                          "column": 8,
+                          "line": 4
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 2 |\u001b[39m\n \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Admin Product Management'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m   |\u001b[39m        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Login as admin\u001b[39m\n \u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/auth'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'admin@denfit.com'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 8,
+                            "line": 4
+                          },
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded while running \"beforeEach\" hook.\u001b[39m\n\n  2 |\n  3 | test.describe('Admin Product Management', () => {\n> 4 |   test.beforeEach(async ({ page }) => {\n    |        ^\n  5 |     // Login as admin\n  6 |     await page.goto('/auth');\n  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:4:8"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                            "column": 16,
+                            "line": 7
+                          },
+                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n   5 |     // Login as admin\n   6 |     await page.goto('/auth');\n>  7 |     await page.fill('input[name=\"email\"]', 'admin@denfit.com');\n     |                ^\n   8 |     await page.fill('input[name=\"password\"]', 'admin123');\n   9 |     await page.click('button[type=\"submit\"]');\n  10 |     await page.waitForURL(/\\/(home|dashboard|admin)/, { timeout: 10000 });\n    at C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts:7:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-07-18T05:02:19.412Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry2\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry2\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry2\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\denfit-ecommerce 3\\test-results\\admin-products-Admin-Produ-eea5e-should-bulk-update-products-chromium-retry2\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\denfit-ecommerce 3\\e2e-tests\\admin-products.spec.ts",
+                        "column": 8,
+                        "line": 4
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "26be74c06e0b4cfbef05-cd48e7533acae84f5372",
+              "file": "admin-products.spec.ts",
+              "line": 91,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-07-18T04:50:01.082Z",
+    "duration": 772666.7,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 7,
+    "flaky": 0
+  }
+}

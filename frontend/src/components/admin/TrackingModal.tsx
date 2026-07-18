@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Truck, Hash, CalendarDays, CheckCircle2 } from "lucide-react";
 
 interface Props {
-  order: { _id: string; orderNumber?: string; trackingNumber?: string; carrier?: string; estimatedDelivery?: string };
+  order: { _id: string; orderNumber?: string; trackingNumber?: string; carrier?: string; estimatedDelivery?: string; trackingUrl?: string };
   onClose: () => void;
   // Simplified: the modal will call onSubmit with the payload only. Parent can use the `order` prop to resolve the id.
-  onSubmit: (payload: { trackingNumber?: string; carrier?: string; estimatedDelivery?: string }) => Promise<void>;
+  onSubmit: (payload: { trackingNumber?: string; carrier?: string; estimatedDelivery?: string; trackingUrl?: string }) => Promise<void>;
 }
 
 const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
@@ -16,6 +16,7 @@ const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
   const [estimatedDelivery, setEstimatedDelivery] = useState(
     order?.estimatedDelivery ? new Date(order.estimatedDelivery).toISOString().slice(0, 10) : ""
   );
+  const [trackingUrl, setTrackingUrl] = useState(order?.trackingUrl || "");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -74,6 +75,7 @@ const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
         trackingNumber: trackingNumber.trim() || undefined,
         carrier: carrier.trim() || undefined,
         estimatedDelivery: estimatedDelivery || undefined,
+        trackingUrl: trackingUrl?.trim() || undefined,
       });
       setSuccess(true);
       setTimeout(() => handleClose(), 1000);
@@ -160,6 +162,20 @@ const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   className="w-full border border-slate-200 rounded-md pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none"
                   placeholder="e.g. 1Z999AA10123456784"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="trackingUrlInput" className="block text-xs text-slate-600 mb-1 font-medium">Tracking Link (URL)</label>
+              <div className="relative">
+                <input
+                  id="trackingUrlInput"
+                  type="url"
+                  value={trackingUrl}
+                  onChange={(e) => setTrackingUrl(e.target.value)}
+                  className="w-full border border-slate-200 rounded-md pl-3 pr-3 py-2 text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none"
+                  placeholder="https://tracking.courier.com/track/XYZ"
                 />
               </div>
             </div>

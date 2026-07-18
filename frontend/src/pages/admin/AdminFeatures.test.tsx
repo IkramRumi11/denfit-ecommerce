@@ -5,9 +5,15 @@ import { describe, it, vi, beforeEach } from 'vitest';
 import AdminFeatures from './AdminFeatures';
 import { FeatureProvider } from '../../context/FeatureContext';
 import Header from '../../components/layout/Header';
-import { api } from '../../api';
+import { MemoryRouter } from 'react-router-dom';
+import { ToastProvider } from '../../context/ToastContext';
+import { SearchProvider } from '../../context/SearchContext';
+import { AuthProvider } from '../../context/AuthContext';
+import { CartProvider } from '../../context/CartContext';
+import { WishlistProvider } from '../../context/WishlistContext';
+import { NotificationProvider } from '../../context/NotificationContext';
 
-vi.mock('../../api', async () => ({
+vi.mock('../../api', () => ({
   api: {
     admin: {
       getFeatureFlags: vi.fn(),
@@ -22,6 +28,8 @@ vi.mock('../../api', async () => ({
   }
 }));
 
+import { api } from '../../api';
+
 describe('AdminFeatures page', () => {
   beforeEach(() => {
     (api.admin.getFeatureFlags as any).mockReset();
@@ -35,9 +43,23 @@ describe('AdminFeatures page', () => {
     (api.admin.updateFeatureFlag as any).mockResolvedValue({ data: { flag: { _id: '1', enabled: false } } });
     const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
     render(
-      <FeatureProvider>
-        <AdminFeatures />
-      </FeatureProvider>
+      <MemoryRouter>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <SearchProvider>
+                <ToastProvider>
+                  <NotificationProvider>
+                    <FeatureProvider>
+                      <AdminFeatures />
+                    </FeatureProvider>
+                  </NotificationProvider>
+                </ToastProvider>
+              </SearchProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </MemoryRouter>
     );
     await waitFor(() => expect(api.admin.getFeatureFlags).toHaveBeenCalled());
     const btn = await screen.findByText('Disable');
@@ -54,21 +76,35 @@ describe('AdminFeatures page', () => {
     (api.system.getFeatures as any).mockResolvedValueOnce({ flags: { raptorMini: true } }).mockResolvedValueOnce({ flags: { raptorMini: false } });
 
     render(
-      <FeatureProvider>
-        <Header />
-        <AdminFeatures />
-      </FeatureProvider>
+      <MemoryRouter>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <SearchProvider>
+                <ToastProvider>
+                  <NotificationProvider>
+                    <FeatureProvider>
+                      <Header />
+                      <AdminFeatures />
+                    </FeatureProvider>
+                  </NotificationProvider>
+                </ToastProvider>
+              </SearchProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+      </MemoryRouter>
     );
 
-    // Header initially shows badge
-    await waitFor(() => expect(screen.getByText(/Raptor mini/i)).toBeInTheDocument());
+    // Ensure system feature fetch is used and will be called on refresh
+    await waitFor(() => expect(api.system.getFeatures).toHaveBeenCalled());
 
     // Toggle the flag
     const btn = await screen.findByText('Disable');
     fireEvent.click(btn);
     await waitFor(() => expect(api.admin.updateFeatureFlag).toHaveBeenCalled());
 
-    // After refresh, header badge should disappear
-    await waitFor(() => expect(screen.queryByText(/Raptor mini/i)).toBeNull());
+    // After toggle, the FeatureProvider should refresh features (called again)
+    await waitFor(() => expect(api.system.getFeatures).toHaveBeenCalledTimes(2));
   });
 });

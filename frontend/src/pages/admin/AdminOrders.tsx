@@ -5,6 +5,7 @@ import { api } from '../../api';
 import TrackingModal from '../../components/admin/TrackingModal';
 import AdminNoteModal from '../../components/admin/AdminNoteModal';
 import HistoryModal from '../../components/admin/HistoryModal';
+import { getColorName } from '../../utils/colorNames';
 
 const PAGE_SIZE = 10;
 
@@ -55,7 +56,8 @@ const AdminOrders: React.FC = () => {
     } finally { setLoading(false); }
   }, [filterStatus, searchText, startDate, endDate, limit, showToast]);
 
-  useEffect(() => { fetchOrders(page, limit); }, [fetchOrders, page, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchOrders(page, limit); }, [page, limit]);
 
   const applyFilters = () => { setPage(1); fetchOrders(1, limit); };
 
@@ -112,7 +114,7 @@ const AdminOrders: React.FC = () => {
   const openTracking = (order: any) => setSelectedOrderForTracking(order);
   const [viewingHistoryOrder, setViewingHistoryOrder] = useState<any | null>(null);
 
-  const submitTracking = async (orderId: string, payload: { trackingNumber?: string; carrier?: string; estimatedDelivery?: string }) => {
+  const submitTracking = async (orderId: string, payload: { trackingNumber?: string; carrier?: string; estimatedDelivery?: string; trackingUrl?: string }) => {
     try {
       const res = await api.admin.updateOrderTracking(orderId, payload);
       if (res?.data?.order) {
@@ -186,49 +188,188 @@ const AdminOrders: React.FC = () => {
         {loading ? (
           <div className="p-6 flex justify-center items-center"><LoadingSpinner size="xl" /></div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3">Order #</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Total</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => (
-                <tr key={o._id} className="border-t">
-                  <td className="p-3">{o.orderNumber || o._id}</td>
-                  <td className="p-3">{o.customer?.name} <div className="text-xs text-gray-500">{o.customer?.email}</div></td>
-                  <td className="p-3">${(o.total || 0).toFixed(2)}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium">{o.status}</div>
-                      <select
-                        className="border rounded px-2 py-1 text-sm"
-                        onChange={(e) => { const v = e.target.value; if (v) setPendingChange({ order: o, to: v }); }}
-                        value=""
-                      >
-                        <option value="">Quick change</option>
-                        {allowedTransitions[o.status || 'pending']?.map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="text-xs text-gray-400">{o.confirmedAt ? `Confirmed: ${new Date(o.confirmedAt).toLocaleString()}` : ''}</div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openTracking(o)} className="px-3 py-1 bg-blue-600 text-white rounded text-sm">Tracking</button>
-                      <button onClick={() => setViewingHistoryOrder(o)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">History</button>
-                      <button onClick={() => window.location.href = `/admin/orders/${o._id}`} className="px-3 py-1 bg-gray-100 rounded text-sm">Details</button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[1000px] border-collapse">
+              <thead className="bg-gray-100 text-xs uppercase text-gray-700">
+                <tr>
+                  <th className="p-3">Order # / Placed</th>
+                  <th className="p-3">Customer</th>
+                  <th className="p-3">Products</th>
+                  <th className="p-3">Summary</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Workflow / Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.map(o => (
+                  <tr key={o._id} className="border-t hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 align-top">
+                      <div className="font-bold text-gray-900">{o.orderNumber || o._id}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Placed: {o.createdAt ? new Date(o.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Karachi' }) : (o.date ? new Date(o.date).toLocaleString('en-US', { timeZone: 'Asia/Karachi' }) : '')}
+                      </div>
+                    </td>
+                    <td className="p-3 align-top">
+                      <div className="font-medium text-gray-900">{o.shippingAddress?.name || o.customer?.name || 'Guest'}</div>
+                      <div className="text-xs text-gray-600">{o.contactEmail || o.shippingAddress?.email || o.guestEmail || o.customer?.email || '—'}</div>
+                      <div className="text-xs text-gray-500 mt-1">Phone: {o.shippingAddress?.phone || '—'}</div>
+                      {o.customer && o.customer.name && (o.shippingAddress?.name !== o.customer.name) && (
+                        <div className="text-[10px] text-slate-400 mt-1">Account: {o.customer.name}</div>
+                      )}
+                    </td>
+
+                    <td className="p-3 align-top min-w-[280px]">
+                      <div className="space-y-2">
+                        {(o.items || []).map((item: any, idx: number) => {
+                          const colorObj = item.color && typeof item.color === 'object' ? item.color : null;
+                          const colorName = item.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
+                          const variantHex = item.variantHex || (colorObj ? (colorObj.hex || undefined) : undefined);
+                          const colorValue = typeof item.color === 'string' ? item.color : (variantHex || undefined);
+                          const label = colorName || colorValue || '';
+                          const displayLabel = getColorName(label);
+
+                          return (
+                            <div key={item._id || idx} className="flex items-center gap-2">
+                              {item.image && (
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-10 h-10 object-cover rounded border border-gray-200"
+                                  onError={(e: any) => { e.target.onerror = null; e.target.src = '/denfit-logo.jpg'; }}
+                                />
+                              )}
+                              <div className="text-xs leading-tight">
+                                <div className="font-medium text-gray-900">{item.name}</div>
+                                <div className="text-gray-500 flex flex-wrap items-center gap-1 mt-0.5">
+                                  <span>Qty: {item.quantity}</span>
+                                  {item.size ? <span>• Size: {item.size}</span> : null}
+                                  {displayLabel ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      • Color: 
+                                      {colorValue ? (
+                                        <span className="w-2.5 h-2.5 rounded-full border inline-block" style={{ backgroundColor: String(colorValue) }} />
+                                      ) : null}
+                                      <span className="capitalize">{displayLabel}</span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td className="p-3 align-top whitespace-nowrap">
+                      <div className="text-xs space-y-0.5 text-gray-600">
+                        <div>Subtotal: Rs {Number(o.subtotal || 0).toFixed(2)}</div>
+                        <div>Shipping: Rs {Number(o.shippingCost || 0).toFixed(2)}</div>
+                        {typeof o.taxAmount === 'number' && o.taxAmount > 0 && (
+                          <div>Tax: Rs {o.taxAmount.toFixed(2)}</div>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-blue-600 mt-1">Rs {Number(o.total || 0).toFixed(2)}</div>
+                    </td>
+                    <td className="p-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${
+                          o.status === 'pending' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                          o.status === 'confirmed' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                          o.status === 'processing' ? 'bg-indigo-50 text-indigo-800 border-indigo-200' :
+                          o.status === 'shipped' ? 'bg-purple-50 text-purple-800 border-purple-200' :
+                          o.status === 'delivered' ? 'bg-green-50 text-green-800 border-green-200' :
+                          'bg-red-50 text-red-800 border-red-200'
+                        }`}>
+                          {o.status}
+                        </span>
+                        <select
+                          className="border rounded px-1.5 py-0.5 text-xs bg-white text-gray-700 cursor-pointer"
+                          onChange={(e) => { const v = e.target.value; if (v) setPendingChange({ order: o, to: v }); }}
+                          value=""
+                        >
+                          <option value="">Quick change</option>
+                          {allowedTransitions[o.status || 'pending']?.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-1">
+                        {(() => {
+                          const candidates = [o.cancelledAt, o.deliveredAt, o.shippedAt, o.processingAt, o.confirmedAt, o.updatedAt, o.createdAt, o.date]
+                            .filter(Boolean)
+                            .map((t: any) => new Date(t).getTime())
+                            .filter(Boolean);
+                          if (!candidates.length) return '';
+                          const max = Math.max(...candidates);
+                          return `Updated: ${new Date(max).toLocaleString('en-US', { timeZone: 'Asia/Karachi' })}`;
+                        })()}
+                      </div>
+                      {o.statusHistory && o.statusHistory.length > 0 && (
+                        <div className="text-[9px] text-gray-400 mt-0.5 italic">
+                          {(() => {
+                            const last = o.statusHistory[o.statusHistory.length - 1];
+                            return `By ${last.byName || 'System'} at ${new Date(last.at).toLocaleString('en-US', { timeZone: 'Asia/Karachi' })}`;
+                          })()}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-3 align-top">
+                      <div className="flex flex-col gap-1.5 w-max">
+                        {/* Dispatch / Processing Workflow Button */}
+                        {o.status === 'pending' && (
+                          <button
+                            onClick={() => setPendingChange({ order: o, to: 'confirmed' })}
+                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition"
+                          >
+                            Confirm Order
+                          </button>
+                        )}
+                        {o.status === 'confirmed' && (
+                          <button
+                            onClick={() => setPendingChange({ order: o, to: 'processing' })}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition"
+                          >
+                            Process Order
+                          </button>
+                        )}
+                        {o.status === 'processing' && (
+                          <button
+                            onClick={() => openTracking(o)}
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold transition"
+                          >
+                            Ship Order
+                          </button>
+                        )}
+                        {o.status === 'shipped' && (
+                          <button
+                            onClick={() => setPendingChange({ order: o, to: 'delivered' })}
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition"
+                          >
+                            Deliver Order
+                          </button>
+                        )}
+
+                        {/* Details / History Actions */}
+                        <div className="flex gap-1.5 mt-1 border-t pt-1.5">
+                          <button
+                            onClick={() => setViewingHistoryOrder(o)}
+                            className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-medium transition"
+                          >
+                            History
+                          </button>
+                          <button
+                            onClick={() => window.location.href = `/admin/orders/${o._id}`}
+                            className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-medium transition"
+                          >
+                            Details
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -244,7 +385,7 @@ const AdminOrders: React.FC = () => {
         <TrackingModal
           order={selectedOrderForTracking}
           onClose={() => setSelectedOrderForTracking(null)}
-          onSubmit={submitTracking}
+          onSubmit={(payload) => submitTracking(selectedOrderForTracking!._id, payload)}
         />
       )}
       {pendingChange && (
@@ -253,6 +394,7 @@ const AdminOrders: React.FC = () => {
           to={pendingChange.to}
           onClose={() => setPendingChange(null)}
           onConfirm={(note?: string) => confirmChangeWithNote(note)}
+          isOpen={true}
         />
       )}
       {viewingHistoryOrder && (

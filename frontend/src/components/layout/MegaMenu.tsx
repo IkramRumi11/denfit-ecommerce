@@ -25,6 +25,8 @@ export default function MegaMenu({ activeCategory, onClose }: Props) {
   const data = (megaMenuData as any)[activeCategory];
   if (!data) return null;
 
+  // Use react-router `Link` in callers for SPA navigation; no absolute URL needed here.
+
   return (
     <AnimatePresence>
       {/* Backdrop (blur + dim) */}
@@ -61,17 +63,22 @@ export default function MegaMenu({ activeCategory, onClose }: Props) {
               <div key={section}>
                 <h4 className="text-lg font-semibold text-gray-900 mb-3">{section}</h4>
                 <ul className="space-y-2">
-                  {(items as string[]).map((item) => (
-                    <li key={item}>
-                      <Link
-                        to={`/shop?gender=${activeCategory}&type=${encodeURIComponent(slugify(item))}`}
-                        className="text-gray-600 hover:text-black transition-colors"
-                        onClick={onClose}
-                      >
-                        {item}
-                      </Link>
-                    </li>
-                  ))}
+                  {(items as string[]).map((item) => {
+                    const sectionSlug = String(slugify(section || ''))?.toLowerCase();
+                    // If the section is an explicit gender (Men/Women/Kids), use that as gender param
+                    const genderForLink = ['men', 'women', 'kids'].includes(sectionSlug) ? sectionSlug : String(activeCategory);
+                    return (
+                      <li key={item}>
+                        <Link
+                          to={`/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`}
+                          className="text-gray-600 hover:text-black transition-colors"
+                          onClick={onClose}
+                        >
+                          {item}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -85,7 +92,7 @@ export default function MegaMenu({ activeCategory, onClose }: Props) {
               />
               <h5 className="font-semibold text-gray-800 mb-2">{data.featured.title}</h5>
               <Link
-                to={data.featured.link}
+                to={String(data.featured.link || '/')}
                 onClick={onClose}
                 className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
               >

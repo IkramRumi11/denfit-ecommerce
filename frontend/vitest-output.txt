@@ -1,0 +1,306 @@
+﻿
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/denfit-ecommerce 3/frontend[39m
+
+[90mstdout[2m | src/context/FeatureContext.test.tsx[2m > [22m[2mFeatureContext[2m > [22m[2mdefaults to true when API fails[22m[39m
+[Features] failed to fetch features Error: fail
+    at [90mC:\denfit-ecommerce 3\frontend\[39msrc\context\FeatureContext.test.tsx:40:55
+    at [90mfile:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:135:14
+    at [90mfile:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:60:26
+    at runTest [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:781:17[90m)[39m
+    at runSuite [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:909:15[90m)[39m
+    at runSuite [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:909:15[90m)[39m
+    at runFiles [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:958:5[90m)[39m
+    at startTests [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4m@vitest[24m/runner/dist/index.js:967:3[90m)[39m
+    at [90mfile:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4mvitest[24m/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:116:7
+    at withEnv [90m(file:///C:/denfit-ecommerce%203/frontend/[39mnode_modules/[4mvitest[24m/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:83:5[90m)[39m
+
+ [32mΓ£ô[39m src/context/FeatureContext.test.tsx[2m > [22mFeatureContext[2m > [22mshows raptorMini=true when API returns flag
+ [32mΓ£ô[39m src/context/FeatureContext.test.tsx[2m > [22mFeatureContext[2m > [22mdefaults to true when API fails
+node.exe : [90mstderr[2m | src/context/FeatureContext.test.tsx[2m > 
+[22m[2mFeatureContext[2m > [22m[2mrefetches when features:changed is 
+dispatched[22m[39m
+At C:\Users\Noor Links\AppData\Roaming\npm\npx.ps1:24 char:5
++     & "node$exe"  "$basedir/node_modules/npm/bin/npx-cli.js" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([90mstderr[2m...tched[22m[39m 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+TypeError: Cannot read properties of undefined (reading 'then')
+    at listener (C:\denfit-ecommerce 
+3\frontend\src\context\FeatureContext.tsx:50:30)
+    at callTheUserObjectsOperation (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventListener.js:26:30)
+    at innerInvokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:360:16)
+    at invokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at EventTargetImpl._dispatch (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:243:9)
+    at EventTargetImpl.dispatchEvent (C:\denfit-ecommerce 3\frontend\node_modul
+es\jsdom\lib\jsdom\living\events\EventTarget-impl.js:114:17)
+    at dispatchEvent (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventTarget.js:241:34)
+    at C:\denfit-ecommerce 3\frontend\src\context\FeatureContext.test.tsx:58:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+
+ [32mΓ£ô[39m src/context/FeatureContext.test.tsx[2m > [22mFeatureContext[2m > [22mrefetches when features:changed is dispatched
+ [32mΓ£ô[39m src/components/__tests__/ProductFilters.test.tsx[2m > [22mProductFilters accessibility and color behavior[2m > [22mrenders color buttons with accessible labels and toggles filter on click[33m 1193[2mms[22m[39m
+[90mstderr[2m | src/pages/admin/AdminFeatures.test.tsx[2m > 
+[22m[2mAdminFeatures page[2m > [22m[2mtoggles a flag and dispatches 
+features:changed[22m[39m
+ΓÜá∩╕Å React Router Future Flag Warning: React Router will begin wrapping 
+state updates in `React.startTransition` in v7. You can use the 
+`v7_startTransition` future flag to opt-in early. For more information, see 
+https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative route resolution within 
+Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future 
+flag to opt-in early. For more information, see 
+https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ [32mΓ£ô[39m src/components/layout/__tests__/Header.test.tsx[2m > [22mHeader[2m > [22mshows verification toast only once per session even if Header remounts
+[90mstderr[2m | src/components/layout/__tests__/Header.test.tsx[2m > 
+[22m[2mHeader[2m > [22m[2mshows verification toast only once per session 
+even if Header remounts[22m[39m
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+ΓÜá∩╕Å React Router Future Flag Warning: React Router will begin wrapping 
+state updates in `React.startTransition` in v7. You can use the 
+`v7_startTransition` future flag to opt-in early. For more information, see 
+https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+ΓÜá∩╕Å React Router Future Flag Warning: Relative route resolution within 
+Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future 
+flag to opt-in early. For more information, see 
+https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+useCart called outside CartProvider ΓÇö returning fallback no-op cart context
+
+[90mstderr[2m | src/pages/admin/AdminFeatures.test.tsx[2m > 
+[22m[2mAdminFeatures page[2m > [22m[2mtoggles a flag and dispatches 
+features:changed[22m[39m
+TypeError: Cannot read properties of undefined (reading 'then')
+    at listener (C:\denfit-ecommerce 
+3\frontend\src\context\FeatureContext.tsx:50:30)
+    at callTheUserObjectsOperation (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventListener.js:26:30)
+    at innerInvokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:360:16)
+    at invokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at EventTargetImpl._dispatch (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:243:9)
+    at EventTargetImpl.dispatchEvent (C:\denfit-ecommerce 3\frontend\node_modul
+es\jsdom\lib\jsdom\living\events\EventTarget-impl.js:114:17)
+    at dispatchEvent (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventTarget.js:241:34)
+    at mockCall (file:///C:/denfit-ecommerce%203/frontend/node_modules/@vitest/
+spy/dist/index.js:50:17)
+    at bound dispatchEvent (file:///C:/denfit-ecommerce%203/frontend/node_modul
+es/tinyspy/dist/index.js:42:80)
+    at toggleFlag (C:\denfit-ecommerce 
+3\frontend\src\pages\admin\AdminFeatures.tsx:62:14)
+
+ [32mΓ£ô[39m src/pages/admin/AdminFeatures.test.tsx[2m > [22mAdminFeatures page[2m > [22mtoggles a flag and dispatches features:changed[33m 379[2mms[22m[39m
+ [31m├ù[39m src/pages/admin/AdminFeatures.test.tsx[2m > [22mAdminFeatures page[2m > [22mtoggle updates header badge via feature refresh
+[31m   ΓåÆ useWishlist must be used within a WishlistProvider[39m
+[90mstderr[2m | src/pages/admin/AdminFeatures.test.tsx[2m > 
+[22m[2mAdminFeatures page[2m > [22m[2mtoggle updates header badge via 
+feature refresh[22m[39m
+Error: useWishlist must be used within a WishlistProvider
+    at Module.useWishlist (C:\denfit-ecommerce 
+3\frontend\src\context\WishlistContext.tsx:327:11)
+    at Header (C:\denfit-ecommerce 
+3\frontend\src\components\layout\Header.tsx:45:71)
+    at renderWithHooks (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventListener.js:26:30)
+    at innerInvokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:360:16)
+    at invokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\denfit-ecommerce 3\frontend\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-impl.js:243:9)
+Error: useWishlist must be used within a WishlistProvider
+    at Module.useWishlist (C:\denfit-ecommerce 
+3\frontend\src\context\WishlistContext.tsx:327:11)
+    at Header (C:\denfit-ecommerce 
+3\frontend\src\components\layout\Header.tsx:45:71)
+    at renderWithHooks (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:20103:13)
+    at beginWork (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback (C:\denfit-ecommerce 
+3\frontend\node_modules\react-dom\cjs\react-dom.development.js:4164:14)
+    at HTMLUnknownElement.callTheUserObjectsOperation (C:\denfit-ecommerce 
+3\frontend\node_modules\jsdom\lib\generated\idl\EventListener.js:26:30)
+    at innerInvokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\j
+sdom\lib\jsdom\living\events\EventTarget-impl.js:360:16)
+    at invokeEventListeners (C:\denfit-ecommerce 3\frontend\node_modules\jsdom\
+lib\jsdom\living\events\EventTarget-impl.js:296:3)
+    at HTMLUnknownElementImpl._dispatch (C:\denfit-ecommerce 3\frontend\node_mo
+dules\jsdom\lib\jsdom\living\events\EventTarget-impl.js:243:9)
+The above error occurred in the <Header> component:
+
+    at Header (C:\denfit-ecommerce 
+3\frontend\src\components\layout\Header.tsx:45:61)
+    at FeatureProvider (C:\denfit-ecommerce 
+3\frontend\src\context\FeatureContext.tsx:10:28)
+    at SearchProvider (C:\denfit-ecommerce 
+3\frontend\src\context\SearchContext.tsx:6:27)
+    at ToastProvider (C:\denfit-ecommerce 
+3\frontend\src\context\ToastContext.tsx:8:26)
+    at Router (C:\denfit-ecommerce 3\frontend\node_modules\react-router\dist\um
+d\react-router.development.js:1207:17)
+    at MemoryRouter (C:\denfit-ecommerce 3\frontend\node_modules\react-router\d
+ist\umd\react-router.development.js:1101:7)
+
+Consider adding an error boundary to your tree to customize error handling 
+behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error 
+boundaries.
+
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Failed Tests 1 
+[27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/pages/admin/AdminFeatures.test.tsx[2m 
+> [22mAdminFeatures page[2m > [22mtoggle updates header badge via feature 
+refresh
+[31m[1mError[22m: useWishlist must be used within a WishlistProvider[39m
+[36m [2mΓ¥»[22m Module.useWishlist 
+src/context/WishlistContext.tsx:[2m327:11[22m[39m
+    [90m325| [39m  [35mconst[39m context [33m=[39m 
+[34museContext[39m([33mWishlistContext[39m)[33m;[39m
+    [90m326| [39m  [35mif[39m (context [33m===[39m undefined) {
+    [90m327| [39m    [35mthrow[39m [35mnew[39m 
+[33mError[39m([32m'useWishlist must be used within a WishlistProvide[39mΓÇª
+    [90m   | [39m          [31m^[39m
+    [90m328| [39m  }
+    [90m329| [39m  [35mreturn[39m context[33m;[39m
+[90m [2mΓ¥»[22m Header src/components/layout/Header.tsx:[2m45:71[22m[39m
+[90m [2mΓ¥»[22m renderWithHooks 
+node_modules/react-dom/cjs/react-dom.development.js:[2m15486:18[22m[39m
+[90m [2mΓ¥»[22m mountIndeterminateComponent 
+node_modules/react-dom/cjs/react-dom.development.js:[2m20103:13[22m[39m
+[90m [2mΓ¥»[22m beginWork 
+node_modules/react-dom/cjs/react-dom.development.js:[2m21626:16[22m[39m
+[90m [2mΓ¥»[22m beginWork$1 
+node_modules/react-dom/cjs/react-dom.development.js:[2m27465:14[22m[39m
+[90m [2mΓ¥»[22m performUnitOfWork 
+node_modules/react-dom/cjs/react-dom.development.js:[2m26599:12[22m[39m
+[90m [2mΓ¥»[22m workLoopSync 
+node_modules/react-dom/cjs/react-dom.development.js:[2m26505:5[22m[39m
+[90m [2mΓ¥»[22m renderRootSync 
+node_modules/react-dom/cjs/react-dom.development.js:[2m26473:7[22m[39m
+[90m [2mΓ¥»[22m recoverFromConcurrentError 
+node_modules/react-dom/cjs/react-dom.development.js:[2m25889:20[22m[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»[1/1]ΓÄ»[22m[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Unhandled Errors [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1m
+Vitest caught 2 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Uncaught Exception [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 
+'then')[39m
+[36m [2mΓ¥»[22m listener src/context/FeatureContext.tsx:[2m50:30[22m[39m
+    [90m 48| [39m    [35mconst[39m listener [33m=[39m () [33m=>[39m {
+    [90m 49| [39m      [90m// refetch when admin toggles flags[39m
+    [90m 50| [39m      api[33m.[39msystem[33m.[39m[34mgetFeatures[39m()
+[33m.[39m[34mthen[39m((res[33m:[39m any) [33m=>[39m {
+    [90m   | [39m                             [31m^[39m
+    [90m 51| [39m        [35mif[39m (res[33m?.[39mflags) 
+[34msetFlags[39m(res[33m.[39mflags)[33m;[39m
+    [90m 52| [39m      })[33m.[39m[35mcatch[39m(() [33m=>[39m 
+{})[33m;[39m
+[90m [2mΓ¥»[22m callTheUserObjectsOperation 
+node_modules/jsdom/lib/generated/idl/EventListener.js:[2m26:30[22m[39m
+[90m [2mΓ¥»[22m innerInvokeEventListeners node_modules/jsdom/lib/jsdom/livin
+g/events/EventTarget-impl.js:[2m360:16[22m[39m
+[90m [2mΓ¥»[22m invokeEventListeners node_modules/jsdom/lib/jsdom/living/eve
+nts/EventTarget-impl.js:[2m296:3[22m[39m
+[90m [2mΓ¥»[22m EventTargetImpl._dispatch node_modules/jsdom/lib/jsdom/livin
+g/events/EventTarget-impl.js:[2m243:9[22m[39m
+[90m [2mΓ¥»[22m EventTargetImpl.dispatchEvent node_modules/jsdom/lib/jsdom/l
+iving/events/EventTarget-impl.js:[2m114:17[22m[39m
+[90m [2mΓ¥»[22m dispatchEvent 
+node_modules/jsdom/lib/generated/idl/EventTarget.js:[2m241:34[22m[39m
+[90m [2mΓ¥»[22m src/context/FeatureContext.test.tsx:[2m58:12[22m[39m
+[90m [2mΓ¥»[22m runNextTicks 
+node:internal/process/task_queues:[2m65:5[22m[39m
+[90m [2mΓ¥»[22m processTimers node:internal/timers:[2m520:9[22m[39m
+
+[31mThis error originated in "[1msrc/context/FeatureContext.test.tsx[22m" 
+test file. It doesn't mean the error was thrown inside the file itself, but 
+while it was running.[39m
+[31mThe latest test that might've caused the error is "[1mrefetches when 
+features:changed is dispatched[22m". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last 
+documented test before it was thrown.[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Uncaught Exception [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 
+'then')[39m
+[36m [2mΓ¥»[22m listener src/context/FeatureContext.tsx:[2m50:30[22m[39m
+    [90m 48| [39m    [35mconst[39m listener [33m=[39m () [33m=>[39m {
+    [90m 49| [39m      [90m// refetch when admin toggles flags[39m
+    [90m 50| [39m      api[33m.[39msystem[33m.[39m[34mgetFeatures[39m()
+[33m.[39m[34mthen[39m((res[33m:[39m any) [33m=>[39m {
+    [90m   | [39m                             [31m^[39m
+    [90m 51| [39m        [35mif[39m (res[33m?.[39mflags) 
+[34msetFlags[39m(res[33m.[39mflags)[33m;[39m
+    [90m 52| [39m      })[33m.[39m[35mcatch[39m(() [33m=>[39m 
+{})[33m;[39m
+[90m [2mΓ¥»[22m callTheUserObjectsOperation 
+node_modules/jsdom/lib/generated/idl/EventListener.js:[2m26:30[22m[39m
+[90m [2mΓ¥»[22m innerInvokeEventListeners node_modules/jsdom/lib/jsdom/livin
+g/events/EventTarget-impl.js:[2m360:16[22m[39m
+[90m [2mΓ¥»[22m invokeEventListeners node_modules/jsdom/lib/jsdom/living/eve
+nts/EventTarget-impl.js:[2m296:3[22m[39m
+[90m [2mΓ¥»[22m EventTargetImpl._dispatch node_modules/jsdom/lib/jsdom/livin
+g/events/EventTarget-impl.js:[2m243:9[22m[39m
+[90m [2mΓ¥»[22m EventTargetImpl.dispatchEvent node_modules/jsdom/lib/jsdom/l
+iving/events/EventTarget-impl.js:[2m114:17[22m[39m
+[90m [2mΓ¥»[22m dispatchEvent 
+node_modules/jsdom/lib/generated/idl/EventTarget.js:[2m241:34[22m[39m
+[90m [2mΓ¥»[22m mockCall ../../denfit-ecommerce%203/frontend/node_modules/@v
+itest/spy/dist/index.js:[2m50:17[22m[39m
+[90m [2mΓ¥»[22m bound dispatchEvent ../../denfit-ecommerce%203/frontend/node
+_modules/tinyspy/dist/index.js:[2m42:80[22m[39m
+[90m [2mΓ¥»[22m toggleFlag 
+src/pages/admin/AdminFeatures.tsx:[2m62:14[22m[39m
+
+[31mThis error originated in 
+"[1msrc/pages/admin/AdminFeatures.test.tsx[22m" test file. It doesn't mean 
+the error was thrown inside the file itself, but while it was running.[39m
+[31mThe latest test that might've caused the error is "[1mtoggles a flag and 
+dispatches features:changed[22m". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last 
+documented test before it was thrown.[39m
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (7)[39m
+[2m     Errors [22m [1m[31m2 errors[39m[22m
+[2m   Start at [22m 05:54:37
+[2m   Duration [22m 10.65s[2m (transform 1.45s, setup 1.87s, collect 10.46s, tests 2.12s, environment 16.77s, prepare 1.84s)[22m
+

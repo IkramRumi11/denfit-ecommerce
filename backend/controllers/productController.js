@@ -1,125 +1,408 @@
 import Product from '../models/Product.js';
+import Category from '../models/Category.js';
+import DetailTemplate from '../models/DetailTemplate.js';
+import SystemSetting from '../models/SystemSetting.js';
+import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from '../utils/inventory.js';
+
+const parseArray = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter(Boolean);
+  return String(val).split(',').map(s => s.trim()).filter(Boolean);
+};
+
+const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Normalize a product document or plain object for client consumption.
+// Keeps sizes simple, normalizes colors to objects when possible, and computes a `primaryImage`.
+const normalizeProductForClient = (doc) => {
+  if (!doc) return doc;
+  const obj = (doc && typeof doc.toJSON === 'function') ? doc.toJSON() : JSON.parse(JSON.stringify(doc || {}));
+
+  // Normalize sizes
+  try {
+    if (Array.isArray(obj.sizes) && obj.sizes.length && typeof obj.sizes[0] === 'object') {
+      obj.sizesObjects = JSON.parse(JSON.stringify(obj.sizes));
+      obj.sizes = obj.sizes.map(s => (s && (s.value || s.label || s.name)) ? (s.value || s.label || s.name) : String(s));
+    }
+  } catch (e) { /* best-effort */ }
+
+  // Normalize colors
+  try {
+    if (Array.isArray(obj.colors)) {
+      obj.colors = obj.colors.map((c) => {
+        if (!c) return c;
+        if (typeof c === 'string') return { name: c };
+        if (typeof c === 'object') return c;
+        return c;
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  // Primary image: first variant image, otherwise first image
+  try {
+    let primary = '';
+    if (Array.isArray(obj.variants) && obj.variants.length) {
+      const v = obj.variants.find(vv => Array.isArray(vv.images) && vv.images.length) || obj.variants[0];
+      if (v && Array.isArray(v.images) && v.images.length) primary = v.images[0].url || (typeof v.images[0] === 'string' ? v.images[0] : '');
+    }
+    if (!primary && Array.isArray(obj.images) && obj.images.length) {
+      const first = obj.images[0];
+      primary = typeof first === 'string' ? first : (first && first.url) ? first.url : '';
+    }
+    obj.primaryImage = primary || '';
+  } catch (e) { obj.primaryImage = obj.primaryImage || ''; }
+
+  return obj;
+};
 
 export const getAllProducts = async (req, res) => {
   try {
-    const { category, featured, limit = 10, page = 1 } = req.query;
-    
-    const query = {};
-    if (category) query.category = category;
-    if (featured === 'true') query.featured = true;
+    const {
+      category,
+      brand,
+      brandSlug,
+      collection,
+      collectionSlug,
+      featured,
+      minPrice,
+      maxPrice,
+      tags,
+      search,
+      sort,
+      page = 1,
+      limit = 20,
+      gender,
+      sizes,
+      colors,
+      inStock,
+      subcategory,
+      // ─── NEW FILTER PARAMS ───
+      availability,    // 'in-stock,low-stock' — multi-select
+      ageGroup,        // 'kids,baby' — multi-select
+      minRating,       // '4' — minimum average rating
+      discount,        // '20' — minimum discount percentage
+      discountTags,    // 'sale,trending' — promotional tags
+    } = req.query || {};
 
-    const products = await Product.find(query)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .sort({ createdAt: -1 });
+    const appliedLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+    const appliedPage = Math.max(1, Number(page) || 1);
 
-    const total = await Product.countDocuments(query);
+    const mongoQuery = {};
+    // category historically stores the product subcategory (e.g. 't-shirts').
+    // Support both `category` and `subcategory` params for compatibility.
+    if (subcategory) mongoQuery.category = String(subcategory);
+    else if (category) mongoQuery.category = String(category);
+    // Brand — support multi-select (comma-separated)
+    const brandArr = parseArray(brand);
+    if (brandArr.length === 1) mongoQuery.brand = brandArr[0];
+    else if (brandArr.length > 1) mongoQuery.brand = { $in: brandArr };
+    if (brandSlug) mongoQuery.brandSlug = String(brandSlug).toLowerCase();
+    if (collection) mongoQuery.collectionName = String(collection);
+    if (collectionSlug) mongoQuery.collectionSlug = String(collectionSlug).toLowerCase();
+    if (gender) mongoQuery.gender = String(gender);
+    if (featured === 'true' || featured === true) mongoQuery.featured = true;
+    if (minPrice && !Number.isNaN(Number(minPrice))) mongoQuery.price = Object.assign(mongoQuery.price || {}, { $gte: Number(minPrice) });
+    if (maxPrice && !Number.isNaN(Number(maxPrice))) mongoQuery.price = Object.assign(mongoQuery.price || {}, { $lte: Number(maxPrice) });
+    const tagArr = parseArray(tags);
+    if (tagArr.length) mongoQuery.tags = { $in: tagArr };
 
-    res.status(200).json({
+    // Sizes / Colors / Search may need to be combined via $and so they don't overwrite each other.
+    const andClauses = [];
+    // Sizes filter can come as repeated query params or comma separated
+    const sizeArr = parseArray(sizes);
+    if (sizeArr.length) {
+      andClauses.push({ $or: [{ availableSizes: { $in: sizeArr } }, { 'sizes.value': { $in: sizeArr } }, { 'variants.availableSizes': { $in: sizeArr } }] });
+    }
+
+    // Colors filter — multi-select, case-insensitive matching across all color fields
+    const colorArr = parseArray(colors);
+    if (colorArr.length) {
+      const colorRegexes = colorArr.map(c => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'));
+      andClauses.push({
+        $or: [
+          { 'colors.value': { $in: colorRegexes } },
+          { 'colors.name': { $in: colorRegexes } },
+          { 'variants.name': { $in: colorRegexes } },
+          { 'variants.hex': { $in: colorArr.map(c => c.toLowerCase()) } }
+        ]
+      });
+    }
+
+    // Availability — granular status filter (new system)
+    const availArr = parseArray(availability);
+    if (availArr.length) {
+      andClauses.push({ availability: { $in: availArr } });
+    } else if (typeof inStock !== 'undefined') {
+      // Backwards compatibility: legacy inStock boolean
+      if (String(inStock) === 'true' || String(inStock) === '1') mongoQuery.inStock = true;
+      else if (String(inStock) === 'false' || String(inStock) === '0') mongoQuery.inStock = false;
+    }
+
+    // Age group filter
+    const ageGroupArr = parseArray(ageGroup);
+    if (ageGroupArr.length) {
+      andClauses.push({ ageGroup: { $in: ageGroupArr } });
+    }
+
+    // Minimum rating filter
+    if (minRating && !Number.isNaN(Number(minRating))) {
+      andClauses.push({ 'ratings.average': { $gte: Number(minRating) } });
+    }
+
+    // Discount percentage filter — products with at least N% off
+    if (discount && !Number.isNaN(Number(discount))) {
+      const minDiscPct = Number(discount) / 100;
+      andClauses.push({
+        originalPrice: { $exists: true, $gt: 0 },
+        $expr: {
+          $gte: [
+            { $divide: [{ $subtract: ['$originalPrice', '$price'] }, '$originalPrice'] },
+            minDiscPct
+          ]
+        }
+      });
+    }
+
+    // Discount tags filter (sale, clearance, trending, etc.)
+    const discountTagArr = parseArray(discountTags);
+    if (discountTagArr.length) {
+      andClauses.push({ discountTags: { $in: discountTagArr } });
+    }
+
+    // Simple search across name/description/category
+    if (search && String(search).trim()) {
+      const q = String(search).trim();
+      const safeQ = escapeRegex(q);
+      andClauses.push({ $or: [{ name: { $regex: safeQ, $options: 'i' } }, { description: { $regex: safeQ, $options: 'i' } }, { category: { $regex: safeQ, $options: 'i' } }] });
+    }
+
+    // If we collected any $and clauses, combine them with base mongoQuery
+    // Support dynamic attribute-based filters passed as query params.
+    // Any query param not in the known list will be treated as an attribute filter
+    // against the `attributes` map on the Product document. This preserves
+    // the existing schema and avoids adding new APIs or fields.
+    const knownParams = new Set([
+      'category', 'subcategory', 'brand', 'brandSlug', 'collection', 'collectionSlug', 'featured', 'minPrice', 'maxPrice', 'tags', 'search', 'sort', 'page', 'limit', 'gender', 'sizes', 'colors', 'inStock', 'q',
+      'availability', 'ageGroup', 'minRating', 'discount', 'discountTags'
+    ]);
+
+    const attributeAndClauses = [];
+    for (const [k, v] of Object.entries(req.query || {})) {
+      if (!k) continue;
+      if (knownParams.has(k)) continue;
+      // skip pagination and internal params
+      if (['token', '_'].includes(k)) continue;
+      const vals = parseArray(v);
+      if (!vals.length) continue;
+      // Match attribute values stored in product.attributes.<key>
+      const attrKey = `attributes.${k}`;
+      attributeAndClauses.push({ [attrKey]: { $in: vals } });
+    }
+
+    const allAnds = [].concat(andClauses || [], attributeAndClauses || []);
+    const finalQuery = (allAnds.length ? { $and: [mongoQuery, ...allAnds] } : mongoQuery);
+
+    const total = await Product.countDocuments(finalQuery);
+    let sortSpec = { createdAt: -1 };
+    const sortKey = sort && String(sort).toLowerCase();
+    if (sortKey === 'price_asc') sortSpec = { price: 1 };
+    else if (sortKey === 'price_desc') sortSpec = { price: -1 };
+    else if (sortKey === 'name_asc') sortSpec = { name: 1 };
+    else if (sortKey === 'name_desc') sortSpec = { name: -1 };
+    else if (sortKey === 'rating') sortSpec = { 'ratings.average': -1 };
+    else if (sortKey === 'popularity') sortSpec = { 'ratings.count': -1 };
+    else if (sortKey === 'newest') sortSpec = { createdAt: -1 };
+
+    const products = await Product.find(finalQuery)
+      .limit(appliedLimit)
+      .skip((appliedPage - 1) * appliedLimit)
+      .sort(sortSpec)
+      .lean();
+
+    const normalized = products.map(p => normalizeProductForClient(p));
+
+    // attach inventory meta
+    let lowStockThreshold = 20;
+    try {
+      const s = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean();
+      if (s && s.value != null) lowStockThreshold = Number(s.value);
+      else if (process.env.LOW_STOCK_THRESHOLD) {
+        const v = Number(process.env.LOW_STOCK_THRESHOLD);
+        if (!Number.isNaN(v)) lowStockThreshold = v;
+      }
+    } catch (e) { }
+    normalized.forEach((p) => {
+      try {
+        p.availableQuantity = computeAvailableQuantity(p);
+        p.isOutOfStock = computeIsOutOfStock(p);
+        p.isLowStock = computeIsLowStock(p, lowStockThreshold);
+      } catch (e) {
+        p.availableQuantity = p.availableQuantity || 0;
+        p.isOutOfStock = !!p.isOutOfStock;
+        p.isLowStock = !!p.isLowStock;
+      }
+    });
+
+    return res.status(200).json({
       success: true,
       data: {
-        products,
+        products: normalized,
         pagination: {
-          current: parseInt(page),
-          pages: Math.ceil(total / limit),
+          current: appliedPage,
+          pages: Math.ceil(total / appliedLimit),
           total
         }
       }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching products'
-    });
+    console.error('getAllProducts error:', error && (error.stack || error));
+    res.status(500).json({ success: false, message: 'Error fetching products' });
   }
 };
 
 export const getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
-
+    const rawId = String(req.params.id || '').trim();
+    let product = null;
+    // If looks like an ObjectId, try by _id first; otherwise try SEO slug or SKU
+    if (/^[a-fA-F0-9]{24}$/.test(rawId)) {
+      product = await Product.findById(rawId).populate('relatedProducts', 'name images price seo.slug');
+    }
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
+      product = await Product.findOne({ $or: [{ 'seo.slug': rawId }, { sku: rawId }] }).populate('relatedProducts', 'name images price seo.slug');
+    }
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    const out = product.toObject ? product.toObject() : product;
+
+    // optional variant selection
+    const variantId = req.query.variantId;
+    const colorHex = req.query.colorHex;
+    let selectedVariant = null;
+    if (variantId && Array.isArray(out.variants)) selectedVariant = out.variants.find(v => String(v._id) === String(variantId));
+    if (!selectedVariant && colorHex && Array.isArray(out.variants)) selectedVariant = out.variants.find(v => (v.hex || '').toLowerCase() === String(colorHex).toLowerCase());
+    if (!selectedVariant && Array.isArray(out.variants) && out.variants.length) selectedVariant = out.variants[0];
+    if (selectedVariant) {
+      out.selectedVariant = selectedVariant;
+      out.primaryImage = (Array.isArray(selectedVariant.images) && selectedVariant.images.length) ? selectedVariant.images[0].url : '';
+    } else {
+      const first = Array.isArray(out.images) && out.images.length ? out.images[0] : null;
+      out.primaryImage = first ? (typeof first === 'string' ? first : (first && first.url) ? first.url : '') : '';
     }
 
-    res.status(200).json({
-      success: true,
-      data: { product }
-    });
+    try {
+      if ((!out.detailSections || !out.detailSections.length) && out.detailTemplate) {
+        const t = await DetailTemplate.findById(out.detailTemplate).lean();
+        if (t && Array.isArray(t.sections)) out.detailSections = t.sections;
+      }
+    } catch (e) { console.warn('Failed to resolve detail template for product', e && e.message); }
+
+    try {
+      let lowStockThreshold = 20;
+      const s = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
+      if (s && s.value != null) lowStockThreshold = Number(s.value);
+      else if (process.env.LOW_STOCK_THRESHOLD) {
+        const v = Number(process.env.LOW_STOCK_THRESHOLD);
+        if (!Number.isNaN(v)) lowStockThreshold = v;
+      }
+      out.availableQuantity = computeAvailableQuantity(out);
+      out.isOutOfStock = computeIsOutOfStock(out);
+      out.isLowStock = computeIsLowStock(out, lowStockThreshold);
+    } catch (e) { out.availableQuantity = out.availableQuantity || 0; out.isOutOfStock = !!out.isOutOfStock; out.isLowStock = !!out.isLowStock; }
+
+    return res.status(200).json({ success: true, data: { product: out } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching product'
-    });
+    console.error('getProduct error:', error && (error.stack || error));
+    res.status(500).json({ success: false, message: 'Error fetching product' });
   }
 };
 
 export const getProductsByCategory = async (req, res) => {
   try {
-    const products = await Product.find({ 
-      category: req.params.category 
-    }).sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: { products }
+    const products = await Product.find({ category: req.params.category }).sort({ createdAt: -1 }).lean();
+    const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
+    const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
+    const normalized = products.map(p => normalizeProductForClient(p));
+    normalized.forEach((p) => {
+      try { p.availableQuantity = computeAvailableQuantity(p); p.isOutOfStock = computeIsOutOfStock(p); p.isLowStock = computeIsLowStock(p, lowStockThreshold); } catch (e) { }
     });
+    res.status(200).json({ success: true, data: { products: normalized } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching products by category'
-    });
+    console.error('getProductsByCategory error:', error && (error.stack || error));
+    res.status(500).json({ success: false, message: 'Error fetching products by category' });
   }
 };
 
 export const getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ featured: true })
-      .limit(8)
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: { products }
+    const products = await Product.find({ featured: true }).limit(8).sort({ createdAt: -1 }).lean();
+    const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
+    const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
+    const normalized = products.map(p => normalizeProductForClient(p));
+    normalized.forEach((p) => {
+      try { p.availableQuantity = computeAvailableQuantity(p); p.isOutOfStock = computeIsOutOfStock(p); p.isLowStock = computeIsLowStock(p, lowStockThreshold); } catch (e) { }
     });
+    res.status(200).json({ success: true, data: { products: normalized } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching featured products'
-    });
+    console.error('getFeaturedProducts error:', error && (error.stack || error));
+    res.status(500).json({ success: false, message: 'Error fetching featured products' });
   }
 };
 
 export const searchProducts = async (req, res) => {
   try {
-    const { q, limit = 10 } = req.query;
-    
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        message: 'Search query is required'
-      });
-    }
-
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-        { category: { $regex: q, $options: 'i' } }
-      ]
-    }).limit(limit * 1);
-
-    res.status(200).json({
-      success: true,
-      data: { products }
-    });
+    const { q, limit = 10 } = req.query || {};
+    if (!q) return res.status(400).json({ success: false, message: 'Search query is required' });
+    const re = new RegExp(escapeRegex(String(q)), 'i');
+    const products = await Product.find({ $or: [{ name: re }, { description: re }, { category: re }] }).limit(Math.max(1, Math.min(200, Number(limit) || 10))).lean();
+    const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
+    const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
+    const normalized = products.map(p => normalizeProductForClient(p));
+    normalized.forEach((p) => { try { p.availableQuantity = computeAvailableQuantity(p); p.isOutOfStock = computeIsOutOfStock(p); p.isLowStock = computeIsLowStock(p, lowStockThreshold); } catch (e) { } });
+    res.status(200).json({ success: true, data: { products: normalized } });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error searching products'
-    });
+    console.error('searchProducts error:', error && (error.stack || error));
+    res.status(500).json({ success: false, message: 'Error searching products' });
+  }
+};
+
+export const getFilters = async (req, res) => {
+  try {
+    // Categories from Category collection (hierarchy)
+    const categories = await Category.find().sort({ name: 1 }).lean().catch(() => []);
+
+    // Subcategories (product.category values)
+    const subcategories = await Product.distinct('category').catch(() => []);
+
+    // Genders/sections
+    const genders = await Product.distinct('gender').catch(() => []);
+
+    // Sizes: combine availableSizes, sizes.value and variants.availableSizes
+    const sizesA = await Product.distinct('availableSizes').catch(() => []);
+    const sizesB = await Product.distinct('sizes.value').catch(() => []);
+    const sizesC = await Product.distinct('variants.availableSizes').catch(() => []);
+    const sizes = Array.from(new Set([].concat.apply([], [sizesA || [], sizesB || [], sizesC || []]).flat())).filter(Boolean).map(String).sort();
+
+    // Colors: combine colors.value, variants.name and variants.hex
+    const colorsA = await Product.distinct('colors.value').catch(() => []);
+    const colorsB = await Product.distinct('variants.name').catch(() => []);
+    const colorsC = await Product.distinct('variants.hex').catch(() => []);
+    const colors = Array.from(new Set([].concat.apply([], [colorsA || [], colorsB || [], colorsC || []]).flat())).filter(Boolean).map(String).sort();
+
+    // Brands & collections
+    const brands = await Product.distinct('brand').catch(() => []);
+    const collections = await Product.distinct('collection').catch(() => []);
+
+    // Price range
+    const priceAgg = await Product.aggregate([{ $group: { _id: null, min: { $min: '$price' }, max: { $max: '$price' } } }]).allowDiskUse(true).catch(() => []);
+    const priceRange = (priceAgg && priceAgg[0]) ? { min: priceAgg[0].min || 0, max: priceAgg[0].max || 0 } : { min: 0, max: 0 };
+
+    const inStockCount = await Product.countDocuments({ inStock: true }).catch(() => 0);
+    const outOfStockCount = await Product.countDocuments({ inStock: false }).catch(() => 0);
+
+    return res.status(200).json({ success: true, data: { categories, subcategories, genders, sizes, colors, brands, collections, priceRange, availability: { inStockCount, outOfStockCount } } });
+  } catch (e) {
+    console.error('getFilters error', e && (e.stack || e));
+    return res.status(500).json({ success: false, message: 'Failed to load product filters' });
   }
 };

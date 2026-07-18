@@ -4,6 +4,8 @@
 export const getToken = (): string | null => null;
 export const setToken = (_token: string): void => {
   // no-op: token is stored as httpOnly cookie by the server
+  // Mark param as used to avoid lint errors
+  void _token;
 };
 export const removeToken = (): void => {
   // no-op

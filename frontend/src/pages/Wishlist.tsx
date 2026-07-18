@@ -7,30 +7,83 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatCurrency';
+import { primaryImage } from '../utils/productHelpers';
+import { QuickViewModal } from '../components/QuickViewModal';
+import { productsAPI } from '../api';
 
 export const Wishlist: React.FC = () => {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
   const { addItem } = useCart();
   const { showToast } = useToast();
+  const [quickAddProduct, setQuickAddProduct] = React.useState<any | null>(null);
+
+  const openQuickAdd = async (product: any) => {
+    if (!product) return;
+    try {
+      // Try to fetch full product details when opening quick-add from wishlist
+      const res: any = await productsAPI.getById(String(product.id || product._id || product));
+      let p = res && (res.product || res.data?.product) ? (res.product || res.data?.product) : (res || res.data || null);
+      if (!p) {
+        // fallback to the lightweight object from wishlist
+        p = product;
+      }
+      // Normalize common id field
+      const normalized = Array.isArray(p) ? p[0] : p;
+      if (normalized && typeof normalized === 'object') {
+        normalized.id = normalized.id || normalized._id || normalized.slug || product.id;
+      }
+      // Allow opening quick-add even if product is currently out of stock.
+      // The UI will mark the item as out-of-stock and prevent adding to cart.
+      setQuickAddProduct(normalized);
+    } catch (e) {
+      console.warn('Failed to load product details for quick-add, opening lightweight view', e);
+      setQuickAddProduct(product);
+    }
+  };
+
+  const closeQuickAdd = () => setQuickAddProduct(null);
+
+  const performAddToCart = (product: any, size: string, color?: string) => {
+    try {
+      if (product?.outOfStock) {
+        showToast('Product is out of stock', 'error');
+        return;
+      }
+      // resolve variant if color param may be variant id/hex/name
+      let variantSnapshot: any = undefined;
+      if (Array.isArray(product.variants) && color) {
+        variantSnapshot = product.variants.find((v: any) => String(v._id || v.id) === String(color) || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === String(color).toLowerCase() || String(v.name || '').toLowerCase() === String(color).toLowerCase());
+      }
+      const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || product.colorName || product.color || undefined);
+
+      addItem({
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        image: (typeof product.image === 'string' && product.image) ? product.image : primaryImage(product),
+        size,
+        color: colorNormalized,
+        colorName: variantSnapshot?.name || product.colorName || undefined,
+        variantId: variantSnapshot?.id,
+        variantHex: variantSnapshot?.hex,
+        quantity: 1
+      });
+      showToast(`${product.name} has been added to the cart`, 'success');
+      // Remove from wishlist after successful add-to-cart
+      try { removeFromWishlist(product.id); } catch (e) { /* ignore */ }
+      closeQuickAdd();
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      showToast('Failed to add to cart', 'error');
+    }
+  };
 
   // Safe array access
   const safeItems = Array.isArray(items) ? items : [];
 
   const addToCart = (product: any) => {
-    try {
-      addItem({
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        size: 'M',
-        quantity: 1
-      });
-      showToast('Added to cart!', 'success');
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      showToast('Failed to add to cart', 'error');
-    }
+    // Open quick-add modal so user can select size/color instead of defaulting to 'M'
+    openQuickAdd(product);
   };
 
   const handleRemoveFromWishlist = (productId: string) => {
@@ -45,7 +98,7 @@ export const Wishlist: React.FC = () => {
 
   if (safeItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-white py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center bg-white rounded-2xl shadow-sm p-12">
             <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -66,7 +119,7 @@ export const Wishlist: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -95,7 +148,7 @@ export const Wishlist: React.FC = () => {
             >
               <div className="relative">
                 <img
-                  src={product.image}
+                  src={product.image || primaryImage(product)}
                   alt={product.name}
                   className="w-full h-48 object-cover"
                 />
@@ -111,18 +164,32 @@ export const Wishlist: React.FC = () => {
                 <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
                   {product.name}
                 </h3>
+                  {product?.outOfStock && (
+                    <div className="inline-block mb-2">
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-red-100 text-red-800">Out of Stock</span>
+                    </div>
+                  )}
                 <p className="text-lg font-bold text-blue-600 mb-4">
                   {formatCurrency(product.price)}
                 </p>
 
                 <div className="space-y-2">
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    Add to Cart
-                  </button>
+                  {product?.outOfStock ? (
+                    <button
+                      disabled
+                      className="w-full flex items-center justify-center gap-2 bg-gray-300 text-white py-2 px-4 rounded-lg cursor-not-allowed font-medium"
+                    >
+                      Out of Stock
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => openQuickAdd(product)}
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      Add to Cart
+                    </button>
+                  )}
                   
                   <Link
                     to={`/product/${product.id}`}
@@ -142,10 +209,13 @@ export const Wishlist: React.FC = () => {
           <div className="mt-12 bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="flex flex-wrap gap-4">
-              <button
+                <button
                 onClick={() => {
-                  safeItems.forEach(product => addToCart(product));
-                  showToast('All items added to cart!', 'success');
+                  // Require explicit selection for each item; open quick-add for the first item
+                  if (safeItems.length > 0) {
+                    openQuickAdd(safeItems[0]);
+                    showToast('Open each item and select size/color before adding to cart', 'info');
+                  }
                 }}
                 className="flex items-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
@@ -164,6 +234,15 @@ export const Wishlist: React.FC = () => {
           </div>
         )}
       </div>
+      {/* Quick-add modal for wishlist */}
+      {quickAddProduct && (
+        <QuickViewModal
+          product={quickAddProduct}
+          isOpen={!!quickAddProduct}
+          onClose={closeQuickAdd}
+          onAddToCart={(size: string, color?: string) => performAddToCart(quickAddProduct, size, color)}
+        />
+      )}
     </div>
   );
 };

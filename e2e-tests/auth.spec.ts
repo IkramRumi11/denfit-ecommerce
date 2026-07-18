@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { testUsers } from './helpers/test-data';
 
 test.describe('Authentication Flows', () => {
   const testEmail = `test-${Date.now()}@example.com`;
@@ -30,8 +31,8 @@ test.describe('Authentication Flows', () => {
     await page.goto('/auth');
     
     // Fill login form
-    await page.fill('input[name="email"]', 'admin@denfit.com');
-    await page.fill('input[name="password"]', 'admin123');
+    await page.fill('input[name="email"]', testUsers.admin.email);
+    await page.fill('input[name="password"]', testUsers.admin.password);
     
     // Submit
     await page.click('button[type="submit"]');
@@ -54,8 +55,8 @@ test.describe('Authentication Flows', () => {
   test('should logout successfully', async ({ page }) => {
     // Login first
     await page.goto('/auth');
-    await page.fill('input[name="email"]', 'admin@denfit.com');
-    await page.fill('input[name="password"]', 'admin123');
+    await page.fill('input[name="email"]', testUsers.admin.email);
+    await page.fill('input[name="password"]', testUsers.admin.password);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/(home|dashboard|admin)/, { timeout: 10000 });
     

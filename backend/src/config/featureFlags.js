@@ -2,6 +2,7 @@
 // Provides runtime feature flags for the application. Flags are read from environment
 // variables so they can be toggled without code changes.
 import FeatureFlag from '../../models/FeatureFlag.js';
+import { getAllFlagsCache, setAllFlagsCache } from '../../services/featureFlagCache.js';
 
 export function getFeatureFlags() {
   const raptorMiniEnv = process.env.RAPTOR_MINI;
@@ -21,7 +22,12 @@ export async function getFeatureFlagsEffective(req) {
   try {
     if (!FeatureFlag || !FeatureFlag.find) return flags;
     // Fetch all persisted flags and let them define new names as well as overrides
-    const allDbFlags = await FeatureFlag.find({}).lean().catch(() => []);
+    // Try to read persisted flags from Redis cache first to avoid DB on every request
+    let allDbFlags = await getAllFlagsCache().catch(() => null);
+    if (!allDbFlags) {
+      allDbFlags = await FeatureFlag.find({}).lean().catch(() => []);
+      try { await setAllFlagsCache(allDbFlags, 30); } catch (e) { /* non-fatal */ }
+    }
     const overrideMap = {};
     (allDbFlags || []).forEach((f) => {
       if (!overrideMap[f.name]) overrideMap[f.name] = [];

@@ -4,6 +4,8 @@ import assert from 'node:assert';
 
 describe('Products API Integration Tests', () => {
   const baseURL = process.env.API_URL || 'http://localhost:3002';
+  const adminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@denfit.com';
+  const adminPassword = process.env.TEST_ADMIN_PASSWORD || 'TestAdmin123!';
   let adminToken = '';
   let testProductId = '';
 
@@ -13,8 +15,8 @@ describe('Products API Integration Tests', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'admin@denfit.com',
-        password: 'admin123'
+        email: adminEmail,
+        password: adminPassword
       })
     });
     const data = await response.json();

@@ -130,10 +130,16 @@ export const AdminNoteModal: React.FC<ModalProps> = ({
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
             <div className="flex justify-between items-center text-sm">
               <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {order.orderNumber || order.id}
+                {order?.orderNumber || order?.id}
               </span>
               <span className="text-gray-600 dark:text-gray-400">
-                {order.customer || "Customer"}
+                {(() => {
+                  const c = order?.customer;
+                  if (!c) return 'Customer';
+                  if (typeof c === 'string') return c;
+                  // c is likely an object: try common fields
+                  return c.name || c.email || 'Customer';
+                })()}
               </span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-xs">

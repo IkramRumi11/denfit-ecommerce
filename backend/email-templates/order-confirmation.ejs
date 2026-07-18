@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Order Confirmation</title>
+  <style>
+    body { margin:0; padding:0; background:#f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:#263238; }
+    .wrap { max-width: 680px; margin: 24px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 6px 30px rgba(3,10,18,0.08); }
+    /* Compact header and circular logo (updated: smaller, warm gradient, brand text) */
+    .header { padding: 12px 8px 10px; background-color:#ffd6a5; background-image:linear-gradient(135deg,#ffd6a5 0%, #ff9a3c 100%); color: #3b2f2f; text-align:center; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+    .header-inner { display:inline-block; padding:8px; border-radius:999px; background-color:#fff8f2; background-image:linear-gradient(180deg,#fff8f2,#fff2e6); }
+    .logo { display:block; width:88px; height:88px; max-width:88px; max-height:88px; border-radius:50%; object-fit:cover; margin:0 auto; }
+    .brand { display:block; font-size:18px; font-weight:800; font-family:'Trebuchet MS', 'Segoe UI', Roboto, Arial, sans-serif; color:#5a2d0c; margin-top:8px; line-height:1; transform:rotate(-3deg); -webkit-transform:rotate(-3deg); }
+    .content { padding: 32px; }
+    h1 { font-size:20px; margin:0 0 12px; color:#0b1220; }
+    p { color:#455a64; font-size:15px; line-height:1.6; margin:0 0 14px; }
+    .cta { display:block; width: fit-content; margin: 18px auto; background:#000; color:#fff; padding:12px 22px; border-radius:8px; text-decoration:none; font-weight:600; }
+    .muted { font-size:13px; color:#90a4ae; }
+    .items { width:100%; border-collapse: collapse; margin: 16px 0; }
+    .items th, .items td { padding:10px 8px; border-bottom:1px solid #eee; text-align:left; }
+    .summary { margin-top: 8px; }
+    .footer { background:#fbfcfd; padding:20px; text-align:center; color:#9aa7af; font-size:13px; }
+  </style>
+</head>
+<body>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <div class="wrap" role="article" aria-label="Order confirmation">
+          <div class="header">
+            <div class="header-inner" style="display:inline-block; padding:8px; border-radius:999px; background: linear-gradient(180deg,#fff8f2,#fff2e6);">
+              <img src="<%= brand.logo %>" alt="<%= brand.name %> logo" class="logo" style="display:block; border:0; width:88px; height:88px; max-width:88px; max-height:88px; border-radius:50%; object-fit:cover; margin:0 auto;" />
+            </div>
+            <div class="brand" style="font-size:18px; font-weight:800; font-family:'Trebuchet MS', 'Segoe UI', Roboto, Arial, sans-serif; color:#5a2d0c; margin-top:8px; line-height:1; transform:rotate(-3deg); -webkit-transform:rotate(-3deg);"><%= brand.name %></div>
+          </div>
+
+          <div class="content">
+            <h1>Thanks — we received your order</h1>
+            <p>Hi <%= name %>,</p>
+            <p>We've received your order <strong><%= order.orderNumber %></strong>. Below are the details of your purchase.</p>
+
+            <table class="items" role="presentation">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% (order.items || []).forEach(function(it){ %>
+                  <tr>
+                    <td>
+                      <table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+                        <tr>
+                          <td style="padding: 0; border: 0; vertical-align: middle;">
+                            <% 
+                              let itemImg = it.image;
+                              if (!itemImg && it.product && it.product.images && it.product.images.length > 0) {
+                                const pri = it.product.images.find(img => img.isPrimary);
+                                itemImg = pri ? pri.url : it.product.images[0].url;
+                              }
+                              if (!itemImg) {
+                                itemImg = 'https://i.ibb.co/GQG243Rb/DENFiT.jpg'; // fallback
+                              }
+                            %>
+                            <img src="<%= itemImg %>" alt="Product thumbnail" width="50" height="50" style="display: block; width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb;" />
+                          </td>
+                          <td style="padding: 0 0 0 12px; border: 0; vertical-align: middle;">
+                            <strong style="display: block; font-size: 13px; margin-bottom: 2px; color: #263238;">
+                              <%= it.name || it.title || it.productName || 'Item' %>
+                            </strong>
+                            <% 
+                              const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
+                              const colorName = it.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
+                              const variantHex = it.variantHex || (colorObj ? (colorObj.hex || undefined) : undefined);
+                              const colorValue = typeof it.color === 'string' ? it.color : (variantHex || undefined);
+                              const label = colorName || colorValue || '';
+                              const displayLabel = getColorName(label);
+                              const resolvedHex = resolveColorHex(colorValue || label);
+                            %>
+                            <% if (it.size || displayLabel) { %>
+                              <div style="font-size: 11px; color: #90a4ae; margin-top: 2px; line-height: 14px;">
+                                <% if (it.size) { %>Size: <%= it.size %><% } %>
+                                <% if (it.size && displayLabel) { %> • <% } %>
+                                <% if (displayLabel) { %>
+                                  <span style="display: inline-block; vertical-align: middle;">
+                                    Color:
+                                    <% if (resolvedHex) { %>
+                                      <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: <%= resolvedHex %>; border: 1px solid #ddd; vertical-align: middle; margin: 0 2px;"></span>
+                                    <% } %>
+                                    <span style="text-transform: capitalize; vertical-align: middle;"><%= displayLabel %></span>
+                                  </span>
+                                <% } %>
+                              </div>
+                            <% } %>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                    <td><%= it.quantity %></td>
+                    <td>Rs <%= (it.price || 0).toFixed(2) %></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+
+            <div class="summary">
+              <p><strong>Subtotal:</strong> Rs <%= (order.subtotal || 0).toFixed(2) %></p>
+                  <!-- TAX FEATURE TEMPORARILY DISABLED
+                    Customer emails must not display tax. Original tax shown here preserved in order.taxAmount. -->
+                  <% /* suppressed tax display */ %>
+              <p><strong>Shipping:</strong> Rs <%= (order.shippingCost || 0).toFixed(2) %></p>
+              <p style="font-size:16px; margin-top:6px;"><strong>Total:</strong> Rs <%= ((order.subtotal || 0) + (order.shippingCost || 0)).toFixed(2) %></p>
+            </div>
+
+            <% if (order.shippingAddress) { %>
+              <p><strong>Shipping to:</strong><br/>
+                <%= order.shippingAddress.name || '' %><br/>
+                <%= order.shippingAddress.line1 || '' %> <%= order.shippingAddress.line2 || '' %><br/>
+                <%= order.shippingAddress.city || '' %>, <%= order.shippingAddress.state || '' %> <%= order.shippingAddress.postalCode || '' %>
+              </p>
+            <% } %>
+
+            <p style="text-align:center;">
+              <a href="<%= ctaUrl %>" class="cta" target="_blank" rel="noopener noreferrer">View your order</a>
+            </p>
+
+            <p>If you have any questions, reply to this email or contact <a href="mailto:<%= supportEmail %>"><%= supportEmail %></a>.</p>
+            <p class="muted">Thanks,<br/>The <%= brand.name %> team</p>
+          </div>
+
+          <div class="footer">
+            &copy; <%= year %> <strong><%= brand.name %></strong>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

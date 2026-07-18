@@ -4,6 +4,7 @@ import { Menu, X, Search, User, Heart, Bell, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import CartSidebar from "../cart/CartSidebar";
+import PromoMarquee from '../PromoMarquee';
 import SearchOverlay from "./SearchOverlay";
 import MegaMenu from "./MegaMenu";
 import { useSearch } from "../../context/SearchContext";
@@ -12,7 +13,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useToast } from "../../context/ToastContext";
 import { useFeatures } from '../../context/FeatureContext';
-import { mockProducts } from "../../data/mockProducts";
+import { productsAPI } from '../../api';
 import { productId, primaryImage, priceNumber, slugify } from '../../utils/productHelpers';
 import { megaMenuData } from "../../data/megaMenuData";
 
@@ -23,6 +24,7 @@ const categories = [
   { name: "Men", slug: "men" },
   { name: "Women", slug: "women" },
   { name: "Kids", slug: "kids" },
+  { name: "Accessories", slug: "accessories" },
   { name: "Sale", slug: "sale" },
 ];
 
@@ -46,14 +48,36 @@ export default function Header(): JSX.Element {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  // Use canonical mockProducts so search and shop show the same dataset
-  const products = useMemo(() => mockProducts, []);
+  // Suggestions will be fetched from the backend; do not seed with mock products
+  // to avoid showing placeholder/mock items in the search overlay.
   const notifRef = useRef<HTMLDivElement | null>(null);
 
-  // Show verify reminder
+  // Show verify reminder, but only once per user/session to avoid repeated toasts on
+  // refresh or navigation. We use sessionStorage to persist 'shown' state for the
+  // current tab and fall back to a per-render ref where sessionStorage isn't
+  // available (e.g., tests or environments without a window).
   useEffect(() => {
-    if (user && !user.verified) {
+    if (!user || user.verified) return;
+
+    const uid = (user as any).id || (user as any)._id || (user as any).email || "unknown";
+    const storageKey = `verifyToastShown:${uid}`;
+
+    try {
+      const alreadyShown = typeof window !== "undefined" && sessionStorage.getItem(storageKey);
+      if (alreadyShown) return;
       showToast("Please verify your email to unlock all features.", "warning");
+      sessionStorage.setItem(storageKey, "1");
+    } catch (err) {
+      // In test environments or if sessionStorage is not available, fallback to
+      // a simple ref-based approach by using a non-persisted flag on the
+      // document to prevent repeated toasts during the lifetime of the page.
+      // Note: this is defensive and should not otherwise be needed in modern
+      // browsers.
+      const docKey = `verifyToastShown:${uid}:doc`;
+      const globalObj: any = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+      if (globalObj[docKey]) return;
+      showToast("Please verify your email to unlock all features.", "warning");
+      globalObj[docKey] = true;
     }
   }, [user, showToast]);
 
@@ -76,15 +100,21 @@ export default function Header(): JSX.Element {
   }, [mobileOpen, searchOpen]);
 
   // Search logic
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     setQuery?.(value);
-    if (value.trim()) {
-      setSuggestions(
-        products
-          .filter((p) => p.name.toLowerCase().includes(value.toLowerCase()))
-          .slice(0, 6)
-      );
-    } else setSuggestions([]);
+    if (!value || !value.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      const res: any = await productsAPI.getAll({ search: value.trim(), limit: 6 });
+      const products = res && res.products ? res.products : (res?.data?.products || []);
+      setSuggestions(Array.isArray(products) ? products.slice(0, 6) : []);
+    } catch (err) {
+      console.error('Failed to fetch search suggestions', err);
+      setSuggestions([]);
+    }
   };
 
   const handleSuggestionClick = (product: any) => {
@@ -115,7 +145,7 @@ export default function Header(): JSX.Element {
   };
 
   const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
-  const { flags: features } = useFeatures();
+  const { flags } = useFeatures();
 
   // ---------------------------------------------
   // RENDER
@@ -123,8 +153,12 @@ export default function Header(): JSX.Element {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       {/* Promo bar */}
-      <div className="bg-black text-white text-xs py-2 text-center">
-        Free shipping on orders over ₨2,000
+      {/* Replaced static promo with continuous marquee */}
+      <div>
+        {/* lazy import would be fine, keeping simple inline to avoid extra bundling complexity */}
+        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+        {/* @ts-ignore */}
+        <PromoMarquee text={"Free shipping on orders over ₨5,000"} />
       </div>
 
       {/* Main header */}
@@ -141,22 +175,22 @@ export default function Header(): JSX.Element {
           </div>
 
           {/* Logo */}
-          <Link
-            to="/"
-            className="absolute left-1/2 transform -translate-x-1/2 md:static md:transform-none"
-          >
-            <img
-              src="https://i.ibb.co/ycZSHXMr/logo.png"
-              alt="DENFiT Logo"
-              className="h-10 w-auto object-contain"
-            />
-          </Link>
-          {/* Quick feature indicator for Raptor mini (Preview) when enabled */}
-          {features?.raptorMini && (
-            <div className="absolute right-4 top-2 hidden md:flex items-center gap-2 text-xs bg-yellow-100 border border-yellow-300 text-yellow-800 px-2 py-1 rounded-md">
-              <span className="font-semibold">Raptor mini (Preview)</span>
-            </div>
-          )}
+          {(() => {
+            const href = typeof window !== 'undefined' ? `http://${window.location.host}/` : '/';
+            return (
+              <a
+                href={href}
+                className="absolute left-1/2 transform -translate-x-1/2 md:static md:transform-none flex items-center gap-2"
+              >
+                <img
+                  src="https://i.ibb.co/ycZSHXMr/logo.png"
+                  alt="DENFiT Logo"
+                  className="h-10 w-auto object-contain"
+                />
+              </a>
+            );
+          })()}
+          
 
           {/* Mobile right */}
           <div className="flex items-center gap-3 md:hidden ml-auto">
@@ -184,14 +218,22 @@ export default function Header(): JSX.Element {
           <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 space-x-8 font-medium">
             {categories.map((cat) => (
               <div key={cat.slug} onMouseEnter={() => setMegaIndex(cat.slug)}>
-                <Link
-                  to={`/shop?gender=${cat.slug}`}
-                  className={`text-gray-700 hover:text-black ${
-                    cat.slug === "sale" ? "text-red-600 hover:text-red-700" : ""
-                  }`}
-                >
-                  {cat.name}
-                </Link>
+                {(() => {
+                  const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
+                    ? `/${cat.slug}`
+                    : `/shop?gender=${cat.slug}`;
+                  return (
+                    <Link
+                      to={path}
+                      onClick={() => setMegaIndex(null)}
+                      className={`text-gray-700 hover:text-black ${
+                        cat.slug === "sale" ? "text-red-600 hover:text-red-700" : ""
+                      }`}
+                    >
+                      {cat.name}
+                    </Link>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -239,20 +281,26 @@ export default function Header(): JSX.Element {
                       <div className="text-gray-400">No new notifications</div>
                     ) : (
                       <ul className="space-y-2 max-h-60 overflow-y-auto">
-                        {notifications.map((n) => (
-                          <li key={n.id} className="flex items-start justify-between">
-                            <div className="text-gray-700">
-                              <div className="font-semibold">{n.title}</div>
-                              {n.body && <div className="text-sm text-gray-600">{n.body}</div>}
-                            </div>
-                            <button
-                              onClick={() => dismissNotification(n.id)}
-                              className="text-gray-400 hover:text-red-500 ml-3"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </li>
-                        ))}
+                        {notifications
+                          .filter((n) => (n.type || '').toLowerCase() !== 'admin')
+                          .map((n, idx) => {
+                            const key = n._id || n.id || `notif-${idx}`;
+                            const nid = n._id || n.id || null;
+                            return (
+                              <li key={key} className="flex items-start justify-between">
+                                <div className="text-gray-700">
+                                  <div className="font-semibold">{n.title}</div>
+                                  {n.body && <div className="text-sm text-gray-600">{n.body}</div>}
+                                </div>
+                                <button
+                                  onClick={() => dismissNotification(nid)}
+                                  className="text-gray-400 hover:text-red-500 ml-3"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </li>
+                            );
+                          })}
                       </ul>
                     )}
                   </motion.div>
@@ -334,13 +382,20 @@ export default function Header(): JSX.Element {
                     </button>
                     {openMobileCat === idx && (
                       <div className="pl-4 mt-2 space-y-2">
-                        <Link
-                          to={`/shop?gender=${cat.slug}`}
-                          onClick={() => setMobileOpen(false)}
-                          className="block text-sm font-medium text-gray-900"
-                        >
-                          Shop All {cat.name}
-                        </Link>
+                        {(() => {
+                          const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
+                            ? `/${cat.slug}`
+                            : `/shop?gender=${cat.slug}`;
+                          return (
+                            <Link
+                              to={path}
+                              onClick={() => setMobileOpen(false)}
+                              className="block text-sm font-medium text-gray-900"
+                            >
+                              Shop All {cat.name}
+                            </Link>
+                          );
+                        })()}
 
                         {/* Subcategories */}
                         {(() => {
@@ -351,16 +406,21 @@ export default function Header(): JSX.Element {
                               <h6 className="text-sm font-bold text-gray-900 underline mt-3 mb-2">
                                 {section}
                               </h6>
-                              {(items as string[]).map((item) => (
-                                <Link
-                                  key={item}
-                                  to={`/shop?gender=${cat.slug}&type=${encodeURIComponent(slugify(item))}`}
-                                  onClick={() => setMobileOpen(false)}
-                                  className="block text-sm text-gray-600 py-1 hover:text-black"
-                                >
-                                  {item}
-                                </Link>
-                              ))}
+                              {(items as string[]).map((item) => {
+                                      const sectionSlug = String(slugify(section || '')).toLowerCase();
+                                      const genderForLink = ['men','women','kids'].includes(sectionSlug) ? sectionSlug : cat.slug;
+                                      const path = `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
+                                      return (
+                                        <Link
+                                          key={item}
+                                          to={path}
+                                          onClick={() => setMobileOpen(false)}
+                                          className="block text-sm text-gray-600 py-1 hover:text-black"
+                                        >
+                                          {item}
+                                        </Link>
+                                      );
+                              })}
                             </div>
                           ));
                         })()}
@@ -369,17 +429,17 @@ export default function Header(): JSX.Element {
                         {(() => {
                           const menu = megaMenuData[cat.slug as keyof typeof megaMenuData];
                           if (!menu?.featured) return null;
-                          return (
-                            <div className="pt-3 mt-3 border-t border-gray-200">
-                              <Link
-                                to={menu.featured.link}
-                                onClick={() => setMobileOpen(false)}
-                                className="block text-sm font-medium text-blue-600 hover:underline"
-                              >
-                                {menu.featured.title}
-                              </Link>
-                            </div>
-                          );
+                              return (
+                                <div className="pt-3 mt-3 border-t border-gray-200">
+                                  <Link
+                                    to={String(menu.featured.link || '/')}
+                                    onClick={() => setMobileOpen(false)}
+                                    className="block text-sm font-medium text-blue-600 hover:underline"
+                                  >
+                                    {menu.featured.title}
+                                  </Link>
+                                </div>
+                              );
                         })()}
                       </div>
                     )}
@@ -462,23 +522,29 @@ export default function Header(): JSX.Element {
                       {notifications.length === 0 ? (
                         <p className="text-gray-400">No new notifications</p>
                       ) : (
-                        notifications.map((n) => (
-                          <div key={n.id} className="flex justify-between items-start">
-                            <span>
-                              <div className="font-semibold">{n.title}</div>
-                              {n.body && <div className="text-sm text-gray-600">{n.body}</div>}
-                            </span>
-                            <button
-                              onClick={() => {
-                                dismissNotification(n.id);
-                                showToast("Notification dismissed", "info");
-                              }}
-                              className="ml-3 text-gray-400 hover:text-red-500"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))
+                        notifications
+                          .filter((n) => (n.type || '').toLowerCase() !== 'admin')
+                          .map((n, idx) => {
+                            const key = n._id || n.id || `mnotif-${idx}`;
+                            const nid = n._id || n.id || null;
+                            return (
+                              <div key={key} className="flex justify-between items-start">
+                                <span>
+                                  <div className="font-semibold">{n.title}</div>
+                                  {n.body && <div className="text-sm text-gray-600">{n.body}</div>}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    dismissNotification(nid);
+                                    showToast("Notification dismissed", "info");
+                                  }}
+                                  className="ml-3 text-gray-400 hover:text-red-500"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            );
+                          })
                       )}
                   </div>
                 </div>

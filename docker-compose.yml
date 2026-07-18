@@ -1,28 +1,54 @@
-# docker-compose.yml - Local development example
-# Usage:
-# 1. Copy .env.example -> .env and set any required values.
-# 2. Run: docker-compose up --build
-# 3. Backend: http://localhost:3002
-#    Frontend (Vite dev): http://localhost:3000
-
-version: '3.8'
+# docker-compose.yml
 
 services:
   mongo:
     image: mongo:6
     restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
+    command:
+      - mongod
+      - --replSet
+      - rs0
+      - --bind_ip_all
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - denfit-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand({ping: 1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7
     restart: unless-stopped
-    volumes:
-      - redis_data:/data
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - denfit-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-init:
+    image: mongo:6
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - ./docker/mongo-init:/docker-entrypoint-initdb.d:ro
+    entrypoint:
+      - /bin/sh
+      - /docker-entrypoint-initdb.d/init-replica.sh
+    networks:
+      - denfit-net
 
   backend:
     build:
@@ -30,16 +56,77 @@ services:
       dockerfile: Dockerfile
     working_dir: /usr/src/app
     env_file:
-      - ./.env
+      - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
     ports:
       - "3002:3002"
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
-    command: sh -c "npm ci && npm run dev"
+    command: npm run dev
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    networks:
+      - denfit-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3002/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  email-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /usr/src/app
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: npm run worker
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    networks:
+      - denfit-net
+
+  notification-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    working_dir: /usr/src/app
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    command: npm run worker:notifications
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
     networks:
       - denfit-net
 
@@ -47,17 +134,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    working_dir: /usr/src/app
-    env_file:
-      - ./.env
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/usr/src/app
-      - /usr/src/app/node_modules
-    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+      - "3001:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - denfit-net
 

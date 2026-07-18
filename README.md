@@ -47,4 +47,20 @@ $env:RAPTOR_MINI='true'
 
 By default, `RAPTOR_MINI` is enabled if not explicitly set. You can disable it by setting `RAPTOR_MINI=false` in your environment.
 
+### Admin feature flags
+
+Admins can manage feature flags at runtime using the Admin UI at `/admin/features`. Available operations:
+- Create/Update global flags (apply to all clients)
+- Create per-environment flags (apply only in a specific NODE_ENV like `production` or `staging`)
+- Create per-user flags (apply to a specific user ID — useful for beta testing)
+
+Endpoints (admin-only):
+- GET /api/v1/admin/features — list persisted flags
+- POST /api/v1/admin/features — create or update a flag (name, enabled, target, envName, userId)
+- PATCH /api/v1/admin/features/:id — update a flag
+- DELETE /api/v1/admin/features/:id — delete a flag
+
+The `/api/v1/features` endpoint will evaluate and return effective flags considering env vars and persisted flags. If you pass an Authorization token in the request (Bearer), per-user overrides will be applied.
+
+
 

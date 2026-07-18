@@ -2,8 +2,8 @@
 
 export const testUsers = {
   admin: {
-    email: 'admin@denfit.com',
-    password: 'admin123',
+    email: process.env.TEST_ADMIN_EMAIL || 'admin@denfit.com',
+    password: process.env.TEST_ADMIN_PASSWORD || 'TestAdmin123!',
     role: 'admin'
   },
   customer: {

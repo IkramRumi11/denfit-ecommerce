@@ -1,22 +1,24 @@
 //backend/src/config/security.js
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss-clean';
+import { xss } from 'express-xss-sanitizer';
 import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
 
-// Rate limiters
+// Rate limiters — tuned for SPA usage patterns
+// Industry references: Stripe (100/sec), Shopify (2/sec burst), GitHub (5000/hr)
+// A single page load in this SPA generates 5-10 API calls, so the limit must
+// accommodate rapid navigation without blocking legitimate users.
+
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 15 : 1000, // 1000 auth attempts in dev/test, 15 in prod
   // Skip the global auth limiter for the resend-verification endpoint so
   // the controller-level per-user cooldown (and Retry-After) can be authoritative.
-  // This keeps the global IP-based rate limit for other auth endpoints while
-  // allowing precise per-email cooldown UX for resend flows.
   skip: (req) => {
     try {
       const p = (req && (req.originalUrl || req.url || req.path) || '').toLowerCase();
-      return p.includes('/resend-verification');
+      return p.includes('/resend-verification') || p.includes('/refresh-token');
     } catch (e) { return false; }
   },
   // Use a custom handler so clients receive structured JSON and a Retry-After header
@@ -36,33 +38,28 @@ export const authLimiter = rateLimit({
 });
 
 export const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute window (industry standard for SPAs)
+  max: process.env.NODE_ENV === 'production' ? 120 : 1000, // Higher limit in development to avoid blocking local SPA navigation
+  // Skip rate limiting for authenticated users hitting non-sensitive endpoints.
+  // Per-user abuse should be handled at the application layer, not IP-level.
+  skip: (req) => {
+    try {
+      // Health checks and XSRF token fetches should never be rate limited
+      const p = (req && (req.originalUrl || req.url || req.path) || '').toLowerCase();
+      return p.includes('/health') || p.includes('/csrf');
+    } catch (e) { return false; }
+  },
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes.'
+    message: 'Too many requests from this IP, please try again shortly.'
   },
-  standardHeaders: true,
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,
 });
 
 export const securityMiddleware = (app) => {
-  // Set security HTTP headers
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-      },
-    },
-  }));
-
-  // Data sanitization against NoSQL query injection
-  app.use(mongoSanitize());
+  // NOTE: helmet and mongoSanitize are already applied directly in server.js.
+  // This function adds the remaining security layers.
 
   // Data sanitization against XSS
   app.use(xss());
@@ -79,7 +76,7 @@ export const securityMiddleware = (app) => {
     ]
   }));
 
-  // Apply rate limiting to API routes
-  app.use('/api/v1/auth', authLimiter);
+  // Apply global rate limiting to all API routes
+  // (auth-specific limiter is applied directly in routes/auth.js)
   app.use('/api/v1/', apiLimiter);
 };

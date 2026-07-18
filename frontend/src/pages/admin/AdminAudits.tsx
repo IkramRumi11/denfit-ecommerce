@@ -6,7 +6,7 @@ import {
   Filter,
   Download,
   RefreshCw,
-  Calendar,
+  // Calendar removed (not used here)
   Clock,
   User,
   Activity,
@@ -22,7 +22,6 @@ import {
   Trash2,
   Edit,
   Plus,
-  ArrowUpRight,
   Database,
   Lock,
   Unlock,
@@ -30,10 +29,7 @@ import {
   ShoppingCart,
   Package,
   Users,
-  TrendingUp,
-  Zap,
-  Bell,
-  ExternalLink
+  // Removed unused icons: ArrowUpRight, TrendingUp, Zap, Bell, ExternalLink
 } from 'lucide-react';
 
 interface AuditLog {
@@ -168,6 +164,7 @@ const AdminAudits: React.FC = () => {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'Asia/Karachi',
     });
   };
 
@@ -412,7 +409,7 @@ const AdminAudits: React.FC = () => {
 
               {/* Table Body */}
               <div className="divide-y divide-gray-100">
-                {audits.map((audit, index) => (
+                {audits.map((audit) => (
                   <div
                     key={audit._id}
                     className="group hover:bg-gradient-to-r hover:from-indigo-50 hover:via-purple-50 hover:to-pink-50 transition-all cursor-pointer"

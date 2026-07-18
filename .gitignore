@@ -1,24 +1,83 @@
-# Environment files
+# ===========================================
+# Environment files — NEVER commit secrets
+# ===========================================
 .env
+.env.*
 .env.local
 .env.*.local
+**/.env
+**/.env.*
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+backend/token.txt
+tmp_*.js
+cookies.txt
+**/cookies.txt
+uploads/
+**/uploads/
+!backend/.env.example
 
+# ===========================================
+# SSL certificates & private keys
+# ===========================================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# ===========================================
+# Auth artifacts & session data
+# ===========================================
+cookies.txt
+**/cookies.txt
+
+# ===========================================
 # Node
+# ===========================================
 node_modules/
 
+# ===========================================
 # Logs
-logs
+# ===========================================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*-run.log
 
-# Build
+# ===========================================
+# Build output
+# ===========================================
 dist/
 build/
 /.parcel-cache/
 /.vite/
 
-# OS
-.DS_Store
+# ===========================================
+# Temp / debug scripts & server output
+# ===========================================
+tmp_*.js
+temp-*.mjs
+*.out
+*.err
+server-start.log
+backend_start.log
+smoke-test.log
 
+# ===========================================
+# Python virtual environments
+# ===========================================
+.venv/
+venv/
+__pycache__/
+
+# ===========================================
+# OS files
+# ===========================================
+.DS_Store
+Thumbs.db

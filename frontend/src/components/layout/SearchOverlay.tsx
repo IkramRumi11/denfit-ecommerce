@@ -1,14 +1,17 @@
 ﻿// src/components/layout/SearchOverlay.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
+import { productsAPI } from '../../api';
 import type { Product } from "../../types";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { productId, primaryImage, priceNumber } from '../../utils/productHelpers';
+import { isOutOfStock } from '../../utils/stockHelpers';
 import FallbackImage from "../ui/FallbackImage";
+import { QuickViewModal } from '../QuickViewModal';
 
 type Props = {
   isOpen: boolean;
@@ -28,12 +31,44 @@ export default function SearchOverlay({
   onSuggestionClick,
   handleToggleWishlist: parentToggleWishlist,
 }: Props) {
-  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
-  // Use the public cart API from CartContext (addItem) instead of trying to access a dispatch
-  const { addItem } = useCart();
-  const { showToast } = useToast();
-  const navigate = useNavigate();
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
+  const { addItem } = useCart();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
+  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Product[]>([]);
+
+  const openQuickAdd = (product: Product) => {
+    if (!product || isOutOfStock(product)) {
+      showToast?.('Product is out of stock', 'error');
+      return;
+    }
+    setQuickAddProduct(product);
+  };
+
+  const closeQuickAdd = () => setQuickAddProduct(null);
+
+  const performAddToCart = (product: any, size: string, color?: string) => {
+    try {
+      addItem({
+        productId: productId(product),
+        name: product.name,
+        price: priceNumber(product),
+        image: primaryImage(product),
+        size,
+        color,
+        colorName: (product as any).colorName || (product as any).color || undefined,
+        quantity: 1
+      });
+      showToast?.(`${product.name} has been added to the cart`, 'success');
+      closeQuickAdd();
+    } catch (err) {
+      console.error('Error adding to cart from layout search overlay', err);
+      showToast?.('Failed to add to cart', 'error');
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -76,6 +111,28 @@ export default function SearchOverlay({
     }
   };
 
+  // Fetch live results when query changes
+  useEffect(() => {
+    if (!query || !query.trim()) {
+      setResults([]);
+      return;
+    }
+    let active = true;
+    const id = setTimeout(async () => {
+      try {
+        const res: any = await productsAPI.getAll({ search: query.trim(), limit: 6 });
+        const products = res && res.products ? res.products : (res?.data?.products || []);
+        if (!active) return;
+        setResults(Array.isArray(products) ? products : []);
+      } catch (err) {
+        console.error('layout search failed', err);
+        showToast?.('Search failed', 'error');
+      }
+    }, 220);
+
+    return () => { active = false; clearTimeout(id); };
+  }, [query]);
+
   if (!isOpen) return null;
 
   return (
@@ -89,19 +146,26 @@ export default function SearchOverlay({
           type="text"
           placeholder="Search for products..."
           className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-          onChange={(e) => onSearch(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setQuery(v);
+            try { onSearch(v); } catch (e) {}
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              navigate("/shop");
+              const q = query && query.trim() ? `?search=${encodeURIComponent(query.trim())}` : '';
+              navigate(`/shop${q}`);
               onClose();
             }
           }}
         />
 
-        {suggestions.length > 0 && (
+        {(
+          (Array.isArray(suggestions) && suggestions.length > 0) || (Array.isArray(results) && results.length > 0)
+        ) && (
           <div className="mt-3 border rounded bg-white shadow divide-y max-h-80 overflow-y-auto">
-            {suggestions.map((s) => (
-              <div key={s.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition">
+            {(Array.isArray(results) && results.length > 0 ? results : suggestions).map((s, i) => (
+              <div key={productId(s) || `search-${i}`} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition">
                 <button
                   onClick={() => onSuggestionClick(s)}
                   className="flex items-center gap-3 text-left flex-1"
@@ -128,20 +192,7 @@ export default function SearchOverlay({
                   </button>
 
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // addItem expects a CartItem shape: { productId, name, price, image, size, quantity }
-                      addItem({
-                        productId: productId(s),
-                        name: s.name,
-                        price: priceNumber(s),
-                        image: primaryImage(s),
-                        size: (s.sizes && s.sizes.length > 0) ? s.sizes[0] : 'M',
-                        quantity: 1,
-                      });
-                      // give user feedback
-                      showToast?.("Added to cart", "success");
-                    }}
+                    onClick={(e) => { e.stopPropagation(); openQuickAdd(s); }}
                     className="p-2 rounded-full border hover:bg-gray-100"
                     aria-label="Add to cart"
                   >
@@ -151,6 +202,15 @@ export default function SearchOverlay({
               </div>
             ))}
           </div>
+        )}
+
+        {quickAddProduct && (
+          <QuickViewModal
+            product={quickAddProduct}
+            isOpen={!!quickAddProduct}
+            onClose={closeQuickAdd}
+            onAddToCart={(size: string, color?: string) => performAddToCart(quickAddProduct, size, color)}
+          />
         )}
       </div>
     </div>

@@ -34,13 +34,20 @@ export default function csrfProtection(req, res, next) {
         // Determine secure and sameSite based on environment and SSL availability.
         const hasSSLFiles = Boolean(process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH);
         const secureFlag = process.env.NODE_ENV === "production" || hasSSLFiles;
-        // Modern browsers require SameSite=None to be paired with Secure; when Secure
-        // is not set (local HTTP dev) use 'lax' so cookies are accepted by browser.
-        const sameSiteSetting = secureFlag ? "none" : "lax";
+        const requestOrigin = String(req.headers.origin || req.headers.referer || '');
+        const backendOrigin = `${req.protocol}://${req.headers.host}`;
+        const isLocalhostRequest = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(requestOrigin) || /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(backendOrigin);
+        const isCrossOrigin = requestOrigin && requestOrigin !== backendOrigin && !isLocalhostRequest;
+        const sameSiteSetting = isCrossOrigin ? "none" : (secureFlag ? "none" : "lax");
+
+        if (isCrossOrigin && !secureFlag) {
+          console.warn('[DEV] XSRF token cookie is being issued as SameSite=None without Secure.');
+          console.warn('[DEV] This may fail in modern browsers unless using HTTPS or a same-site proxy.');
+        }
 
         res.cookie("XSRF-TOKEN", cookieToken, {
           httpOnly: false, // readable by frontend JS
-          secure: secureFlag,
+          secure: secureFlag && !isLocalhostRequest,
           sameSite: sameSiteSetting,
           path: "/",
         });

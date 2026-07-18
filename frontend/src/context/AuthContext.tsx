@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { User } from "../types";
 import { api } from "../api";
+import socket from '../sockets/socket';
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   // 🔐 Check if session exists (token)
+  const hasCheckedAuth = React.useRef(false);
   const checkAuth = useCallback(async () => {
     try {
       // Rely on httpOnly cookie authentication; attempt to fetch the current
@@ -31,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res?.data?.user) {
         setUser(res.data.user);
         setIsAuthenticated(true);
+        try { socket.initSocket(); } catch (e) {}
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -45,6 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    // Prevent duplicate auth check from React StrictMode double-mount
+    if (hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
     checkAuth();
   }, [checkAuth]);
 
@@ -65,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res?.data?.user) {
       setUser(res.data.user);
       setIsAuthenticated(true);
+      try { socket.initSocket(); } catch (e) {}
       return res;
     }
 
@@ -88,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res?.data?.user) {
       setUser(res.data.user);
       setIsAuthenticated(true);
+      try { socket.initSocket(); } catch (e) {}
       return res;
     }
 
@@ -112,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn("Logout request failed:", e);
     } finally {
       // server clears cookie; just clear client state
+      try { socket.disconnect(); } catch (e) {}
       setUser(null);
       setIsAuthenticated(false);
     }

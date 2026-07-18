@@ -1,14 +1,25 @@
 import { Queue } from 'bullmq';
+import crypto from 'crypto';
+import { connection } from '../config/redis.js';
 
-const REDIS_URL = process.env.REDIS_URL || process.env.REDIS || 'redis://127.0.0.1:6379';
+const emailQueueConnection = {
+  ...connection,
+  maxRetriesPerRequest: null,
+};
 
-const connection = { connection: REDIS_URL };
-
-// Create a named queue for emails
-const emailQueue = new Queue('emails', connection);
+// Create a named queue for emails using centralized Redis config
+const emailQueue = new Queue('emails', { connection: emailQueueConnection });
 
 export const addEmailJob = async (name, data) => {
   try {
+    // Ensure meta exists and add a correlationId if one isn't present
+    data = data || {};
+    data.meta = data.meta || {};
+    if (!data.meta.correlationId) {
+      data.meta.correlationId = crypto.randomUUID();
+    }
+    // Also attach an automatically computed 'source' if none present
+    data.meta.source = data.meta.source || `queue:${name}`;
     // default options: 3 attempts, exponential backoff
     return await emailQueue.add(name, data, {
       attempts: 3,

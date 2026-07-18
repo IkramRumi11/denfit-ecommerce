@@ -18,6 +18,7 @@ export function generateProducts(count: number): Product[] {
     products.push({
       id: String(i),
       _id: String(i),
+      sku: `SKU-${category.toUpperCase().slice(0,3)}-${i}`,
       name: `${category.charAt(0).toUpperCase() + category.slice(1)} Product ${i}`,
       price: price,
       originalPrice: Math.random() > 0.7 ? Math.round(price * (1 + Math.random() * 0.4)) : undefined,

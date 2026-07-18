@@ -1,26 +1,95 @@
-﻿// src/pages/Cart.tsx
-import React from 'react';
+// src/pages/Cart.tsx
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { TAX_FEATURE } from '../config/taxFeatureFlag';
 import { useToast } from '../context/ToastContext';
+import { getColorName } from '../utils/colorNames';
+import { productsAPI } from '../api';
 
 export const Cart: React.FC = () => {
   const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, clearCart } = useCart();
   const { showToast } = useToast();
 
-  const handleQuantityChange = (productId: string, size: string, newQuantity: number) => {
+  const [productStocks, setProductStocks] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const fetchStocks = async () => {
+      const uniqueProductIds = Array.from(new Set(items.map(it => it.productId)));
+      if (!uniqueProductIds.length) return;
+      try {
+        const results = await Promise.all(
+          uniqueProductIds.map(id => productsAPI.getById(id))
+        );
+        const stocks: Record<string, any> = {};
+        results.forEach(res => {
+          const prod = res && (res.product || (res as any).data?.product || res);
+          if (prod) {
+            stocks[String(prod._id || prod.id)] = prod;
+          }
+        });
+        setProductStocks(stocks);
+      } catch (e) {
+        console.error('Failed to batch load cart stocks:', e);
+      }
+    };
+    fetchStocks();
+  }, [items.length]);
+
+  const getCartItemStock = (item: any): number => {
+    const prod = productStocks[item.productId];
+    if (!prod) return 999; // Fallback during load
+
+    if (Array.isArray(prod.stock) && prod.stock.length) {
+      const match = prod.stock.find((s: any) => {
+        if (!s) return false;
+        const matchesColor = item.variantId
+          ? String(s.colorTempId) === String(item.variantId)
+          : (item.color ? String(s.colorTempId).toLowerCase().trim() === String(item.color).toLowerCase().trim() : true);
+        
+        let displaySize = s.sizeId;
+        if (Array.isArray(prod.sizes) && prod.sizes.length) {
+          const found = prod.sizes.find((sz: any) => sz.id === s.sizeId || sz.value === s.sizeId);
+          if (found) displaySize = found.value || found.id;
+        }
+        const matchesSize = String(displaySize).toLowerCase().trim() === String(item.size).toLowerCase().trim();
+        return matchesColor && matchesSize;
+      });
+      if (match && typeof match.quantity === 'number') return match.quantity;
+      return 0;
+    }
+
+    if (item.variantId && Array.isArray(prod.variants)) {
+      const matchedVar = prod.variants.find((v: any) => String(v._id || v.id) === String(item.variantId));
+      if (matchedVar && typeof matchedVar.inventory === 'number') return matchedVar.inventory;
+    }
+
+    if (typeof prod.inventory === 'number') return prod.inventory;
+
+    return 0;
+  };
+
+  const handleQuantityChange = (productId: string, size: string, newQuantity: number, color?: string) => {
+    const item = items.find(it => it.productId === productId && it.size === size && it.color === color);
+    if (!item) return;
+
     if (newQuantity < 1) {
-      removeItem(productId, size);
+      removeItem(productId, size, color);
       showToast('Item removed from cart', 'info');
     } else {
-      updateQuantity(productId, size, newQuantity);
+      const availableStock = getCartItemStock(item);
+      if (newQuantity > availableStock) {
+        showToast(`Only ${availableStock} items are available for this variant. Please reduce the quantity.`, 'error');
+        return;
+      }
+      updateQuantity(productId, size, newQuantity, color);
     }
   };
 
-  const handleRemoveItem = (productId: string, size: string) => {
-    removeItem(productId, size);
+  const handleRemoveItem = (productId: string, size: string, color?: string) => {
+    removeItem(productId, size, color);
     showToast('Item removed from cart', 'info');
   };
 
@@ -31,7 +100,7 @@ export const Cart: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-white py-12">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-6" />
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
@@ -51,7 +120,7 @@ export const Cart: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
@@ -69,7 +138,7 @@ export const Cart: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-sm">
               {items.map((item, index) => (
                 <motion.div
-                  key={`${item.productId}-${item.size}`}
+                  key={`${item.productId}-${item.size}-${item.colorName || item.color || ''}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
@@ -85,7 +154,24 @@ export const Cart: React.FC = () => {
                     <h3 className="font-semibold text-gray-900 text-lg mb-1">
                       {item.name}
                     </h3>
-                    <p className="text-gray-600 text-sm mb-2">Size: {item.size}</p>
+                    <div className="text-gray-600 text-sm mb-1">
+                      <div>Size: <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
+                      {(() => {
+                        const variantLabel = item.variantName || item.colorName || '';
+                        const colorValue = item.variantHex || item.color || '';
+                        const label = variantLabel || colorValue;
+                        if (!label) return null;
+                        const friendlyName = getColorName(label);
+                        return (
+                          <div className="mt-1 flex items-center gap-2">
+                            {colorValue ? (
+                              <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
+                            ) : null}
+                            <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <p className="text-lg font-bold text-blue-600">
                       Rs {item.price.toLocaleString()}
                     </p>
@@ -95,7 +181,7 @@ export const Cart: React.FC = () => {
                     {/* Quantity Controls */}
                     <div className="flex items-center border border-gray-300 rounded-lg">
                       <button
-                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity - 1)}
+                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity - 1, item.color)}
                         className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
                         disabled={item.quantity <= 1}
                       >
@@ -105,7 +191,7 @@ export const Cart: React.FC = () => {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity + 1)}
+                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity + 1, item.color)}
                         className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
                       >
                         <Plus className="h-4 w-4" />
@@ -114,7 +200,7 @@ export const Cart: React.FC = () => {
 
                     {/* Remove Button */}
                     <button
-                      onClick={() => handleRemoveItem(item.productId, item.size)}
+                      onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Remove item"
                     >
@@ -142,10 +228,12 @@ export const Cart: React.FC = () => {
                     {shipping === 0 ? 'Free' : `Rs ${shipping.toLocaleString()}`}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax (13%)</span>
-                  <span className="font-medium">Rs {tax.toLocaleString()}</span>
-                </div>
+                {tax > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Tax</span>
+                    <span className="font-medium">Rs {tax.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="border-t border-gray-200 pt-3">
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>

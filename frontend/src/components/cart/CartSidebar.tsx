@@ -17,16 +17,16 @@ export default function CartSidebar() {
     };
   }, [isOpen]);
 
-  const handleRemoveItem = (productId: string, size: string) => {
-    removeItem(productId, size);
+  const handleRemoveItem = (productId: string, size: string, color?: string) => {
+    removeItem(productId, size, color);
   };
 
-  const handleUpdateQuantity = (productId: string, size: string, quantity: number) => {
+  const handleUpdateQuantity = (productId: string, size: string, quantity: number, color?: string) => {
     if (quantity < 1) {
-      handleRemoveItem(productId, size);
+      handleRemoveItem(productId, size, color);
       return;
     }
-    updateQuantity(productId, size, quantity);
+    updateQuantity(productId, size, quantity, color);
   };
 
   const formatCurrency = (amount: number) => {
@@ -77,28 +77,52 @@ export default function CartSidebar() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {items.map((item) => (
-                    <div key={`${item.productId}-${item.size}`} className="flex">
-                      <img src={item.image} alt={item.name} className="h-16 w-16 rounded object-cover" loading="lazy" />
-                      <div className="ml-4 flex-1">
-                        <div className="flex justify-between">
-                          <h3 className="font-medium text-gray-900">{item.name}</h3>
-                          <button onClick={() => handleRemoveItem(item.productId, item.size)} className="text-gray-400 hover:text-gray-500" aria-label={`Remove ${item.name}`}>
-                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </div>
-                        <p className="text-gray-500 text-sm">Size: {item.size}</p>
-                        <div className="mt-2 flex items-center">
-                          <button className="border rounded-l px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(item.productId, item.size, item.quantity - 1)}>-</button>
-                          <span className="border-t border-b px-3 py-1">{item.quantity}</span>
-                          <button className="border rounded-r px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(item.productId, item.size, item.quantity + 1)}>+</button>
-                          <p className="ml-4 font-medium">{formatCurrency(item.price * item.quantity)}</p>
+                  {items.map((item) => {
+                    const safeName = String(item.name ?? '');
+                    const safeSize = String(item.size ?? '');
+                    const safeImage = typeof item.image === 'string' ? item.image : (item.image && (item.image.url || item.image.src)) || 'https://via.placeholder.com/80';
+                    const safePrice = Number(item.price) || 0;
+                    const variantLabel = item.variantName || item.colorName || '';
+                    const colorValue = item.variantHex || item.color || '';
+                    const colorKey = variantLabel || colorValue || '';
+
+                    return (
+                      <div key={`${String(item.productId)}-${safeSize}-${colorKey}`} className="flex">
+                        <img src={safeImage} alt={safeName} className="h-16 w-16 rounded object-cover" loading="lazy" />
+                        <div className="ml-4 flex-1">
+                          <div className="flex justify-between">
+                            <h3 className="font-medium text-gray-900">{safeName}</h3>
+                            <button onClick={() => handleRemoveItem(String(item.productId), safeSize, colorValue || undefined)} className="text-gray-400 hover:text-gray-500" aria-label={`Remove ${safeName}`}>
+                              <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="text-gray-500 text-sm">
+                            <div>Size: <span className="font-medium text-gray-700">{safeSize || '—'}</span></div>
+                            {(() => {
+                              const label = variantLabel || colorValue;
+                              if (!label) return null;
+                              return (
+                                <div className="mt-1 flex items-center gap-2">
+                                  {colorValue ? (
+                                    <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
+                                  ) : null}
+                                  <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{String(label)}</span></span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="mt-2 flex items-center">
+                            <button className="border rounded-l px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(String(item.productId), safeSize, item.quantity - 1, colorValue || undefined)}>-</button>
+                            <span className="border-t border-b px-3 py-1">{item.quantity}</span>
+                            <button className="border rounded-r px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(String(item.productId), safeSize, item.quantity + 1, colorValue || undefined)}>+</button>
+                            <p className="ml-4 font-medium">{formatCurrency(safePrice * item.quantity)}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -114,10 +138,12 @@ export default function CartSidebar() {
                     <p>Shipping</p>
                     <p>{shipping === 0 ? 'Free' : formatCurrency(shipping)}</p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <p>Tax</p>
-                    <p>{formatCurrency(tax)}</p>
-                  </div>
+                  {tax > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <p>Tax</p>
+                      <p>{formatCurrency(tax)}</p>
+                    </div>
+                  )}
                   <div className="flex justify-between text-base font-medium text-gray-900 border-t pt-2">
                     <p>Total</p>
                     <p>{formatCurrency(total)}</p>

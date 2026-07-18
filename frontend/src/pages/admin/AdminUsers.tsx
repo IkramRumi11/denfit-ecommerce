@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import { Search, UserPlus, Edit, Trash2, Ban, UserCheck, Mail, Phone, Calendar } from 'lucide-react';
+import { Search, UserPlus, Trash2, Ban, UserCheck, Mail, Phone, Calendar } from 'lucide-react';
 
 const AdminUsers: React.FC = () => {
   const { showToast } = useToast();
@@ -43,7 +43,8 @@ const AdminUsers: React.FC = () => {
 
   useEffect(() => {
     loadUsers(page, search, roleFilter);
-  }, [page, search, roleFilter, loadUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search, roleFilter]);
 
   const handleSearch = () => {
     setPage(1);

@@ -22,6 +22,12 @@ const orderItemSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Color info: optional, but used to map to color-size stock entries
+  color: {
+    name: { type: String },
+    hex: { type: String },
+    tempId: { type: String }
+  },
   quantity: {
     type: Number,
     required: true,
@@ -33,7 +39,12 @@ const orderSchema = new mongoose.Schema({
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    // optional to support guest checkout
+    // required: true
+  },
+  // For guest (non-registered) checkouts we store the customer's email here
+  guestEmail: {
+    type: String
   },
   orderNumber: {
     type: String,
@@ -44,10 +55,17 @@ const orderSchema = new mongoose.Schema({
     name: { type: String, required: true },
     street: { type: String, required: true },
     city: { type: String, required: true },
-    state: { type: String, required: true },
+    // `state` is optional because some frontends do not collect it for certain countries
+    state: { type: String },
     zipCode: { type: String, required: true },
     country: { type: String, default: 'Pakistan' },
-    phone: { type: String, required: true }
+    phone: { type: String, required: true },
+    // Allow storing an email on the shipping address so orders always carry a contact email
+    email: { type: String }
+  },
+  // A top-level contact email for the order (guest or explicit email provided at checkout)
+  contactEmail: {
+    type: String
   },
   paymentMethod: {
     type: String,
@@ -83,10 +101,13 @@ const orderSchema = new mongoose.Schema({
   cancelledAt: { type: Date },
   // Shipment/tracking info
   trackingNumber: { type: String },
+  trackingUrl: { type: String },
   carrier: { type: String },
   estimatedDelivery: { type: Date },
   adminNote: { type: String },
   refundAmount: { type: Number },
+  // Mark orders whose customer account has been anonymized/deleted
+  customerDeleted: { type: Boolean, default: false },
   subtotal: {
     type: Number,
     required: true
@@ -94,6 +115,13 @@ const orderSchema = new mongoose.Schema({
   taxAmount: {
     type: Number,
     required: true
+  },
+  // Preserve historic tax values here when tax is disabled
+  legacyTax: {
+    type: Number
+  },
+  legacyTotal: {
+    type: Number
   },
   shippingCost: {
     type: Number,
@@ -107,12 +135,64 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate order number before saving
+// Generate collision-safe order number before saving.
+// Format: DF-YYMMDD-XXXXXX (e.g., DF-260628-A3F9B2)
+// Uses crypto for randomness and retries on collision against the unique index.
 orderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    this.orderNumber = `ORD-${timestamp}${random}`;
+    const crypto = await import('crypto');
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const datePrefix = `${yy}${mm}${dd}`;
+
+    const maxAttempts = 5;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const hex = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 hex chars = 16M possibilities
+      const candidate = `DF-${datePrefix}-${hex}`;
+
+      // Check uniqueness (only on retries to avoid unnecessary DB calls on first try)
+      if (attempt > 0) {
+        const existing = await this.constructor.findOne({ orderNumber: candidate }).select('_id').lean();
+        if (existing) continue;
+      }
+
+      this.orderNumber = candidate;
+      break;
+    }
+
+    if (!this.orderNumber) {
+      // Fallback: use full timestamp + longer random for guaranteed uniqueness
+      const ts = Date.now().toString(36);
+      const rnd = crypto.randomBytes(4).toString('hex');
+      this.orderNumber = `DF-${ts}-${rnd}`.toUpperCase();
+    }
+  }
+  next();
+});
+
+// Enforce global tax policy on save: when tax feature disabled, preserve legacy values
+// and ensure `taxAmount` remains zero and `total` matches customer-facing total.
+orderSchema.pre('save', function(next) {
+  const TAX_FEATURE_ENABLED = String(process.env.TAX_FEATURE_ENABLED || '').toLowerCase() === 'true';
+  if (!TAX_FEATURE_ENABLED) {
+    try {
+      const subtotal = Number(this.subtotal || 0);
+      const shippingCost = Number(this.shippingCost || 0);
+      // Preserve legacyTax/legacyTotal if this document currently has non-zero values
+      if (typeof this.taxAmount === 'number' && Number(this.taxAmount) > 0 && typeof this.legacyTax === 'undefined') {
+        this.legacyTax = Number(this.taxAmount);
+      }
+      if (typeof this.total === 'number' && typeof this.legacyTotal === 'undefined') {
+        this.legacyTotal = Number(this.total);
+      }
+      // Force tax amount to zero and set total to subtotal + shipping
+      this.taxAmount = 0;
+      this.total = Math.round((subtotal + shippingCost) * 100) / 100;
+    } catch (e) {
+      // don't block save on unexpected errors here
+    }
   }
   next();
 });

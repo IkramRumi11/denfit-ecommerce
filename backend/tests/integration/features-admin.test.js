@@ -2,11 +2,27 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const baseURL = process.env.API_URL || 'http://localhost:3002';
+const adminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@denfit.com';
+const adminPassword = process.env.TEST_ADMIN_PASSWORD || 'TestAdmin123!';
 
 async function loginAsAdmin() {
   const res = await fetch(`${baseURL}/api/v1/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@denfit.com', password: 'admin123' })
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: adminEmail, password: adminPassword })
   });
+  if (res.status === 403 || res.status === 401) {
+    // Attempt to seed admin if missing
+    const { spawnSync } = await import('child_process');
+    try {
+      const seedPath = './scripts/seed-admin.js';
+      const cwd = process.cwd();
+      spawnSync(process.execPath, [seedPath, '--force'], { cwd, stdio: 'inherit' });
+    } catch (e) {
+      // ignore
+    }
+    // retry login
+    const res2 = await fetch(`${baseURL}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: adminEmail, password: adminPassword }) });
+    return res2.json();
+  }
   return res.json();
 }
 
@@ -35,12 +51,9 @@ test('Admin can set global flag and user override works as expected', async () =
   assert.strictEqual(g.flags.raptorMini, false);
 
   // Check audit logs contain feature_flag entries
-  const auditsRes = await (await fetch(`${baseURL}/api/v1/admin/audits?type=feature_flag`, { headers: { 'Authorization': `Bearer ${admin.token}` } })).json();
-  assert.strictEqual(Array.isArray(auditsRes.data.audits), true);
-
-  // Check audit logs include this change
-  const auditsRes = await fetch(`${baseURL}/api/v1/admin/audits?type=feature_flag`, { headers: { 'Authorization': `Bearer ${admin.token}` } });
-  const auditsData = await auditsRes.json();
+  const auditsResp = await fetch(`${baseURL}/api/v1/admin/audits?type=feature_flag`, { headers: { 'Authorization': `Bearer ${admin.token}` } });
+  const auditsData = await auditsResp.json();
+  assert.strictEqual(Array.isArray(auditsData.data.audits), true);
   const recent = auditsData?.data?.audits || [];
   if (recent.length === 0) throw new Error('No audit logs found for feature flag change');
 

@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, ShoppingCart, Star, Heart } from 'lucide-react';
 
 import { useCart } from '../context/CartContext';
+import { QuickViewModal } from './QuickViewModal';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
-import { mockProducts } from '../data/mockProducts';
-import { primaryImage } from '../utils/productHelpers';
+import { productsAPI } from '../api';
+import { primaryImage, productId } from '../utils/productHelpers';
+import { isOutOfStock } from '../utils/stockHelpers';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -19,42 +21,81 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
   const { addItem } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
+  const [quickAddProduct, setQuickAddProduct] = useState<any | null>(null);
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (query.trim()) {
-      const filtered = mockProducts.filter(product =>
-        product.name.toLowerCase().includes(query.toLowerCase()) ||
-        product.category.toLowerCase().includes(query.toLowerCase()) ||
-        product.description.toLowerCase().includes(query.toLowerCase())
-      );
-      setResults(filtered.slice(0, 6));
-    } else {
-      setResults([]);
+  const openQuickAdd = (product: any) => {
+    if (!product || isOutOfStock(product)) {
+      showToast('Product is out of stock', 'error');
+      return;
     }
-  }, [query]);
+    setQuickAddProduct(product);
+  };
 
-  // FIX: Proper add to cart function
-  const handleAddToCart = (product: any) => {
+  const closeQuickAdd = () => setQuickAddProduct(null);
+
+  const performAddToCart = (product: any, size: string, color?: string) => {
     try {
-      console.log('🛒 Adding to cart from search:', product.name);
-      
+      const image = primaryImage(product);
+      // resolve variant if color may be a variant id/name/hex
+      let variantSnapshot: any = undefined;
+      if (Array.isArray(product.variants) && color) {
+        variantSnapshot = product.variants.find((v: any) => String(v._id || v.id) === String(color) || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === String(color).toLowerCase() || String(v.name || '').toLowerCase() === String(color).toLowerCase());
+      }
+      const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || (product as any).colorName || (product as any).color || undefined);
+
       addItem({
         productId: product.id,
         name: product.name,
         price: product.price,
-        image: primaryImage(product),
-        size: 'M',
+        image,
+        size,
+        color: colorNormalized,
+        colorName: variantSnapshot?.name || (product as any).colorName || undefined,
+        variantId: variantSnapshot?.id,
+        variantHex: variantSnapshot?.hex,
         quantity: 1
       });
-      
-      showToast('Added to cart!', 'success');
+      showToast(`${product.name} has been added to the cart`, 'success');
+      closeQuickAdd();
     } catch (error) {
-      console.error('❌ Error adding to cart from search:', error);
+      console.error('Error adding to cart from search:', error);
       showToast('Failed to add to cart', 'error');
     }
   };
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+    const id = setTimeout(async () => {
+      try {
+        const res: any = await productsAPI.getAll({ search: query.trim(), limit: 6 });
+        // API returns { products, total } or { products: [] }
+        const products = res && res.products ? res.products : (res?.data?.products || []);
+        if (!active) return;
+        setResults(Array.isArray(products) ? products : []);
+      } catch (err) {
+        if ((err as any).name === 'AbortError') return;
+        console.error('Search API failed', err);
+        showToast('Search failed', 'error');
+      }
+    }, 220);
+
+    return () => {
+      active = false;
+      controller.abort();
+      clearTimeout(id);
+    };
+  }, [query]);
+
+  // Open quick-add selection instead of default-adding
+  const handleAddToCart = (product: any) => openQuickAdd(product);
 
   const handleWishlistToggle = (product: any) => {
     const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(product.id) : false;
@@ -102,6 +143,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -143,9 +185,9 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
           <div className="overflow-y-auto max-h-[60vh]">
             {results.length > 0 ? (
               <div className="p-4 space-y-3">
-                        {results.map((product) => (
-                  <motion.div
-                    key={product.id}
+                        {results.map((product, i) => (
+                          <motion.div
+                            key={productId(product) || `search-${i}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
@@ -215,5 +257,15 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
         </motion.div>
       </motion.div>
     </AnimatePresence>
+      {/* Quick-add modal for search results */}
+      {quickAddProduct ? (
+        <QuickViewModal
+          product={quickAddProduct}
+          isOpen={!!quickAddProduct}
+          onClose={closeQuickAdd}
+          onAddToCart={(size: string, color?: string) => performAddToCart(quickAddProduct, size, color)}
+        />
+      ) : null}
+    </>
   );
 };
