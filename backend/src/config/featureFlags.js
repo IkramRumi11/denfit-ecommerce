@@ -48,8 +48,16 @@ export async function getFeatureFlagsEffective(req) {
         const globalEntry = list.find((l) => l.target === 'global');
         if (globalEntry) applied = globalEntry.enabled;
       }
-      if (applied !== null) flags[name] = applied;
-      else if (typeof flags[name] === 'undefined') flags[name] = false;
+      if (applied !== null) {
+        const key = name.toLowerCase().replace(/_/g, '');
+        const matchedKey = Object.keys(flags).find(k => k.toLowerCase() === key);
+        if (matchedKey) flags[matchedKey] = applied;
+        else flags[name] = applied;
+      } else {
+        const key = name.toLowerCase().replace(/_/g, '');
+        const matchedKey = Object.keys(flags).find(k => k.toLowerCase() === key);
+        if (!matchedKey && typeof flags[name] === 'undefined') flags[name] = false;
+      }
     }
   } catch (e) {
     console.warn('getFeatureFlagsEffective: failed to merge DB flags', e?.message || e);

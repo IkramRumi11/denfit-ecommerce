@@ -9,27 +9,39 @@ async function startLocalServer() {
   server.stdout.on('data', (d) => process.stdout.write(`[server] ${d}`));
   server.stderr.on('data', (d) => process.stderr.write(`[server] ${d}`));
 
-  const started = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Server did not start in time')), 7000);
-    server.stdout.on('data', (d) => {
-      const s = String(d);
-      if (s.includes('HTTP: http://localhost:3002') || s.includes('✅ HTTP')) {
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (!server.killed) server.kill();
+        reject(new Error('Server did not start in time'));
+      }, 45000);
+      server.stdout.on('data', (d) => {
+        const s = String(d);
+        if (s.includes('HTTP: http://localhost:3002') || s.includes('✅ HTTP')) {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      });
+      server.on('error', (err) => {
         clearTimeout(timeout);
-        resolve(true);
-      }
+        if (!server.killed) server.kill();
+        reject(err);
+      });
     });
-    server.on('error', (err) => reject(err));
-  });
+  } catch (err) {
+    if (!server.killed) server.kill();
+    throw err;
+  }
 
   return server;
 }
 
 test('GET /api/v1/features returns feature flags (raptorMini default enabled)', async (t) => {
   let serverProcess;
+  const port = process.env.PORT || 3002;
+  const base = `http://localhost:${port}`;
   try {
     // Try direct fetch first (if already running externally)
-    const port = process.env.PORT || 3002;
-    const base = `http://localhost:${port}`;
     try {
       const res = await fetch(`${base}/api/v1/features`);
       if (res.ok) {

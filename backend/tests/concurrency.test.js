@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test, before } from 'node:test';
+import { test, before, after } from 'node:test';
 import mongoose from 'mongoose';
 import { connectDB } from '../src/config/database.js';
 import Product from '../models/Product.js';
@@ -12,6 +12,13 @@ before(async () => {
   await connectDB();
   await Product.deleteMany({});
   await StockReservation.deleteMany({});
+});
+
+after(async () => {
+  await mongoose.disconnect();
+  if (global.__MONGOD__) {
+    await global.__MONGOD__.stop();
+  }
 });
 
 test('concurrent reservations do not oversell', async (t) => {

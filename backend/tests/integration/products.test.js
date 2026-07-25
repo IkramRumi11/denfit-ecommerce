@@ -19,8 +19,9 @@ describe('Products API Integration Tests', () => {
         password: adminPassword
       })
     });
-    const data = await response.json();
-    return data.token;
+    const cookie = response.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    return match ? match[1] : '';
   }
 
   test('GET /api/v1/products - should return products list', async () => {
@@ -84,7 +85,7 @@ describe('Products API Integration Tests', () => {
   test('POST /api/v1/products - admin should create product', async () => {
     adminToken = await getAdminToken();
 
-    const response = await fetch(`${baseURL}/api/v1/products`, {
+    const response = await fetch(`${baseURL}/api/v1/admin/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -94,7 +95,8 @@ describe('Products API Integration Tests', () => {
         name: 'Test Product API',
         description: 'Test product from integration tests',
         price: 29.99,
-        stock: 100,
+        stock: [{ sizeId: 'size_mrmeprn5rxju', quantity: 100 }], // use correct stock format
+        images: [{ url: 'https://example.com/image.jpg', isPrimary: true, order: 0 }],
         category: 'supplements'
       })
     });
@@ -107,7 +109,7 @@ describe('Products API Integration Tests', () => {
   });
 
   test('POST /api/v1/products - should reject without auth', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products`, {
+    const response = await fetch(`${baseURL}/api/v1/admin/products`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,8 +127,8 @@ describe('Products API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/products/${testProductId}`, {
-      method: 'PUT',
+    const response = await fetch(`${baseURL}/api/v1/admin/products/${testProductId}`, {
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
@@ -148,7 +150,7 @@ describe('Products API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/products/${testProductId}`, {
+    const response = await fetch(`${baseURL}/api/v1/admin/products/${testProductId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });

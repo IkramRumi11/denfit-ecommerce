@@ -14,7 +14,7 @@ export const safeParse = (val) => {
     } catch (e) {
       try {
         const cleaned = s.replace(/`/g, '').trim();
-        if (/^[\[{].*[\]}]$/.test(cleaned)) {
+        if (/^[[{].*[\]}]$/.test(cleaned)) {
           const parsed = JSON.parse(cleaned.replace(/'/g, '"'));
           if (typeof parsed === 'string') { s = parsed; continue; }
           return parsed;
@@ -45,7 +45,7 @@ export const normalizeTags = (input) => {
         }
       }
       if (s.includes(',')) return s.split(',').map(x => x.trim()).filter(Boolean);
-      s = s.replace(/^['`\"]+|['`\"]+$/g, '').trim();
+      s = s.replace(/^['`"]+|['`"]+$/g, '').trim();
       return s ? [s] : [];
     }
     return [String(v)];
@@ -180,7 +180,7 @@ export const normalizeProductInput = async (body, ProductModel) => {
               if (typeof inner === 'string') return inner;
             } catch (err) {}
           }
-          return e.replace(/^['`\"]+|['`\"]+$/g, '');
+          return e.replace(/^['`"]+|['`"]+$/g, '');
         }
         return entry;
       });
@@ -212,20 +212,13 @@ export const normalizeProductInput = async (body, ProductModel) => {
   }
 
   // 10. Normalizing category, subcategory and SKU
-  if (productData.subcategory) {
-    productData.subcategory = productData.subcategory;
-  }
   if (productData.category) {
-    productData.category = productData.category;
-    productData.gender = productData.category;
     try { productData.categorySlug = slugify(productData.category); } catch (e) {}
   }
   if (productData.brand) {
-    productData.brand = productData.brand;
     try { productData.brandSlug = slugify(productData.brand); } catch (e) {}
   }
   if (productData.collectionName) {
-    productData.collectionName = productData.collectionName;
     try { productData.collectionSlug = slugify(productData.collectionName); } catch (e) {}
   }
   if (!productData.sku && productData.category) {

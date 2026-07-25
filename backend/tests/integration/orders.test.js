@@ -20,8 +20,9 @@ describe('Orders API Integration Tests', () => {
         password: adminPassword
       })
     });
-    const data = await response.json();
-    return data.token;
+    const cookie = response.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    return match ? match[1] : '';
   }
 
   test('POST /api/v1/orders - should create order', async () => {
@@ -34,8 +35,9 @@ describe('Orders API Integration Tests', () => {
         password: adminPassword
       })
     });
-    const loginData = await loginRes.json();
-    userToken = loginData.token;
+    const cookie = loginRes.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    userToken = match ? match[1] : '';
 
     // Get a product
     const productsRes = await fetch(`${baseURL}/api/v1/products`);
@@ -47,6 +49,9 @@ describe('Orders API Integration Tests', () => {
       return;
     }
 
+    const size = (product.sizesObjects && product.sizesObjects[0]?.value) || (product.sizes && product.sizes[0]) || 'One size';
+    const color = (product.colors && product.colors[0]) ? product.colors[0].name : undefined;
+
     // Create order
     const response = await fetch(`${baseURL}/api/v1/orders`, {
       method: 'POST',
@@ -57,18 +62,20 @@ describe('Orders API Integration Tests', () => {
       body: JSON.stringify({
         items: [{
           product: product._id,
-          quantity: 2,
-          price: product.price
+          quantity: 1,
+          price: product.price,
+          size,
+          ...(color ? { color } : {})
         }],
         shippingAddress: {
-          fullName: 'Test User',
-          address: '123 Main St',
+          name: 'Test User Name', // required name
+          street: '123 Main Street Extension, Flat 4B', // required >= 20 chars
           city: 'New York',
           state: 'NY',
           zipCode: '10001',
-          phone: '555-1234'
+          phone: '03001234567' // required phone format
         },
-        paymentMethod: 'card'
+        paymentMethod: 'cash_on_delivery' // required payment method
       })
     });
 
@@ -125,14 +132,14 @@ describe('Orders API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/admin/orders/${testOrderId}/status`, {
-      method: 'PUT',
+    const response = await fetch(`${baseURL}/api/v1/admin/orders/${testOrderId}`, {
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
       },
       body: JSON.stringify({
-        status: 'processing'
+        status: 'confirmed'
       })
     });
 
@@ -148,7 +155,7 @@ describe('Orders API Integration Tests', () => {
     }
 
     const response = await fetch(`${baseURL}/api/v1/admin/orders/${testOrderId}/tracking`, {
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
@@ -171,7 +178,7 @@ describe('Orders API Integration Tests', () => {
     }
 
     const response = await fetch(`${baseURL}/api/v1/admin/orders/${testOrderId}/refund`, {
-      method: 'POST',
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`

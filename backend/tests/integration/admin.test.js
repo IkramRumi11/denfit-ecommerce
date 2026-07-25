@@ -18,14 +18,15 @@ describe('Admin API Integration Tests', () => {
         password: adminPassword
       })
     });
-    const data = await response.json();
-    return data.token;
+    const cookie = response.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    return match ? match[1] : '';
   }
 
   test('GET /api/v1/admin/dashboard - should return dashboard stats', async () => {
     adminToken = await getAdminToken();
 
-    const response = await fetch(`${baseURL}/api/v1/admin/dashboard`, {
+    const response = await fetch(`${baseURL}/api/v1/admin/dashboard/stats`, {
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });
 
@@ -82,14 +83,14 @@ describe('Admin API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/admin/users/${user._id}/role`, {
-      method: 'PUT',
+    const response = await fetch(`${baseURL}/api/v1/admin/users/${user._id}`, {
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`
       },
       body: JSON.stringify({
-        role: 'moderator'
+        role: 'admin'
       })
     });
 
@@ -120,7 +121,7 @@ describe('Admin API Integration Tests', () => {
   });
 
   test('GET /api/v1/admin/stats - should return statistics', async () => {
-    const response = await fetch(`${baseURL}/api/v1/admin/stats`, {
+    const response = await fetch(`${baseURL}/api/v1/admin/dashboard/stats`, {
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });
 
@@ -130,19 +131,28 @@ describe('Admin API Integration Tests', () => {
   });
 
   test('Admin endpoints should reject non-admin users', async () => {
-    // Login as regular user
-    const loginRes = await fetch(`${baseURL}/api/v1/auth/register`, {
+    // Register and login as regular user
+    const email = `user-${Date.now()}@example.com`;
+    const password = 'password123';
+    await fetch(`${baseURL}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Regular User',
-        email: `user-${Date.now()}@example.com`,
-        password: 'password123',
-        confirmPassword: 'password123'
+        email,
+        password,
+        confirmPassword: password
       })
     });
-    const loginData = await loginRes.json();
-    const userToken = loginData.token;
+
+    const loginRes = await fetch(`${baseURL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const cookie = loginRes.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    const userToken = match ? match[1] : '';
 
     if (!userToken) {
       console.log('Could not create user, skipping test');

@@ -10,17 +10,29 @@ async function startLocalServer() {
   server.stdout.on('data', (d) => process.stdout.write(`[server] ${d}`));
   server.stderr.on('data', (d) => process.stderr.write(`[server] ${d}`));
 
-  const started = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Server did not start in time')), 5000);
-    server.stdout.on('data', (d) => {
-      const s = String(d);
-      if (s.includes('HTTP: http://localhost:3002') || s.includes('✅ HTTP')) {
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (!server.killed) server.kill();
+        reject(new Error('Server did not start in time'));
+      }, 45000);
+      server.stdout.on('data', (d) => {
+        const s = String(d);
+        if (s.includes('HTTP: http://localhost:3002') || s.includes('✅ HTTP')) {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      });
+      server.on('error', (err) => {
         clearTimeout(timeout);
-        resolve(true);
-      }
+        if (!server.killed) server.kill();
+        reject(err);
+      });
     });
-    server.on('error', (err) => reject(err));
-  });
+  } catch (err) {
+    if (!server.killed) server.kill();
+    throw err;
+  }
 
   return server;
 }

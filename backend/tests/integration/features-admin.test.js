@@ -21,15 +21,30 @@ async function loginAsAdmin() {
     }
     // retry login
     const res2 = await fetch(`${baseURL}/api/v1/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: adminEmail, password: adminPassword }) });
-    return res2.json();
+    const cookie = res2.headers.get('set-cookie');
+    const match = cookie && cookie.match(/jwt=([^;]+)/);
+    return { token: match ? match[1] : '' };
   }
-  return res.json();
+  const cookie = res.headers.get('set-cookie');
+  const match = cookie && cookie.match(/jwt=([^;]+)/);
+  return { token: match ? match[1] : '' };
 }
 
 async function registerUser() {
   const email = `testuser-${Date.now()}@example.com`;
-  const res = await fetch(`${baseURL}/api/v1/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'test user', email, password: 'password123' }) });
-  return res.json();
+  await fetch(`${baseURL}/api/v1/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'test user', email, password: 'password123' }) });
+  
+  // Log in as user
+  const loginRes = await fetch(`${baseURL}/api/v1/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'password123' })
+  });
+  const data = await loginRes.json();
+  const cookie = loginRes.headers.get('set-cookie');
+  const match = cookie && cookie.match(/jwt=([^;]+)/);
+  return {
+    token: match ? match[1] : '',
+    data: { user: data.data?.user }
+  };
 }
 
 test('Admin can set global flag and user override works as expected', async () => {
@@ -46,7 +61,10 @@ test('Admin can set global flag and user override works as expected', async () =
   }
 
   // Create a global flag to disable raptorMini
-  await fetch(`${baseURL}/api/v1/admin/features`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${admin.token}` }, body: JSON.stringify({ name: 'RAPTOR_MINI', enabled: false, target: 'global' }) });
+  const res1 = await fetch(`${baseURL}/api/v1/admin/features`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${admin.token}` }, body: JSON.stringify({ name: 'RAPTOR_MINI', enabled: false, target: 'global' }) });
+  const data1 = await res1.json();
+  const globalFlagId = data1.data?.flag?._id;
+
   const g = await (await fetch(`${baseURL}/api/v1/features`)).json();
   assert.strictEqual(g.flags.raptorMini, false);
 
@@ -58,9 +76,19 @@ test('Admin can set global flag and user override works as expected', async () =
   if (recent.length === 0) throw new Error('No audit logs found for feature flag change');
 
   // Create user override enabling it for the newly created user
-  await fetch(`${baseURL}/api/v1/admin/features`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${admin.token}` }, body: JSON.stringify({ name: 'RAPTOR_MINI', enabled: true, target: 'user', userId }) });
+  const res2 = await fetch(`${baseURL}/api/v1/admin/features`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${admin.token}` }, body: JSON.stringify({ name: 'RAPTOR_MINI', enabled: true, target: 'user', userId }) });
+  const data2 = await res2.json();
+  const userFlagId = data2.data?.flag?._id;
 
   // When requesting as that user with token, flag should be true
   const asUser = await (await fetch(`${baseURL}/api/v1/features`, { headers: { 'Authorization': `Bearer ${userToken}` } })).json();
   assert.strictEqual(asUser.flags.raptorMini, true);
+
+  // Clean up created flags to prevent test pollution
+  if (globalFlagId) {
+    await fetch(`${baseURL}/api/v1/admin/features/${globalFlagId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${admin.token}` } });
+  }
+  if (userFlagId) {
+    await fetch(`${baseURL}/api/v1/admin/features/${userFlagId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${admin.token}` } });
+  }
 });
