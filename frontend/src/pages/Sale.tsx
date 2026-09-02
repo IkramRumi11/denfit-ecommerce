@@ -9,10 +9,12 @@ type AnyProduct = Record<string, any>;
 
 type GenderKey = 'all' | 'men' | 'women' | 'boys' | 'girls';
 type SortKey = 'new' | 'lowest' | 'highest';
+type DiscountFilterKey = 'all' | '50' | '40' | '30' | '20';
 
 export default function Sale(): JSX.Element {
   const [selectedGender, setSelectedGender] = useState<GenderKey>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedDiscountTier, setSelectedDiscountTier] = useState<DiscountFilterKey>('all');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('new');
   const [showFilters, setShowFilters] = useState(false);
@@ -50,15 +52,38 @@ export default function Sale(): JSX.Element {
     };
   }, []);
 
+  // Compute discount percentage helper
+  const getProductDiscountPercent = (prod: AnyProduct): number => {
+    const price = Number(prod.price ?? 0);
+    const origPrice = Number(prod.originalPrice ?? prod.compareAtPrice ?? prod.original_price ?? 0);
+    if (origPrice > 0 && origPrice > price) {
+      return Math.round(((origPrice - price) / origPrice) * 100);
+    }
+    const explicitPct = Number(prod.discountPercentage ?? prod.discount ?? prod.discountPercent ?? 0);
+    return Number.isFinite(explicitPct) && explicitPct > 0 ? Math.round(explicitPct) : 0;
+  };
+
+  // Synchronize sale products: Any product with a reduced price or on-sale status
   const saleProducts = useMemo(() => {
     return allProducts.filter((prod: AnyProduct) => {
+      const price = Number(prod.price ?? 0);
+      const origPrice = Number(prod.originalPrice ?? prod.compareAtPrice ?? prod.original_price ?? 0);
+      const hasReducedPrice = origPrice > 0 && origPrice > price;
+      const discountPct = getProductDiscountPercent(prod);
+
+      const hasSaleTag = Array.isArray(prod.tags) && prod.tags.some((t: string) => /sale|clearance|discount|offer/i.test(String(t)));
+      const hasDiscountTag = Array.isArray(prod.discountTags) && prod.discountTags.some((t: string) => /sale|clearance|discount|offer/i.test(String(t)));
+
       return (
+        hasReducedPrice ||
+        discountPct > 0 ||
         prod.onSale === true ||
         prod.isOnSale === true ||
-        prod.gender === 'sale' ||
-        prod.category === 'sale' ||
-        !!prod.isOnSale ||
-        (prod.discountPercentage && prod.discountPercentage > 0)
+        String(prod.gender || '').toLowerCase() === 'sale' ||
+        String(prod.category || '').toLowerCase() === 'sale' ||
+        String(prod.subcategory || '').toLowerCase() === 'sale' ||
+        hasSaleTag ||
+        hasDiscountTag
       );
     });
   }, [allProducts]);
@@ -92,7 +117,7 @@ export default function Sale(): JSX.Element {
 
   const genderCategories = {
     men: {
-      name: 'Men - Flat 50% OFF',
+      name: "Men's Sale",
       categories: [
         { name: 'View All', slug: 'all' },
         { name: 'Jackets', slug: 'jackets' },
@@ -112,7 +137,7 @@ export default function Sale(): JSX.Element {
       ],
     },
     women: {
-      name: 'Women - Flat 50% OFF',
+      name: "Women's Sale",
       categories: [
         { name: 'View All', slug: 'all' },
         { name: 'Jackets', slug: 'jackets' },
@@ -132,7 +157,7 @@ export default function Sale(): JSX.Element {
       ],
     },
     boys: {
-      name: 'Boys - Flat 50% OFF',
+      name: "Boys' Sale",
       categories: [
         { name: 'View All', slug: 'all' },
         { name: 'Jackets', slug: 'jackets' },
@@ -150,7 +175,7 @@ export default function Sale(): JSX.Element {
       ],
     },
     girls: {
-      name: 'Girls - Flat 50% OFF',
+      name: "Girls' Sale",
       categories: [
         { name: 'View All', slug: 'all' },
         { name: 'Jackets', slug: 'jackets' },
@@ -171,19 +196,44 @@ export default function Sale(): JSX.Element {
   const filteredProducts = saleProducts.filter((p: AnyProduct) => {
     if (selectedGender !== 'all') {
       const productGender = String(p.gender || '').toLowerCase();
-      const prodType = String(p.type || '').toLowerCase();
+      const productAgeGroup = String(p.ageGroup || '').toLowerCase();
 
-      if (selectedGender === 'men' && productGender === 'men') {
-        if (selectedCategory !== 'all' && !prodType.includes(selectedCategory)) return false;
-      } else if (selectedGender === 'women' && productGender === 'women') {
-        if (selectedCategory !== 'all' && !prodType.includes(selectedCategory)) return false;
-      } else if (selectedGender === 'boys' && (productGender === 'boys' || productGender === 'kids')) {
-        if (selectedCategory !== 'all' && !prodType.includes(selectedCategory)) return false;
-      } else if (selectedGender === 'girls' && (productGender === 'girls' || productGender === 'kids')) {
-        if (selectedCategory !== 'all' && !prodType.includes(selectedCategory)) return false;
-      } else {
-        return false;
+      let genderMatches = false;
+      if (selectedGender === 'men') {
+        genderMatches = productGender === 'men' || productGender === 'unisex' || productGender === 'accessories' || !p.gender;
+      } else if (selectedGender === 'women') {
+        genderMatches = productGender === 'women' || productGender === 'unisex' || productGender === 'accessories' || !p.gender;
+      } else if (selectedGender === 'boys') {
+        genderMatches = productGender === 'boys' || productGender === 'kids' || productAgeGroup === 'kids' || productGender === 'unisex';
+      } else if (selectedGender === 'girls') {
+        genderMatches = productGender === 'girls' || productGender === 'kids' || productAgeGroup === 'kids' || productGender === 'unisex';
       }
+
+      if (!genderMatches) return false;
+
+      if (selectedCategory !== 'all') {
+        const catTarget = selectedCategory.toLowerCase().trim();
+        const singular = catTarget.endsWith('s') && catTarget.length > 2 ? catTarget.slice(0, -1) : catTarget;
+        const candidates = [
+          p.category,
+          p.categorySlug,
+          p.subcategory,
+          p.subCategory,
+          p.type,
+          p.name,
+          ...(Array.isArray(p.tags) ? p.tags : [])
+        ].map(x => String(x || '').toLowerCase());
+
+        const matchesCat = candidates.some(c => c.includes(catTarget) || c.includes(singular));
+        if (!matchesCat) return false;
+      }
+    }
+
+    // Discount tier filter
+    if (selectedDiscountTier !== 'all') {
+      const minDiscount = Number(selectedDiscountTier);
+      const currentDiscount = getProductDiscountPercent(p);
+      if (currentDiscount < minDiscount) return false;
     }
 
     const price = Number(p.price ?? 0);
@@ -215,6 +265,7 @@ export default function Sale(): JSX.Element {
   const handleClearAll = () => {
     setSelectedGender('all');
     setSelectedCategory('all');
+    setSelectedDiscountTier('all');
     setSortBy('new');
     setPriceMin(priceBounds.min);
     setPriceMax(priceBounds.max);
@@ -513,11 +564,30 @@ export default function Sale(): JSX.Element {
               </div>
 
               <div className="mb-6 pb-6 border-b border-gray-100">
-                <h3 className="font-medium mb-3 text-sm uppercase text-gray-700">Sale</h3>
-                <label className="flex items-center">
-                  <input type="checkbox" className="mr-2" defaultChecked />
-                  <span className="text-sm">50% Off</span>
-                </label>
+                <h3 className="font-medium mb-3 text-sm uppercase text-gray-700">Discount</h3>
+                <div className="space-y-2">
+                  {[
+                    { label: 'All Discounted Items', value: 'all' },
+                    { label: '50% & Above', value: '50' },
+                    { label: '40% & Above', value: '40' },
+                    { label: '30% & Above', value: '30' },
+                    { label: '20% & Above', value: '20' },
+                  ].map((tier) => (
+                    <label key={tier.value} className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="discountTier"
+                        value={tier.value}
+                        checked={selectedDiscountTier === tier.value}
+                        onChange={() => setSelectedDiscountTier(tier.value as DiscountFilterKey)}
+                        className="mr-2 accent-black"
+                      />
+                      <span className={`text-sm ${selectedDiscountTier === tier.value ? 'font-medium text-black' : 'text-gray-600'}`}>
+                        {tier.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="mb-0">
@@ -682,6 +752,33 @@ export default function Sale(): JSX.Element {
                         className="w-full accent-black"
                       />
                       <div className="text-sm text-gray-600">Rs. {tempPriceMin} - Rs. {tempPriceMax}</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium mb-3 text-sm uppercase text-gray-700">Discount</h3>
+                    <div className="space-y-2">
+                      {[
+                        { label: 'All Discounted Items', value: 'all' },
+                        { label: '50% & Above', value: '50' },
+                        { label: '40% & Above', value: '40' },
+                        { label: '30% & Above', value: '30' },
+                        { label: '20% & Above', value: '20' },
+                      ].map((tier) => (
+                        <label key={tier.value} className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            name="mobileDiscountTier"
+                            value={tier.value}
+                            checked={selectedDiscountTier === tier.value}
+                            onChange={() => setSelectedDiscountTier(tier.value as DiscountFilterKey)}
+                            className="mr-2 accent-black"
+                          />
+                          <span className={`text-sm ${selectedDiscountTier === tier.value ? 'font-medium text-black' : 'text-gray-600'}`}>
+                            {tier.label}
+                          </span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import Product from './Product.js';
 
 const reviewSchema = new mongoose.Schema({
@@ -19,13 +20,10 @@ const reviewSchema = new mongoose.Schema({
 // Recalculate product rating summary for approved reviews
 reviewSchema.statics.updateProductRatings = async function(productId) {
   if (!productId) return;
-  const Review = this;
-  // Ensure we pass a proper ObjectId to the aggregation matcher
   const pid = mongoose.Types.ObjectId.isValid(productId)
     ? new mongoose.Types.ObjectId(productId)
     : productId;
-
-  const agg = await Review.aggregate([
+  const agg = await this.aggregate([
     { $match: { product: pid, status: 'approved' } },
     { $group: { _id: '$product', avg: { $avg: '$rating' }, count: { $sum: 1 } } }
   ]).exec();

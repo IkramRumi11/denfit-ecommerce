@@ -6,6 +6,7 @@ import { productId } from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import { ProductFilters } from '../components/ProductFilters';
 import { SlidersHorizontal, X } from 'lucide-react';
+import { getColorName, resolveColorHex } from '../utils/colorNames';
 
 type AnyProduct = Record<string, any>;
 type AnyFilters = Record<string, any>;
@@ -382,21 +383,29 @@ export default function Women(): JSX.Element {
           Shop by Color
         </h2>
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-          {colorFilters.map((colorItem) => (
-            <Link
-              key={colorItem.slug}
-              to={`/shop?gender=women&color=${encodeURIComponent(colorItem.slug)}`}
-              className="flex flex-col items-center group"
-            >
-              <div
-                className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-200 group-hover:border-gray-400 transition-all duration-300 group-hover:scale-110"
-                style={{ backgroundColor: colorItem.color }}
-              />
-              <span className="mt-2 text-xs md:text-sm font-medium text-gray-700 uppercase tracking-wide">
-                {colorItem.name}
-              </span>
-            </Link>
-          ))}
+          {availableColors.length === 0 ? (
+            <div className="text-sm text-gray-500">No colors available</div>
+          ) : (
+            availableColors.map((c) => {
+              const colorName = getColorName(String(c));
+              const swatchBg = resolveColorHex(String(c)) || String(c);
+              return (
+                <Link
+                  key={String(c)}
+                  to={`/shop?gender=women&color=${encodeURIComponent(String(c))}`}
+                  className="flex flex-col items-center group"
+                >
+                  <div
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-200 group-hover:border-gray-400 transition-all duration-300 group-hover:scale-110"
+                    style={{ backgroundColor: swatchBg }}
+                  />
+                  <span className="mt-2 text-xs md:text-sm font-medium text-gray-700 uppercase tracking-wide">
+                    {colorName}
+                  </span>
+                </Link>
+              );
+            })
+          )}
         </div>
       </section>
 

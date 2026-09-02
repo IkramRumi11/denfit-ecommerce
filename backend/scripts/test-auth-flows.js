@@ -2,7 +2,7 @@
 // Lightweight test script to exercise auth flows: login (unverified) and resend-verification cooldown
 // Usage: node ./scripts/test-auth-flows.js
 
-const http = require('http');
+import http from 'http';
 
 function postJson(path, body) {
   return new Promise((resolve, reject) => {

@@ -36,6 +36,8 @@ export const useCategoryConfigs = (
     return () => { mounted = false; };
   }, [category]);
 
+  const serializedAttrs = JSON.stringify(attributes || {});
+
   useEffect(() => {
     let mounted = true;
     if (!subcategory) {
@@ -54,9 +56,13 @@ export const useCategoryConfigs = (
         }).filter((g: any) => g && g.name);
         if (mounted) {
           setDynamicFilterGroups(resolved);
+          let currentAttrs: Record<string, string[]> = {};
+          try {
+            currentAttrs = JSON.parse(serializedAttrs || '{}');
+          } catch (e) {}
           const init: Record<string, string[]> = {};
           resolved.forEach((g: any) => {
-            init[g.slug] = attributes[g.slug] || [];
+            init[g.slug] = currentAttrs[g.slug] || [];
           });
           setDynamicAttributes(init);
         }
@@ -70,7 +76,7 @@ export const useCategoryConfigs = (
     };
     fetchFilterGroups();
     return () => { mounted = false; };
-  }, [subcategory, category]);
+  }, [subcategory, category, serializedAttrs]);
 
   useEffect(() => {
     if (onChangeAttributes) {

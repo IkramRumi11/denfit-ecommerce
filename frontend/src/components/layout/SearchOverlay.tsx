@@ -1,4 +1,4 @@
-﻿// src/components/layout/SearchOverlay.tsx
+// src/components/layout/SearchOverlay.tsx
 import { useEffect, useRef, useState } from "react";
 import { X, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,7 @@ import { productsAPI } from '../../api';
 import type { Product } from "../../types";
 import { formatCurrency } from "../../utils/formatCurrency";
 import { productId, primaryImage, priceNumber } from '../../utils/productHelpers';
-import { isOutOfStock } from '../../utils/stockHelpers';
+import { isOutOfStock, getAvailableStockForItem } from '../../utils/stockHelpers';
 import FallbackImage from "../ui/FallbackImage";
 import { QuickViewModal } from '../QuickViewModal';
 
@@ -52,7 +52,12 @@ export default function SearchOverlay({
 
   const performAddToCart = (product: any, size: string, color?: string) => {
     try {
-      addItem({
+      const availableStock = getAvailableStockForItem(product, {
+        size,
+        color
+      });
+
+      const res = addItem({
         productId: productId(product),
         name: product.name,
         price: priceNumber(product),
@@ -60,9 +65,20 @@ export default function SearchOverlay({
         size,
         color,
         colorName: (product as any).colorName || (product as any).color || undefined,
-        quantity: 1
-      });
-      showToast?.(`${product.name} has been added to the cart`, 'success');
+        quantity: 1,
+        maxStock: availableStock
+      }, availableStock);
+
+      if (!res.success) {
+        if (res.reason === 'MAX_REACHED') {
+          showToast?.(`You already have all ${availableStock} available units in your cart`, 'warning');
+        } else {
+          showToast?.('Product is out of stock', 'error');
+        }
+        return;
+      }
+
+      showToast?.(`${product.name} added to the cart`, 'success');
       closeQuickAdd();
     } catch (err) {
       console.error('Error adding to cart from layout search overlay', err);

@@ -13,7 +13,7 @@
     "test:health": "node --test tests/health.test.js",
     "test:integration": "node --test tests/integration/*.test.js",
     "test:features": "powershell -NoProfile -ExecutionPolicy Bypass -File ./test-features.ps1",
-    "test:smtp": "node ./scripts/send-test-email.cjs",
+    "test:smtp": "node ./scripts/send-test-email.js",
     "test:watch": "node --test --watch tests/**/*.test.js",
     "seed-admin": "node ./scripts/seed-admin.js",
     "seed-size-profiles": "node ./scripts/seed-size-profiles.js",

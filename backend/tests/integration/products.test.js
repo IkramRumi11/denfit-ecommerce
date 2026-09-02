@@ -1,31 +1,14 @@
- // Integration tests for products endpoints
+// Integration tests for products endpoints
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
+import { apiRequest, getAdminToken } from './testHelper.js';
 
 describe('Products API Integration Tests', () => {
-  const baseURL = process.env.API_URL || 'http://localhost:3002';
-  const adminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@denfit.com';
-  const adminPassword = process.env.TEST_ADMIN_PASSWORD || 'TestAdmin123!';
   let adminToken = '';
   let testProductId = '';
 
-  // Helper to get admin token
-  async function getAdminToken() {
-    const response = await fetch(`${baseURL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword
-      })
-    });
-    const cookie = response.headers.get('set-cookie');
-    const match = cookie && cookie.match(/jwt=([^;]+)/);
-    return match ? match[1] : '';
-  }
-
   test('GET /api/v1/products - should return products list', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products`);
+    const response = await apiRequest('/api/v1/products');
     const data = await response.json();
 
     assert.strictEqual(response.status, 200, 'Should return 200 OK');
@@ -34,7 +17,7 @@ describe('Products API Integration Tests', () => {
   });
 
   test('GET /api/v1/products?category=supplements - should filter by category', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products?category=supplements`);
+    const response = await apiRequest('/api/v1/products?category=supplements');
     const data = await response.json();
 
     assert.strictEqual(response.status, 200, 'Should return 200 OK');
@@ -42,7 +25,7 @@ describe('Products API Integration Tests', () => {
   });
 
   test('GET /api/v1/products?search=protein - should search products', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products?search=protein`);
+    const response = await apiRequest('/api/v1/products?search=protein');
     const data = await response.json();
 
     assert.strictEqual(response.status, 200, 'Should return 200 OK');
@@ -50,7 +33,7 @@ describe('Products API Integration Tests', () => {
   });
 
   test('GET /api/v1/products?minPrice=10&maxPrice=50 - should filter by price', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products?minPrice=10&maxPrice=50`);
+    const response = await apiRequest('/api/v1/products?minPrice=10&maxPrice=50');
     const data = await response.json();
 
     assert.strictEqual(response.status, 200, 'Should return 200 OK');
@@ -58,17 +41,16 @@ describe('Products API Integration Tests', () => {
   });
 
   test('GET /api/v1/products/:id - should return single product', async () => {
-    // Get first product
-    const listRes = await fetch(`${baseURL}/api/v1/products`);
+    const listRes = await apiRequest('/api/v1/products');
     const listData = await listRes.json();
     const productId = listData.data.products[0]?._id;
 
     if (!productId) {
-      console.log('No products found, skipping test');
+      console.log('No products found, skipping single product test');
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/products/${productId}`);
+    const response = await apiRequest(`/api/v1/products/${productId}`);
     const data = await response.json();
 
     assert.strictEqual(response.status, 200, 'Should return 200 OK');
@@ -78,26 +60,24 @@ describe('Products API Integration Tests', () => {
   });
 
   test('GET /api/v1/products/invalid-id - should return 404', async () => {
-    const response = await fetch(`${baseURL}/api/v1/products/507f1f77bcf86cd799439011`);
+    const response = await apiRequest('/api/v1/products/507f1f77bcf86cd799439011');
     assert.ok([404, 400].includes(response.status), 'Should return 404 or 400');
   });
 
   test('POST /api/v1/products - admin should create product', async () => {
     adminToken = await getAdminToken();
 
-    const response = await fetch(`${baseURL}/api/v1/admin/products`, {
+    const response = await apiRequest('/api/v1/admin/products', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`
-      },
+      token: adminToken,
       body: JSON.stringify({
         name: 'Test Product API',
         description: 'Test product from integration tests',
         price: 29.99,
-        stock: [{ sizeId: 'size_mrmeprn5rxju', quantity: 100 }], // use correct stock format
+        inventory: 100,
         images: [{ url: 'https://example.com/image.jpg', isPrimary: true, order: 0 }],
-        category: 'supplements'
+        category: 'clothing',
+        gender: 'men'
       })
     });
 
@@ -109,9 +89,8 @@ describe('Products API Integration Tests', () => {
   });
 
   test('POST /api/v1/products - should reject without auth', async () => {
-    const response = await fetch(`${baseURL}/api/v1/admin/products`, {
+    const response = await apiRequest('/api/v1/admin/products', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Test Product',
         price: 29.99
@@ -127,12 +106,9 @@ describe('Products API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/admin/products/${testProductId}`, {
+    const response = await apiRequest(`/api/v1/admin/products/${testProductId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`
-      },
+      token: adminToken,
       body: JSON.stringify({
         name: 'Updated Test Product',
         price: 39.99
@@ -150,9 +126,9 @@ describe('Products API Integration Tests', () => {
       return;
     }
 
-    const response = await fetch(`${baseURL}/api/v1/admin/products/${testProductId}`, {
+    const response = await apiRequest(`/api/v1/admin/products/${testProductId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${adminToken}` }
+      token: adminToken
     });
 
     assert.ok([200, 204].includes(response.status), 'Should return 200 or 204');

@@ -1,5 +1,12 @@
-const mongoose = require('mongoose');
-require('dotenv').config({ path: __dirname + '/../.env' });
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+dotenv.config({ path: __dirname + '/../.env' });
 
 async function main(){
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/denfit-ecommerce';

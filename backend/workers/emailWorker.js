@@ -3,6 +3,7 @@ import { Worker } from 'bullmq';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import dns from 'dns';
+
 import { newCorrelationId } from '../utils/correlation.js';
 import { redisUrl, connection as redisConnectionOptions } from '../config/redis.js';
 

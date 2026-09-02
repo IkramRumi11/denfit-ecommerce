@@ -5,6 +5,7 @@ import ejs from "ejs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+
 import { getColorName, resolveColorHex } from '../utils/colorHelper.js';
 
 dotenv.config();
@@ -309,7 +310,7 @@ const EmailService = {
       });
       return sendMail({
         to: recipientEmail,
-        subject: `Order ${order.orderNumber} — confirmation`,
+        subject: `Order Confirmation - #${order.orderNumber}`,
         html
       }, opts);
     } catch (err) {
@@ -329,6 +330,26 @@ const EmailService = {
         return { error: 'no-recipient' };
       }
 
+      const getStatusSubject = (status, orderNumber) => {
+        const s = String(status || '').toLowerCase();
+        switch (s) {
+          case 'shipped':
+            return `Your Order #${orderNumber} Has Shipped`;
+          case 'delivered':
+            return `Your Order #${orderNumber} Has Been Delivered`;
+          case 'processing':
+            return `Your Order #${orderNumber} Is Being Processed`;
+          case 'cancelled':
+            return `Order #${orderNumber} Cancellation Notice`;
+          case 'refunded':
+            return `Refund Confirmation for Order #${orderNumber}`;
+          case 'confirmed':
+            return `Order #${orderNumber} Confirmed`;
+          default:
+            return `Order #${orderNumber} Status Update: ${String(status || '').charAt(0).toUpperCase() + String(status || '').slice(1)}`;
+        }
+      };
+
       const html = await renderTemplate('order-status-update', {
         name: recipientName,
         order,
@@ -338,7 +359,7 @@ const EmailService = {
       });
       return sendMail({
         to: recipientEmail,
-        subject: `Order ${order.orderNumber} — status updated to ${newStatus}`,
+        subject: getStatusSubject(newStatus, order.orderNumber),
         html
       }, opts);
     } catch (err) {
@@ -366,7 +387,7 @@ const EmailService = {
       });
       return sendMail({
         to: recipientEmail,
-        subject: `Your order ${order.orderNumber} has shipped`,
+        subject: `Your Order #${order.orderNumber} Has Shipped`,
         html
       }, opts);
     } catch (err) {

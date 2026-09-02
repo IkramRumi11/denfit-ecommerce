@@ -98,7 +98,6 @@ const PRODUCT_TYPE_MAP = {
   'bodysuits': 'clothing',
   'rompers': 'clothing',
   'sleepwear': 'clothing',
-  'bodysuits': 'clothing',
   't-shirts-tops': 'clothing',
 
   'sneakers': 'footwear',

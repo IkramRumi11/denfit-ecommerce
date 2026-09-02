@@ -135,7 +135,7 @@ const AdminUsers: React.FC = () => {
             <p className="text-gray-600">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" data-testid="users-list">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -149,7 +149,7 @@ const AdminUsers: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {users.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={user._id} data-testid="user-row" className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img

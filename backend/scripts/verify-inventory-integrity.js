@@ -2,6 +2,7 @@
 import mongoose from 'mongoose';
 import dns from 'dns';
 import dotenv from 'dotenv';
+
 import Product from '../models/Product.js';
 
 dotenv.config();

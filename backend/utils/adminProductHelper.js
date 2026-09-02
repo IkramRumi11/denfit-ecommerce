@@ -79,13 +79,42 @@ export const normalizeProductInput = async (body, ProductModel) => {
   const productData = { ...body };
 
   // 1. Images
-  if (productData.images && typeof productData.images === 'string') {
-    const parsed = safeParse(productData.images);
-    if (Array.isArray(parsed)) {
-      productData.images = parsed.map((it) => (typeof it === 'string' ? { url: it } : it));
-    } else if (typeof parsed === 'string' && parsed.includes('__file__')) {
-      productData.images = [];
+  if (productData.images !== undefined && productData.images !== null) {
+    let raw = productData.images;
+    if (typeof raw === 'string') {
+      const parsed = safeParse(raw);
+      raw = parsed;
     }
+    if (Array.isArray(raw)) {
+      productData.images = raw.map((it, idx) => {
+        if (!it) return null;
+        if (typeof it === 'string') {
+          if (it.includes('__file__')) return null;
+          return { url: it, isPrimary: idx === 0, order: idx };
+        }
+        if (typeof it === 'object') {
+          const u = it.url || it.image || it.path || '';
+          if (typeof u === 'string' && u.includes('__file__')) return null;
+          return {
+            ...it,
+            url: u,
+            isPrimary: typeof it.isPrimary === 'boolean' ? it.isPrimary : idx === 0,
+            order: typeof it.order === 'number' ? it.order : idx
+          };
+        }
+        return null;
+      }).filter(it => it && it.url);
+    } else if (typeof raw === 'string' && raw.trim()) {
+      if (!raw.includes('__file__')) {
+        productData.images = [{ url: raw.trim(), isPrimary: true, order: 0 }];
+      } else {
+        productData.images = [];
+      }
+    } else if (typeof raw === 'object' && raw.url) {
+      productData.images = [raw];
+    }
+  } else if (productData.image && typeof productData.image === 'string' && productData.image.trim()) {
+    productData.images = [{ url: productData.image.trim(), isPrimary: true, order: 0 }];
   }
 
   // 2. Inventory

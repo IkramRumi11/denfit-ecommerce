@@ -75,7 +75,7 @@ const AdminProductCreate: React.FC = () => {
       } catch (e) {
         try {
           const cleaned = s.replace(/`/g, '').trim();
-          if (/^[\[{].*[\]}]$/.test(cleaned)) {
+          if (/^[[{].*[\]}]$/.test(cleaned)) {
             const parsed = JSON.parse(cleaned.replace(/'/g, '"'));
             if (typeof parsed === 'string') { s = parsed; continue; }
             return parsed;
@@ -314,8 +314,11 @@ const AdminProductCreate: React.FC = () => {
   const removeSize = (idx: number) => {
     setForm((s: any) => {
       const sizes = [...(s.sizes || [])];
+      const removedSize = sizes[idx];
+      const removedId = removedSize?.id || (typeof removedSize === 'string' ? `size_legacy_${idx}` : null);
       sizes.splice(idx, 1);
-      return { ...s, sizes };
+      const stock = (s.stock || []).filter((st: any) => String(st.sizeId) !== String(removedId));
+      return { ...s, sizes, stock };
     });
   };
 
@@ -374,10 +377,17 @@ const AdminProductCreate: React.FC = () => {
       // Auto-fill hex if name is entered
       if (field === 'name') {
         try {
-          const resolved = resolveColorHex(normalized);
-          if (resolved) {
+          if (normalized.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(normalized)) {
+            cur.name = getColorName(normalized);
+            const resolved = resolveColorHex(cur.name) || normalized;
             cur.value = resolved;
             cur.hex = resolved;
+          } else {
+            const resolved = resolveColorHex(normalized);
+            if (resolved) {
+              cur.value = resolved;
+              cur.hex = resolved;
+            }
           }
         } catch (e) {}
       }
@@ -391,11 +401,10 @@ const AdminProductCreate: React.FC = () => {
         } catch (e) {
           // ignore parse errors
         }
-        // If admin didn't provide an explicit name, auto-fill a friendly name
-        if (!cur.name) {
+        // If admin didn't provide an explicit name or entered a hex as name, auto-fill a friendly name
+        if (!cur.name || cur.name.startsWith('#')) {
           try {
-            // getColorName imported at top
-            const friendly = getColorName(cur.hex || cur.value);
+            const friendly = getColorName(cur.hex || cur.value || cur.name);
             if (friendly) cur.name = friendly;
           } catch (e) {}
         }
@@ -408,7 +417,7 @@ const AdminProductCreate: React.FC = () => {
   const removeColor = (idx: number) => {
     setForm((s: any) => {
       const colors = [...(s.colors || [])];
-      const tempId = colors[idx].tempId;
+      const tempId = colors[idx]?.tempId;
       colors.splice(idx, 1);
       
       // Also remove associated variant files
@@ -426,7 +435,8 @@ const AdminProductCreate: React.FC = () => {
         });
       }
       
-      return { ...s, colors };
+      const stock = (s.stock || []).filter((st: any) => String(st.colorTempId) !== String(tempId));
+      return { ...s, colors, stock };
     });
   };
 
@@ -479,7 +489,7 @@ const AdminProductCreate: React.FC = () => {
         // ignore parse errors
       }
       // Strip surrounding quotes/backticks
-      s = s.replace(/^['`\"]+|['`\"]+$/g, '').trim();
+      s = s.replace(/^['`"]+|['`"]+$/g, '').trim();
       return s || null;
     };
 
@@ -498,34 +508,28 @@ const AdminProductCreate: React.FC = () => {
       try {
         const res = await api.admin.suggestRelatedProducts({
           section: form.category,
-          subcategory: form.subcategory,
+          category: form.subcategory,
           tags: (form.tags || []).join(','),
-          excludeId: undefined,
-          limit: 30,
-          price: form.price,
-          material: form.specifications?.material,
-          fit: form.specifications?.fit,
-          origin: form.specifications?.origin,
+          limit: 8
         });
         if (!mounted) return;
-        setSuggestedProducts(res?.data?.products || []);
+        setSuggestedProducts(res?.data?.suggestions || []);
       } catch (e) {
-        console.error('suggest fetch failed', e);
+        // ignore suggestion errors
       } finally {
         if (mounted) setLoadingSuggestions(false);
       }
     })();
     return () => { mounted = false; };
-  }, [form.category, form.subcategory, JSON.stringify(form.tags || []), autoSuggestEnabled]);
+  }, [form.category, form.subcategory, form.tags, autoSuggestEnabled]);
 
-  // Fetch existing mappings for this category/subcategory
+  // Load recommendation mappings for cross-category hints
   useEffect(() => {
-    if (!form.category || !form.subcategory) return;
     let mounted = true;
     (async () => {
-      setLoadingMappings(true);
       try {
-        const res = await api.admin.getRecommendationMappings({ category: form.category, subcategory: form.subcategory });
+        setLoadingMappings(true);
+        const res = await api.admin.getRecommendationMappings();
         if (!mounted) return;
         setMappings(res?.data?.mappings || []);
       } catch (e) {
@@ -535,7 +539,7 @@ const AdminProductCreate: React.FC = () => {
       }
     })();
     return () => { mounted = false; };
-  }, [form.category, form.subcategory]);
+  }, []);
 
   // Form submission
   const onSubmit = async (e: React.FormEvent) => {
@@ -556,22 +560,15 @@ const AdminProductCreate: React.FC = () => {
       return;
     }
 
-    // Validate color variants have enough images
+    // Clean up variantFiles and existingVariantImages for removed colors
     if (form.colors && form.colors.length > 0) {
-        const colorTempIds = new Set((form.colors || []).map((c: any) => c.tempId));
-        // Ensure variantFiles / existingVariantImages keys correspond to defined colors only
-        for (const k of Object.keys(variantFiles)) {
-          if (!colorTempIds.has(k)) {
-            showToast('Found images assigned to an unknown/removed color. Please reassign or remove those images.', 'error');
-            return;
-          }
-        }
-        for (const k of Object.keys(existingVariantImages)) {
-          if (!colorTempIds.has(k)) {
-            showToast('Found existing variant images assigned to an unknown/removed color. Please reassign or remove those images.', 'error');
-            return;
-          }
-        }
+      const colorTempIds = new Set((form.colors || []).map((c: any) => c.tempId));
+      Object.keys(variantFiles).forEach(k => {
+        if (!colorTempIds.has(k)) delete variantFiles[k];
+      });
+      Object.keys(existingVariantImages).forEach(k => {
+        if (!colorTempIds.has(k)) delete existingVariantImages[k];
+      });
     }
 
     setSaving(true);
@@ -581,13 +578,27 @@ const AdminProductCreate: React.FC = () => {
         form.images[0].isPrimary = true;
       }
 
+      // Compute total canonical inventory
+      let totalInventory = 0;
+      if (form.colors && form.colors.length > 0) {
+        totalInventory = (form.stock || []).reduce((sum: number, st: any) => sum + (Number(st.quantity) || 0), 0);
+      } else if (form.sizes && form.sizes.length > 0 && form.sizes.some((s: any) => s && s.quantity !== null && s.quantity !== undefined && !Number.isNaN(Number(s.quantity)))) {
+        totalInventory = (form.sizes || []).reduce((sum: number, s: any) => sum + (Number(s?.quantity) || 0), 0);
+      } else {
+        totalInventory = Number(form.inventory) || 0;
+      }
+
       // Prepare form data
       const fd = new FormData();
       
-      // Add all form fields except sizes (sizes handled separately with normalization)
+      // Add all form fields except sizes and inventory
       Object.entries(form).forEach(([k, v]) => {
         if (v === undefined || v === null) return;
         if (k === 'sizes') return; // handle below
+        if (k === 'inventory') {
+          fd.append('inventory', String(totalInventory));
+          return;
+        }
         if (k === 'attributes') {
           fd.append(k, JSON.stringify(v));
           return;

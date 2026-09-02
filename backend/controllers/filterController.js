@@ -525,7 +525,7 @@ export const getFacets = async (req, res) => {
           hex: { $first: { $ifNull: ['$allColors.hex', { $ifNull: ['$allColors.normalizedHex', '$allColors.value'] }] } },
           count: { $sum: 1 }
         } },
-        { $match: { _id: { $ne: null, $ne: '' } } },
+        { $match: { _id: { $nin: [null, ''] } } },
         { $sort: { count: -1 } },
         { $limit: 50 }
       ]),
@@ -565,7 +565,7 @@ export const getFacets = async (req, res) => {
         ] } } },
         { $unwind: '$allSizes' },
         { $group: { _id: '$allSizes', count: { $sum: 1 } } },
-        { $match: { _id: { $ne: null, $ne: '' } } },
+        { $match: { _id: { $nin: [null, ''] } } },
         { $sort: { _id: 1 } }
       ]),
 

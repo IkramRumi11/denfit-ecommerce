@@ -1,4 +1,5 @@
 import express from 'express';
+
 import { getFeatures } from '../controllers/featureController.js';
 import { optionalAuth } from '../middleware/auth.js';
 

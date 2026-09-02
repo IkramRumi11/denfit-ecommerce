@@ -104,7 +104,13 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
         ? (variantSnapshot.hex || variantSnapshot.name)
         : (color || undefined);
 
-      addItem({
+      const availableStock = getAvailableStockForItem(product, {
+        size,
+        color: colorNormalized,
+        variantId: variantSnapshot?.id
+      });
+
+      const res = addItem({
         productId: product.id,
         name: product.name,
         price: product.price,
@@ -117,8 +123,19 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
         variantHex: variantSnapshot?.hex,
         variantImage: variantSnapshot?.image,
         quantity: 1,
-      });
-      showToast(`${product.name} added to cart!`, 'success');
+        maxStock: availableStock
+      }, availableStock);
+
+      if (!res.success) {
+        if (res.reason === 'MAX_REACHED') {
+          showToast(`You already have all ${availableStock} available units in your cart`, 'warning');
+        } else {
+          showToast('Product is out of stock', 'error');
+        }
+        return;
+      }
+
+      showToast(`${product.name} added to the cart`, 'success');
       closeQuickAdd();
     } catch (error) {
       console.error('Error adding to cart:', error);

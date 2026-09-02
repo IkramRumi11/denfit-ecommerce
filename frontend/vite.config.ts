@@ -1,4 +1,4 @@
-﻿// frontend/vite.config.ts
+// frontend/vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -56,7 +56,6 @@ export default defineConfig({
       '@headlessui/react',
       'framer-motion',
       'lucide-react',
-      'axios',
     ],
     force: true, // Force re-optimization to prevent stale cache issues
   },

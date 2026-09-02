@@ -1,4 +1,5 @@
 import express from 'express';
+
 import { getProductTemplate } from '../controllers/filterController.js';
 
 const router = express.Router();

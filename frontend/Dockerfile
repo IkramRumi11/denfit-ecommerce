@@ -12,15 +12,6 @@ RUN npm ci
 
 COPY . .
 
-RUN echo "=== Sidebar ==="
-RUN cat src/layouts/AdminLayout/Sidebar.tsx | grep "components/ui"
-
-RUN echo "=== HeaderBar ==="
-RUN cat src/layouts/AdminLayout/HeaderBar.tsx | grep "components/ui"
-
-RUN echo "=== UI directory ==="
-RUN ls -l src/components/ui
-
 ARG VITE_API_URL=""
 ARG VITE_APP_NAME="DENFiT"
 

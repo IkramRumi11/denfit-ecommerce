@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import parseColor from '../../utils/color';
 import { getColorName, resolveColorHex } from '../../utils/colorNames';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCategorySections, getSectionItems } from '../../data/megaMenuData';
-import { api, filtersAPI } from '../../api';
+import { api } from '../../api';
 import { useToast } from '../../context/ToastContext';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ArrowLeft, Save, X, Image as ImageIcon, Trash2, Plus, Package } from 'lucide-react';
@@ -36,6 +35,7 @@ const AdminProductEdit: React.FC = () => {
     trending: false,
     images: [],
     sizes: [],
+    stock: [],
     colors: [],
     tags: [],
     relatedProducts: [],
@@ -67,11 +67,18 @@ const AdminProductEdit: React.FC = () => {
 
   const displayAvailableQuantity = (product: any) => {
     if (!product) return 0;
-    if (typeof product.availableQuantity === 'number') return product.availableQuantity;
-    if (typeof product.inventory === 'number') return product.inventory;
-    if (Array.isArray(product.sizes)) return product.sizes.reduce((a: number, b: any) => a + (Number(b?.quantity) || 0), 0);
-    if (Array.isArray(product.stock)) return product.stock.reduce((a: number, b: any) => a + (Number(b?.quantity) || 0), 0);
-    return 0;
+    if (Array.isArray(product.stock) && product.stock.length > 0) {
+      return product.stock.reduce((a: number, b: any) => a + (Number(b?.quantity) || 0), 0);
+    }
+    if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+      const anyNumeric = product.sizes.some((s: any) => s && s.quantity !== null && s.quantity !== undefined && !Number.isNaN(Number(s.quantity)));
+      if (anyNumeric) {
+        return product.sizes.reduce((a: number, b: any) => a + (Number(b?.quantity) || 0), 0);
+      }
+    }
+    if (typeof product.inventory === 'number' && !Number.isNaN(product.inventory)) return product.inventory;
+    if (typeof product.inventory === 'string' && product.inventory !== '' && !Number.isNaN(Number(product.inventory))) return Number(product.inventory);
+    return typeof product.availableQuantity === 'number' ? product.availableQuantity : 0;
   };
   
   // Dynamic categories and attributes driven by useCategoryConfigs hook
@@ -127,25 +134,6 @@ const AdminProductEdit: React.FC = () => {
           }
           return v;
         };
-
-        // Load filter config and attributes
-        let resolvedGroups: any[] = [];
-        let initAttrs: Record<string, string[]> = {};
-        try {
-          const configRes: any = await filtersAPI.getConfig(p.subcategory || '', p.category || p.gender || 'men');
-          const configObj = configRes?.data || configRes;
-          const groups = configObj?.filterGroups || configObj?.groups || [];
-          resolvedGroups = groups.map((fg: any) => typeof fg.filterGroup === 'object' ? fg.filterGroup : fg).filter((g: any) => g && g.name);
-          
-          const existing = p.attributes || {};
-          resolvedGroups.forEach((g: any) => {
-            initAttrs[g.slug] = existing[g.slug] || [];
-          });
-        } catch (e) {
-          console.error('Failed to pre-fetch filter config inside loadProduct:', e);
-        }
-        setDynamicFilterGroups(resolvedGroups);
-        setDynamicAttributes(initAttrs);
 
         // Normalize product-level images
         let images: any[] = [];
@@ -309,7 +297,7 @@ const AdminProductEdit: React.FC = () => {
               } catch(e) {}
               // comma separated fallback
               if (input.includes(',')) return input.split(',').map(s=>s.trim()).filter(Boolean);
-              return [input.replace(/^['`\"]+|['`\"]+$/g,'').trim()].filter(Boolean);
+              return [input.replace(/^['`"]+|['`"]+$/g,'').trim()].filter(Boolean);
             }
             return [String(input)];
           })(p.tags),
@@ -334,19 +322,6 @@ const AdminProductEdit: React.FC = () => {
           },
           attributes: p.attributes || {},
         });
-
-        // Set category group from subcategory
-        if (p.subcategory) {
-          const section = p.category || p.gender || 'men';
-          const groups = getCategorySections(section);
-          for (const group of groups) {
-            const items = getSectionItems(section, group);
-            if (items.includes(p.subcategory)) {
-              setCategoryGroup(group);
-              break;
-            }
-          }
-        }
 
         // Initialize related products input
         if (p.relatedProducts && Array.isArray(p.relatedProducts)) {
@@ -388,65 +363,6 @@ const AdminProductEdit: React.FC = () => {
     }
   }, []);
 
-  // Fetch dynamic filter groups when subcategory changes
-  useEffect(() => {
-    let mounted = true;
-    if (!form.subcategory) {
-      setDynamicFilterGroups([]);
-      setDynamicAttributes({});
-      return;
-    }
-    const fetchFilterGroups = async () => {
-      try {
-        const res: any = await filtersAPI.getConfig(form.subcategory, form.category);
-        const config = res?.data || res;
-        const groups = config?.filterGroups || config?.groups || [];
-        const resolved = groups.map((fg: any) => typeof fg.filterGroup === 'object' ? fg.filterGroup : fg).filter((g: any) => g && g.name);
-        if (mounted) {
-          setDynamicFilterGroups(resolved);
-          setDynamicAttributes((prev) => {
-            const init: Record<string, string[]> = {};
-            resolved.forEach((g: any) => {
-              init[g.slug] = prev[g.slug] || form.attributes?.[g.slug] || [];
-            });
-            return init;
-          });
-        }
-      } catch (e) {
-        console.error('Failed to load filter config:', e);
-        if (mounted) {
-          setDynamicFilterGroups([]);
-          setDynamicAttributes({});
-        }
-      }
-    };
-    fetchFilterGroups();
-    return () => { mounted = false; };
-  }, [form.subcategory, form.category]);
-
-  // Sync dynamic attributes back to form whenever they change
-  useEffect(() => {
-    const cleaned: Record<string, string[]> = {};
-    Object.entries(dynamicAttributes).forEach(([k, v]) => {
-      if (v && v.length > 0) cleaned[k] = v;
-    });
-    const currentSerialized = JSON.stringify(form.attributes || {});
-    const nextSerialized = JSON.stringify(cleaned);
-    if (currentSerialized !== nextSerialized) {
-      setForm((s: any) => ({ ...s, attributes: cleaned }));
-    }
-  }, [dynamicAttributes]);
-
-  // Toggle a single attribute value
-  const toggleAttribute = (groupSlug: string, value: string) => {
-    setDynamicAttributes((prev) => {
-      const current = prev[groupSlug] || [];
-      const next = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value];
-      return { ...prev, [groupSlug]: next };
-    });
-  };
 
   // Auto-fetch suggestions when category/subcategory/tags change and autoSuggestEnabled
   useEffect(() => {
@@ -674,8 +590,11 @@ const AdminProductEdit: React.FC = () => {
   const removeSize = (idx: number) => {
     setForm((s: any) => {
       const sizes = [...(s.sizes || [])];
+      const removedSize = sizes[idx];
+      const removedId = removedSize?.id || (typeof removedSize === 'string' ? `size_legacy_${idx}` : null);
       sizes.splice(idx, 1);
-      return { ...s, sizes };
+      const stock = (s.stock || []).filter((st: any) => String(st.sizeId) !== String(removedId));
+      return { ...s, sizes, stock };
     });
   };
 
@@ -704,10 +623,17 @@ const AdminProductEdit: React.FC = () => {
       // Auto-fill hex if name is entered
       if (field === 'name') {
         try {
-          const resolved = resolveColorHex(normalized);
-          if (resolved) {
+          if (normalized.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(normalized)) {
+            cur.name = getColorName(normalized);
+            const resolved = resolveColorHex(cur.name) || normalized;
             cur.value = resolved;
             cur.hex = resolved;
+          } else {
+            const resolved = resolveColorHex(normalized);
+            if (resolved) {
+              cur.value = resolved;
+              cur.hex = resolved;
+            }
           }
         } catch (e) {}
       }
@@ -720,10 +646,10 @@ const AdminProductEdit: React.FC = () => {
         } catch (e) {
           // ignore parse errors
         }
-        // Auto-fill friendly name if empty
-        if (!cur.name) {
+        // Auto-fill friendly name if empty or entered as a hex code
+        if (!cur.name || cur.name.startsWith('#')) {
           try {
-            const friendly = getColorName(cur.hex || cur.value);
+            const friendly = getColorName(cur.hex || cur.value || cur.name);
             if (friendly) cur.name = friendly;
           } catch (e) {}
         }
@@ -736,7 +662,7 @@ const AdminProductEdit: React.FC = () => {
   const removeColor = (idx: number) => {
     setForm((s: any) => {
       const colors = [...(s.colors || [])];
-      const tempId = colors[idx].tempId;
+      const tempId = colors[idx]?.tempId;
       colors.splice(idx, 1);
       
       // Clean up variant files
@@ -754,7 +680,8 @@ const AdminProductEdit: React.FC = () => {
         });
       }
       
-      return { ...s, colors };
+      const stock = (s.stock || []).filter((st: any) => String(st.colorTempId) !== String(tempId));
+      return { ...s, colors, stock };
     });
   };
 
@@ -795,7 +722,7 @@ const AdminProductEdit: React.FC = () => {
       } catch (e) {
         // ignore parse errors
       }
-      s = s.replace(/^['`\"]+|['`\"]+$/g, '').trim();
+      s = s.replace(/^['`"]+|['`"]+$/g, '').trim();
       return s || null;
     };
 
@@ -823,21 +750,15 @@ const AdminProductEdit: React.FC = () => {
       return;
     }
 
-    // Validate color variants
+    // Clean up variantFiles and existingVariantImages for removed colors
     if (form.colors && form.colors.length > 0) {
       const colorTempIds = new Set((form.colors || []).map((c: any) => c.tempId));
-      for (const k of Object.keys(variantFiles)) {
-        if (!colorTempIds.has(k)) {
-          showToast('Found images assigned to an unknown/removed color. Please reassign or remove those images.', 'error');
-          return;
-        }
-      }
-      for (const k of Object.keys(existingVariantImages)) {
-        if (!colorTempIds.has(k)) {
-          showToast('Found existing variant images assigned to an unknown/removed color. Please reassign or remove those images.', 'error');
-          return;
-        }
-      }
+      Object.keys(variantFiles).forEach(k => {
+        if (!colorTempIds.has(k)) delete variantFiles[k];
+      });
+      Object.keys(existingVariantImages).forEach(k => {
+        if (!colorTempIds.has(k)) delete existingVariantImages[k];
+      });
     }
 
     setSaving(true);
@@ -847,13 +768,27 @@ const AdminProductEdit: React.FC = () => {
         form.images[0].isPrimary = true;
       }
 
+      // Compute total canonical inventory
+      let totalInventory = 0;
+      if (form.colors && form.colors.length > 0) {
+        totalInventory = (form.stock || []).reduce((sum: number, st: any) => sum + (Number(st.quantity) || 0), 0);
+      } else if (form.sizes && form.sizes.length > 0 && form.sizes.some((s: any) => s && s.quantity !== null && s.quantity !== undefined && !Number.isNaN(Number(s.quantity)))) {
+        totalInventory = (form.sizes || []).reduce((sum: number, s: any) => sum + (Number(s?.quantity) || 0), 0);
+      } else {
+        totalInventory = Number(form.inventory) || 0;
+      }
+
       // Prepare form data (same as Create form)
       const fd = new FormData();
       
-      // Add all form fields except sizes
+      // Add all form fields except sizes and inventory
       Object.entries(form).forEach(([k, v]) => {
         if (v === undefined || v === null) return;
         if (k === 'sizes') return;
+        if (k === 'inventory') {
+          fd.append('inventory', String(totalInventory));
+          return;
+        }
         if (k === 'attributes') {
           fd.append(k, JSON.stringify(v));
           return;
@@ -914,8 +849,6 @@ const AdminProductEdit: React.FC = () => {
         };
       }).filter(Boolean);
       fd.append('sizes', JSON.stringify(sizesPayload));
-
-      // stock is part of `form` and will be appended by the generic loop
 
       // Include related products
       if (form.relatedProducts && form.relatedProducts.length > 0) {

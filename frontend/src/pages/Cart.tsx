@@ -7,6 +7,7 @@ import { useCart } from '../context/CartContext';
 import { TAX_FEATURE } from '../config/taxFeatureFlag';
 import { useToast } from '../context/ToastContext';
 import { getColorName } from '../utils/colorNames';
+import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { productsAPI } from '../api';
 
 export const Cart: React.FC = () => {
@@ -17,17 +18,19 @@ export const Cart: React.FC = () => {
 
   useEffect(() => {
     const fetchStocks = async () => {
-      const uniqueProductIds = Array.from(new Set(items.map(it => it.productId)));
+      const uniqueProductIds = Array.from(new Set(items.map(it => it.productId).filter(Boolean)));
       if (!uniqueProductIds.length) return;
       try {
         const results = await Promise.all(
-          uniqueProductIds.map(id => productsAPI.getById(id))
+          uniqueProductIds.map(id => productsAPI.getById(id).catch(() => null))
         );
         const stocks: Record<string, any> = {};
-        results.forEach(res => {
-          const prod = res && (res.product || (res as any).data?.product || res);
+        results.forEach((res: any) => {
+          const prod = res && (res.product || res.data?.product || res);
           if (prod) {
             stocks[String(prod._id || prod.id)] = prod;
+            if (prod._id) stocks[String(prod._id)] = prod;
+            if (prod.id) stocks[String(prod.id)] = prod;
           }
         });
         setProductStocks(stocks);
@@ -36,56 +39,36 @@ export const Cart: React.FC = () => {
       }
     };
     fetchStocks();
-  }, [items.length]);
+  }, [items.map(it => it.productId).sort().join(',')]);
 
   const getCartItemStock = (item: any): number => {
-    const prod = productStocks[item.productId];
+    const prod = productStocks[String(item.productId)] || productStocks[String(item.id)];
     if (!prod) return 999; // Fallback during load
 
-    if (Array.isArray(prod.stock) && prod.stock.length) {
-      const match = prod.stock.find((s: any) => {
-        if (!s) return false;
-        const matchesColor = item.variantId
-          ? String(s.colorTempId) === String(item.variantId)
-          : (item.color ? String(s.colorTempId).toLowerCase().trim() === String(item.color).toLowerCase().trim() : true);
-        
-        let displaySize = s.sizeId;
-        if (Array.isArray(prod.sizes) && prod.sizes.length) {
-          const found = prod.sizes.find((sz: any) => sz.id === s.sizeId || sz.value === s.sizeId);
-          if (found) displaySize = found.value || found.id;
-        }
-        const matchesSize = String(displaySize).toLowerCase().trim() === String(item.size).toLowerCase().trim();
-        return matchesColor && matchesSize;
-      });
-      if (match && typeof match.quantity === 'number') return match.quantity;
-      return 0;
-    }
-
-    if (item.variantId && Array.isArray(prod.variants)) {
-      const matchedVar = prod.variants.find((v: any) => String(v._id || v.id) === String(item.variantId));
-      if (matchedVar && typeof matchedVar.inventory === 'number') return matchedVar.inventory;
-    }
-
-    if (typeof prod.inventory === 'number') return prod.inventory;
-
-    return 0;
+    return getAvailableStockForItem(prod, {
+      size: item.size,
+      color: item.color,
+      colorName: item.colorName,
+      variantId: item.variantId,
+      variantName: item.variantName,
+      variantHex: item.variantHex
+    });
   };
 
-  const handleQuantityChange = (productId: string, size: string, newQuantity: number, color?: string) => {
-    const item = items.find(it => it.productId === productId && it.size === size && it.color === color);
-    if (!item) return;
-
+  const handleQuantityChange = (item: any, newQuantity: number) => {
     if (newQuantity < 1) {
-      removeItem(productId, size, color);
+      removeItem(item.productId, item.size, item.color);
       showToast('Item removed from cart', 'info');
-    } else {
-      const availableStock = getCartItemStock(item);
-      if (newQuantity > availableStock) {
-        showToast(`Only ${availableStock} items are available for this variant. Please reduce the quantity.`, 'error');
-        return;
-      }
-      updateQuantity(productId, size, newQuantity, color);
+      return;
     }
+
+    const availableStock = getCartItemStock(item);
+    if (availableStock !== 999 && newQuantity > availableStock) {
+      showToast(`Only ${availableStock} available for this option.`, 'error');
+      return;
+    }
+
+    updateQuantity(item.productId, item.size, newQuantity, item.color);
   };
 
   const handleRemoveItem = (productId: string, size: string, color?: string) => {
@@ -96,6 +79,25 @@ export const Cart: React.FC = () => {
   const handleClearCart = () => {
     clearCart();
     showToast('Cart cleared', 'info');
+  };
+
+  const overStockItems = items.filter(it => {
+    const stock = getCartItemStock(it);
+    return stock !== 999 && it.quantity > stock;
+  });
+
+  const handleFixAllOverStock = () => {
+    items.forEach(it => {
+      const stock = getCartItemStock(it);
+      if (stock !== 999 && it.quantity > stock) {
+        if (stock <= 0) {
+          removeItem(it.productId, it.size, it.color);
+        } else {
+          updateQuantity(it.productId, it.size, stock, it.color, stock);
+        }
+      }
+    });
+    showToast('Cart quantities synchronized with available inventory', 'success');
   };
 
   if (items.length === 0) {
@@ -132,83 +134,145 @@ export const Cart: React.FC = () => {
           </button>
         </div>
 
+        {overStockItems.length > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">Inventory Notice</h3>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Some items in your cart exceed currently available inventory.
+              </p>
+            </div>
+            <button
+              onClick={handleFixAllOverStock}
+              className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-semibold transition-colors flex-shrink-0"
+            >
+              Update to Available Stock
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-sm">
-              {items.map((item, index) => (
-                <motion.div
-                  key={`${item.productId}-${item.size}-${item.colorName || item.color || ''}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center gap-4 p-6 border-b border-gray-100 last:border-b-0"
-                >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                  />
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                      {item.name}
-                    </h3>
-                    <div className="text-gray-600 text-sm mb-1">
-                      <div>Size: <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
-                      {(() => {
-                        const variantLabel = item.variantName || item.colorName || '';
-                        const colorValue = item.variantHex || item.color || '';
-                        const label = variantLabel || colorValue;
-                        if (!label) return null;
-                        const friendlyName = getColorName(label);
-                        return (
-                          <div className="mt-1 flex items-center gap-2">
-                            {colorValue ? (
-                              <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
-                            ) : null}
-                            <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    <p className="text-lg font-bold text-blue-600">
-                      Rs {item.price.toLocaleString()}
-                    </p>
-                  </div>
+              {items.map((item, index) => {
+                const availableStock = getCartItemStock(item);
+                const isMaxReached = availableStock !== 999 && item.quantity >= availableStock;
+                const isOverStock = availableStock !== 999 && item.quantity > availableStock;
+                const isItemOutOfStock = availableStock !== 999 && availableStock <= 0;
 
-                  <div className="flex items-center gap-3">
-                    {/* Quantity Controls */}
-                    <div className="flex items-center border border-gray-300 rounded-lg">
-                      <button
-                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity - 1, item.color)}
-                        className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
-                        disabled={item.quantity <= 1}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="px-4 py-2 min-w-12 text-center font-medium">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => handleQuantityChange(item.productId, item.size, item.quantity + 1, item.color)}
-                        className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
+                return (
+                  <motion.div
+                    key={`${item.productId}-${item.size}-${item.colorName || item.color || ''}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center gap-4 p-6 border-b border-gray-100 last:border-b-0"
+                  >
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                    />
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-lg mb-1">
+                        {item.name}
+                      </h3>
+                      <div className="text-gray-600 text-sm mb-1">
+                        <div>Size: <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
+                        {(() => {
+                          const variantLabel = item.variantName || item.colorName || '';
+                          const colorValue = item.variantHex || item.color || '';
+                          const label = variantLabel || colorValue;
+                          if (!label) return null;
+                          const friendlyName = getColorName(label);
+                          return (
+                            <div className="mt-1 flex items-center gap-2">
+                              {colorValue ? (
+                                <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
+                              ) : null}
+                              <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {isItemOutOfStock ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                            Out of stock
+                          </span>
+                          <button
+                            onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
+                            className="text-xs text-red-600 underline font-medium hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : isOverStock ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                            Only {availableStock} available
+                          </span>
+                          <button
+                            onClick={() => handleQuantityChange(item, availableStock)}
+                            className="text-xs text-blue-600 underline font-semibold hover:text-blue-800"
+                          >
+                            Adjust to {availableStock}
+                          </button>
+                        </div>
+                      ) : null}
+
+                      <p className="text-lg font-bold text-blue-600 mt-1">
+                        Rs {item.price.toLocaleString()}
+                      </p>
                     </div>
 
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Remove item"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        {/* Quantity Controls */}
+                        <div className="flex items-center border border-gray-300 rounded-lg">
+                          <button
+                            onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+                            disabled={item.quantity <= 1}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="px-4 py-2 min-w-12 text-center font-medium">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            disabled={isMaxReached}
+                            title={isMaxReached ? `Only ${availableStock} available` : 'Increase quantity'}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {/* Remove Button */}
+                        <button
+                          onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove item"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Small stock warning tag when reaching maximum available quantity */}
+                      {!isOverStock && isMaxReached && (
+                        <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
+                          Only {availableStock} available
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 
@@ -242,12 +306,21 @@ export const Cart: React.FC = () => {
                 </div>
               </div>
 
-              <Link
-                to="/checkout"
-                className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors text-center block"
-              >
-                Proceed to Checkout
-              </Link>
+              {overStockItems.length > 0 ? (
+                <button
+                  onClick={handleFixAllOverStock}
+                  className="w-full bg-amber-700 text-white py-3 rounded-lg font-medium hover:bg-amber-800 transition-colors text-center block"
+                >
+                  Adjust to Available & Proceed
+                </button>
+              ) : (
+                <Link
+                  to="/checkout"
+                  className="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors text-center block"
+                >
+                  Proceed to Checkout
+                </Link>
+              )}
 
               <Link
                 to="/shop"

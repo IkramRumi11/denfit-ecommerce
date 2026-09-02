@@ -1,4 +1,5 @@
 import express from 'express';
+
 import { optionalAuth } from '../middleware/auth.js';
 import { checkHealth } from '../controllers/debugController.js';
 import EmailService from '../services/emailService.js';

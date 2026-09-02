@@ -1,9 +1,10 @@
 import express from 'express';
+import mongoose from 'mongoose';
+
 import { protect, authorize } from '../middleware/auth.js';
 import Order from '../models/Order.js';
 import StockReservation from '../models/StockReservation.js';
 import stockService from '../services/stockService.js';
-import mongoose from 'mongoose';
 
 const router = express.Router();
 

@@ -188,7 +188,7 @@ const AdminOrders: React.FC = () => {
         {loading ? (
           <div className="p-6 flex justify-center items-center"><LoadingSpinner size="xl" /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" data-testid="orders-list">
             <table className="w-full text-left min-w-[1000px] border-collapse">
               <thead className="bg-gray-100 text-xs uppercase text-gray-700">
                 <tr>
@@ -202,7 +202,7 @@ const AdminOrders: React.FC = () => {
               </thead>
               <tbody>
                 {orders.map(o => (
-                  <tr key={o._id} className="border-t hover:bg-slate-50/50 transition-colors">
+                  <tr key={o._id} data-testid="order-row" className="border-t hover:bg-slate-50/50 transition-colors">
                     <td className="p-3 align-top">
                       <div className="font-bold text-gray-900">{o.orderNumber || o._id}</div>
                       <div className="text-xs text-gray-400 mt-1">

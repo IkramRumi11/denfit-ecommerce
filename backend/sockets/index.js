@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
+
 import notificationService from '../services/notification.service.js';
 
 let io;

@@ -1,8 +1,9 @@
+import { createClient } from 'redis';
+
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import { addNotificationJob } from '../queues/notificationQueue.js';
 import { redisUrl } from '../config/redis.js';
-import { createClient } from 'redis';
 
 let redisClient;
 const tryInitRedis = async () => {

@@ -301,7 +301,7 @@ const startServer = async () => {
           // initialize sockets now that server exists
           try { initSockets(server); } catch (e) { console.warn('Failed to init sockets', e?.message || e); }
           // start background job worker
-          try { notificationJob; } catch (e) { console.warn('Failed to start notification job', e?.message || e); }
+          try { console.log('Notification background job worker initialized:', !!notificationJob); } catch (e) { console.warn('Failed to start notification job', e?.message || e); }
           // Start reservation sweeper (if configured and replica-set available)
           try { startReservationSweeper().catch(e => console.warn('Failed to start reservation sweeper', e?.message || e)); } catch (e) { console.warn('Failed to init reservation sweeper', e?.message || e); }
         });

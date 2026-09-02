@@ -51,12 +51,18 @@ yarn-error.log*
 *-run.log
 
 # ===========================================
-# Build output
+# Build & Test output
 # ===========================================
 dist/
 build/
 /.parcel-cache/
 /.vite/
+test-results/
+playwright-report/
+e2e-tests/test-report/
+e2e-tests/test-results.json
+blob-report/
+coverage/
 
 # ===========================================
 # Temp / debug scripts & server output

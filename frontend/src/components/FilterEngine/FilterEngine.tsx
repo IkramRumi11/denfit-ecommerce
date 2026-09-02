@@ -14,7 +14,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X, ChevronDown, ChevronUp, Search, Star, Check } from 'lucide-react';
 import { filtersAPI, productsAPI } from '../../api';
-import { getColorName, normalizeHex } from '../../utils/colorNames';
+import { getColorName, normalizeHex, resolveColorHex } from '../../utils/colorNames';
 import { Slider } from '../ui/Slider';
 
 // ─── Types ───
@@ -63,6 +63,10 @@ interface FilterEngineProps {
   pageSize?: number;
   /** Hide the filter sidebar and only use URL-driven state (useful for minimal pages) */
   headless?: boolean;
+  /** When true or embedded in a modal/drawer, renders directly full width without sticky sidebar wrapper */
+  inline?: boolean;
+  /** Controls whether internal "Filters" header is rendered (default true) */
+  showHeader?: boolean;
 }
 
 // Known filter slugs that map to top-level product query params
@@ -172,6 +176,8 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
   fixedParams,
   pageSize = 24,
   headless = false,
+  inline = false,
+  showHeader = true,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -228,6 +234,61 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
           groups = Array.isArray(configRes.data) ? configRes.data : [];
         }
 
+        const existingSlugs = new Set(groups.map(g => g.slug));
+
+        // Inject essential facets if available from products and not already present in groups
+        if (!existingSlugs.has('category') && Array.isArray(facetsData.facets?.category) && facetsData.facets.category.length > 0) {
+          groups.push({
+            _id: 'builtin-category',
+            name: 'Category',
+            slug: 'category',
+            type: 'multi-select',
+            displayOrder: 0,
+            isGlobal: true,
+            options: []
+          });
+          existingSlugs.add('category');
+        }
+
+        if (!existingSlugs.has('subcategory') && Array.isArray(facetsData.facets?.subcategory) && facetsData.facets.subcategory.length > 0) {
+          groups.push({
+            _id: 'builtin-subcategory',
+            name: 'Sub-Category',
+            slug: 'subcategory',
+            type: 'multi-select',
+            displayOrder: 0.5,
+            isGlobal: true,
+            options: []
+          });
+          existingSlugs.add('subcategory');
+        }
+
+        if (!existingSlugs.has('color') && Array.isArray(facetsData.facets?.color) && facetsData.facets.color.length > 0) {
+          groups.push({
+            _id: 'builtin-color',
+            name: 'Color',
+            slug: 'color',
+            type: 'color-swatch',
+            displayOrder: 1,
+            isGlobal: true,
+            options: []
+          });
+          existingSlugs.add('color');
+        }
+
+        if (!existingSlugs.has('size') && Array.isArray(facetsData.facets?.size) && facetsData.facets.size.length > 0) {
+          groups.push({
+            _id: 'builtin-size',
+            name: 'Size',
+            slug: 'size',
+            type: 'multi-select',
+            displayOrder: 2,
+            isGlobal: true,
+            options: []
+          });
+          existingSlugs.add('size');
+        }
+
         // Ensure price group exists (always shown)
         const hasPriceGroup = groups.some(g => g.slug === 'price');
         if (!hasPriceGroup) {
@@ -240,7 +301,44 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
             isGlobal: true,
             options: []
           });
+          existingSlugs.add('price');
         }
+
+        if (!existingSlugs.has('brand') && Array.isArray(facetsData.facets?.brand) && facetsData.facets.brand.length > 0) {
+          groups.push({
+            _id: 'builtin-brand',
+            name: 'Brand',
+            slug: 'brand',
+            type: 'multi-select',
+            displayOrder: 4,
+            isGlobal: true,
+            options: []
+          });
+          existingSlugs.add('brand');
+        }
+
+        // Dynamic attribute facets from backend products (e.g. style, material, fit, etc.)
+        if (facetsData.facets) {
+          for (const [fKey, fVals] of Object.entries(facetsData.facets)) {
+            if (['color', 'size', 'brand', 'price', 'rating', 'availability', 'discount', 'category', 'subcategory'].includes(fKey)) continue;
+            if (!existingSlugs.has(fKey) && Array.isArray(fVals) && (fVals as any[]).length > 0) {
+              const friendlyName = fKey.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              groups.push({
+                _id: `builtin-${fKey}`,
+                name: friendlyName,
+                slug: fKey,
+                type: 'multi-select',
+                displayOrder: 5,
+                isGlobal: true,
+                options: []
+              });
+              existingSlugs.add(fKey);
+            }
+          }
+        }
+
+        // Sort groups by displayOrder
+        groups.sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
 
         setFilterGroups(groups);
 
@@ -420,9 +518,12 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
           f.value?.toLowerCase() === opt.value?.toLowerCase() ||
           f.value?.toLowerCase() === opt.slug?.toLowerCase()
         );
+        const label = group.type === 'color-swatch' || group.slug === 'colors' || group.slug === 'color'
+          ? getColorName(opt.label || opt.value)
+          : (opt.label || opt.value);
         return {
           value: opt.slug || opt.value,
-          label: opt.label || opt.value,
+          label,
           slug: opt.slug,
           count: facet?.count || 0,
           meta: opt.meta
@@ -430,13 +531,18 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
       });
     } else if (facetData.length) {
       // No predefined options — use facet data directly
-      displayOptions = facetData.map(f => ({
-        value: f.value,
-        label: f.value,
-        slug: f.value,
-        count: f.count,
-        meta: f.hex ? { hex: f.hex } : undefined
-      }));
+      displayOptions = facetData.map(f => {
+        const label = group.type === 'color-swatch' || group.slug === 'colors' || group.slug === 'color'
+          ? getColorName(f.value)
+          : f.value;
+        return {
+          value: f.value,
+          label,
+          slug: f.value,
+          count: f.count,
+          meta: f.hex ? { hex: f.hex } : undefined
+        };
+      });
     }
 
     // Filter by search within section
@@ -485,7 +591,12 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
           <Slider
             value={[currentMax]}
             onValueChange={([val]) => {
-              setFilter('maxPrice', [String(val)]);
+              setSearchParams(prev => {
+                const next = new URLSearchParams(prev);
+                next.set('maxPrice', String(val));
+                next.delete('page');
+                return next;
+              }, { replace: true });
             }}
             min={priceRange.min}
             max={priceRange.max}
@@ -528,33 +639,44 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
   // ─── Color Filter ───
   const renderColorFilter = (slug: string, options: typeof displayOptions, activeValues: string[]) => {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pt-1 pb-2">
         {options.map(opt => {
           const isActive = activeValues.includes(opt.value);
-          const hex = opt.meta?.hex || normalizeHex(opt.value);
-          const displayHex = hex ? (hex.startsWith('#') ? hex : `#${hex}`) : '#ccc';
-          const isLight = hex && ['fff', 'ffffff', 'ffff', 'fafafa'].some(l => hex.toLowerCase().replace('#', '').startsWith(l));
+          const colorName = getColorName(opt.label || opt.value);
+          
+          // Resolve hex code from meta, or resolve from value/label/name
+          const resolvedHex = opt.meta?.hex 
+            || resolveColorHex(opt.value) 
+            || resolveColorHex(opt.label) 
+            || resolveColorHex(colorName) 
+            || (normalizeHex(opt.value) ? `#${normalizeHex(opt.value)}` : undefined);
+            
+          const displayHex = resolvedHex || '#e5e7eb';
+          const isLight = ['#ffffff', '#fff', '#fafafa', '#f8f9fa', '#fff9f2', '#f5f5dc', '#fffdd0', '#ffff00', '#fdfd96', '#e5e5e5'].some(l => displayHex.toLowerCase().startsWith(l));
 
           return (
             <button
               key={opt.value}
+              type="button"
               onClick={() => toggleFilterValue(slug, opt.value)}
-              className={`group relative flex flex-col items-center gap-1 transition-all`}
-              title={`${opt.label}${opt.count ? ` (${opt.count})` : ''}`}
+              className={`group relative flex flex-col items-center gap-1 transition-all focus:outline-none`}
+              title={`${colorName}${opt.count ? ` (${opt.count})` : ''}`}
             >
               <div
-                className={`w-8 h-8 rounded-full border-2 transition-all flex items-center justify-center ${
+                className={`w-7 h-7 rounded-full border transition-all flex items-center justify-center shadow-sm ${
                   isActive
-                    ? 'border-gray-900 scale-110 shadow-md'
-                    : `${isLight ? 'border-gray-300' : 'border-transparent'} hover:scale-105`
+                    ? 'ring-2 ring-gray-900 ring-offset-2 scale-110'
+                    : 'border-gray-200 hover:scale-110 hover:border-gray-400'
                 }`}
-                style={{ backgroundColor: displayHex.startsWith('linear') ? undefined : displayHex, background: displayHex.startsWith('linear') ? displayHex : undefined }}
+                style={{ backgroundColor: displayHex }}
               >
                 {isActive && (
-                  <Check size={14} className={isLight ? 'text-gray-800' : 'text-white'} strokeWidth={3} />
+                  <Check size={13} className={isLight ? 'text-gray-900' : 'text-white'} strokeWidth={3} />
                 )}
               </div>
-              <span className="text-[10px] text-gray-500 max-w-[48px] truncate">{opt.label}</span>
+              <span className="text-[10px] font-medium text-gray-600 max-w-[52px] truncate text-center">
+                {colorName}
+              </span>
             </button>
           );
         })}
@@ -655,6 +777,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
             break;
           }
         }
+        if (key === 'color' || key === 'colors') label = getColorName(label || val);
         if (key === 'minPrice') label = `Min: Rs ${Number(val).toLocaleString()}`;
         if (key === 'maxPrice') label = `Max: Rs ${Number(val).toLocaleString()}`;
         if (key === 'rating') label = `${val}★ & Up`;
@@ -663,47 +786,45 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
       }
     }
 
+    if (!chips.length) return null;
+
     return (
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-1.5 py-3 border-b border-gray-100 mb-2">
         {chips.map((chip, i) => (
           <span
             key={`${chip.key}-${chip.value}-${i}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-full border border-gray-200"
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs rounded-full border border-gray-200 transition-colors"
           >
-            <span className="text-gray-400 font-medium capitalize">{chip.key.replace(/-/g, ' ')}:</span>
-            <span className="font-medium">{chip.label}</span>
+            <span className="text-gray-500 capitalize">{chip.key.replace(/-/g, ' ')}:</span>
+            <span className="font-semibold text-gray-900">{chip.label}</span>
             <button
+              type="button"
               onClick={() => {
                 const remaining = (activeFilters[chip.key] || []).filter(v => v !== chip.value);
                 setFilter(chip.key, remaining);
               }}
               className="ml-0.5 text-gray-400 hover:text-gray-700 transition-colors"
+              aria-label={`Remove ${chip.label}`}
             >
               <X size={12} />
             </button>
           </span>
         ))}
-        <button
-          onClick={clearAllFilters}
-          className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1.5 transition-colors"
-        >
-          Clear All
-        </button>
       </div>
     );
   };
 
-  // ─── Desktop Sidebar ───
-  const renderSidebar = () => {
+  // ─── Filter Sidebar / Section List ───
+  const renderSidebar = (withHeader = true) => {
     if (facetsLoading) {
       return (
-        <div className="space-y-6 animate-pulse">
+        <div className="space-y-6 animate-pulse w-full">
           {[1, 2, 3, 4].map(i => (
-            <div key={i}>
-              <div className="h-4 bg-gray-200 rounded w-24 mb-3" />
+            <div key={i} className="w-full">
+              <div className="h-4 bg-gray-200 rounded w-28 mb-3" />
               <div className="space-y-2">
                 {[1, 2, 3].map(j => (
-                  <div key={j} className="h-8 bg-gray-100 rounded" />
+                  <div key={j} className="h-8 bg-gray-100 rounded w-full" />
                 ))}
               </div>
             </div>
@@ -713,32 +834,54 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     }
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-1 w-full">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <SlidersHorizontal size={16} />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-gray-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
+        {withHeader ? (
+          <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <SlidersHorizontal size={16} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="bg-gray-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </h2>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
+              >
+                Clear All
+              </button>
             )}
-          </h2>
-          {hasActiveFilters && (
-            <button
-              onClick={clearAllFilters}
-              className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
-            >
-              Clear All
-            </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          hasActiveFilters && (
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-2">
+              <span className="text-xs text-gray-500 font-medium">
+                {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} applied
+              </span>
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          )
+        )}
+
+        {/* Active Filter Chips */}
+        {renderActiveFilters()}
 
         {/* Filter Sections */}
         {filterGroups.map(group => (
-          <div key={group.slug} className="border-b border-gray-50 last:border-0">
+          <div key={group.slug} className="border-b border-gray-100 last:border-0 w-full">
             <button
+              type="button"
               onClick={() => toggleSection(group.slug)}
               className="flex items-center justify-between w-full py-3.5 text-sm font-medium text-gray-800 hover:text-gray-900 transition-colors"
             >
@@ -753,7 +896,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
               {expandedSections.has(group.slug) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
             {expandedSections.has(group.slug) && (
-              <div className="pb-3">
+              <div className="pb-3 w-full">
                 {renderFilterSection(group)}
               </div>
             )}
@@ -786,24 +929,30 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
             <div className="flex items-center gap-3">
               {hasActiveFilters && (
                 <button
+                  type="button"
                   onClick={clearAllFilters}
                   className="text-sm text-red-500 hover:text-red-600 font-medium"
                 >
                   Clear All
                 </button>
               )}
-              <button onClick={() => setMobileOpen(false)} className="p-1 text-gray-500 hover:text-gray-700">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="p-1 text-gray-500 hover:text-gray-700"
+              >
                 <X size={20} />
               </button>
             </div>
           </div>
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {renderSidebar()}
+            {renderSidebar(false)}
           </div>
           {/* Apply button */}
           <div className="px-5 py-4 border-t border-gray-100 bg-white">
             <button
+              type="button"
               onClick={() => setMobileOpen(false)}
               className="w-full bg-gray-900 text-white py-3 rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors"
             >
@@ -818,6 +967,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
   // ─── Mobile filter trigger button (rendered externally) ───
   const renderMobileTrigger = () => (
     <button
+      type="button"
       onClick={() => setMobileOpen(true)}
       className="lg:hidden flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-gray-400 transition-all shadow-sm"
     >
@@ -833,20 +983,22 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
 
   if (headless) return null;
 
+  if (inline) {
+    return (
+      <div className="w-full">
+        {renderSidebar(showHeader)}
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Active Filter Chips — rendered above the product grid */}
-      {renderActiveFilters()}
-
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-[260px] flex-shrink-0">
+      <aside className="hidden lg:block w-full max-w-[280px] flex-shrink-0">
         <div className="sticky top-6 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm max-h-[calc(100vh-3rem)] overflow-y-auto">
-          {renderSidebar()}
+          {renderSidebar(true)}
         </div>
       </aside>
-
-      {/* Mobile Trigger */}
-      {renderMobileTrigger()}
 
       {/* Mobile Drawer */}
       {renderMobileDrawer()}

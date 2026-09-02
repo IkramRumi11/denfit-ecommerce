@@ -3,6 +3,7 @@
 // Persists cart items in the User document so carts survive across devices.
 // Guest carts remain in localStorage (handled by the frontend CartContext).
 import express from 'express';
+
 import { protect } from '../middleware/auth.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';

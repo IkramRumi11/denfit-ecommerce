@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import { spawn } from 'child_process';
 import path from 'path';
 
+const TEST_PORT = process.env.TEST_HEALTH_PORT || '3008';
+
 // Enhanced health test: spawn server if not already running
-async function startLocalServer() {
+async function startLocalServer(port = TEST_PORT) {
   const serverCwd = path.resolve('./');
-  const server = spawn(process.execPath, ['server.js'], { cwd: serverCwd, env: process.env });
-  server.stdout.on('data', (d) => process.stdout.write(`[server] ${d}`));
-  server.stderr.on('data', (d) => process.stderr.write(`[server] ${d}`));
+  const env = { ...process.env, PORT: String(port) };
+  const server = spawn(process.execPath, ['server.js'], { cwd: serverCwd, env });
+  server.stdout.on('data', (d) => process.stdout.write(`[server-health] ${d}`));
+  server.stderr.on('data', (d) => process.stderr.write(`[server-health] ${d}`));
 
   try {
     await new Promise((resolve, reject) => {
@@ -18,7 +21,7 @@ async function startLocalServer() {
       }, 45000);
       server.stdout.on('data', (d) => {
         const s = String(d);
-        if (s.includes('HTTP: http://localhost:3002') || s.includes('✅ HTTP')) {
+        if (s.includes(`localhost:${port}`) || s.includes('✅ HTTP')) {
           clearTimeout(timeout);
           resolve(true);
         }
@@ -39,8 +42,9 @@ async function startLocalServer() {
 
 test('GET /api/v1/health returns success', async (t) => {
   let serverProcess;
+  const baseUrl = `http://localhost:${TEST_PORT}`;
   try {
-    // Try fetch first in case server is externally running
+    // Try fetch first in case server is externally running on 3002
     try {
       const res = await fetch('http://localhost:3002/api/v1/health');
       if (res.ok) {
@@ -49,11 +53,11 @@ test('GET /api/v1/health returns success', async (t) => {
         return;
       }
     } catch (e) {
-      // Not running; start local server
+      // Not running; start local server on test port
     }
 
-    serverProcess = await startLocalServer();
-    const res2 = await fetch('http://localhost:3002/api/v1/health');
+    serverProcess = await startLocalServer(TEST_PORT);
+    const res2 = await fetch(`${baseUrl}/api/v1/health`);
     assert.equal(res2.status, 200);
     const body2 = await res2.json();
     assert.equal(body2.success, true);

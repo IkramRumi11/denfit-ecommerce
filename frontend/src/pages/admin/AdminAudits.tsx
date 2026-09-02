@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { API_BASE_URL } from '../../api';
 import {
   Shield,
   Search,
@@ -60,7 +61,7 @@ const AdminAudits: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/v1/admin/audits?page=${p}&limit=20&search=${encodeURIComponent(search)}`,
+        `${API_BASE_URL}/admin/audits?page=${p}&limit=20&search=${encodeURIComponent(search)}`,
         { credentials: 'include' }
       );
       const data = await res.json();
@@ -379,7 +380,7 @@ const AdminAudits: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        <div data-testid="audit-logs" className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           {loading ? (
             <div className="p-12 flex flex-col items-center justify-center">
               <LoadingSpinner size="xl" />
@@ -396,14 +397,14 @@ const AdminAudits: React.FC = () => {
           ) : (
             <>
               {/* Table Header */}
-              <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-4">
+              <div data-testid="audit-header" className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-6 py-4">
                 <div className="grid grid-cols-12 gap-4 text-white font-semibold text-sm">
-                  <div className="col-span-2">Time</div>
-                  <div className="col-span-2">Actor</div>
-                  <div className="col-span-2">Type</div>
-                  <div className="col-span-4">Message</div>
-                  <div className="col-span-1">Severity</div>
-                  <div className="col-span-1 text-right">Actions</div>
+                  <div className="col-span-2" data-testid="col-time">Time</div>
+                  <div className="col-span-2" data-testid="col-actor">Actor</div>
+                  <div className="col-span-2" data-testid="col-type">Type</div>
+                  <div className="col-span-4" data-testid="col-message">Message</div>
+                  <div className="col-span-1" data-testid="col-severity">Severity</div>
+                  <div className="col-span-1 text-right" data-testid="col-actions">Actions</div>
                 </div>
               </div>
 

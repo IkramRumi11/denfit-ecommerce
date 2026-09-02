@@ -1,0 +1,68 @@
+# docker-compose.prod.yml
+# Production configuration for DENFiT E-Commerce
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  mongo:
+    ports: [] # Do not expose database port to public host in production
+    restart: always
+
+  redis:
+    ports: [] # Internal network only
+    restart: always
+
+  backend:
+    volumes: [] # Do not mount host development files into production container
+    command: npm start
+    environment:
+      NODE_ENV: production
+      ALLOW_DEV_BACKDOORS: "false"
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  email-worker:
+    volumes: [] # No host source mount in production
+    command: npm run worker
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  notification-worker:
+    volumes: [] # No host source mount in production
+    command: npm run worker:notifications
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/denfit-ecommerce?replicaSet=rs0
+      REDIS_URL: redis://redis:6379
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  frontend:
+    ports:
+      - "80:80"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M

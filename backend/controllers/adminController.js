@@ -17,6 +17,7 @@ import SystemSetting from '../models/SystemSetting.js';
 import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from '../utils/inventory.js';
 import { normalizeAttributesInput } from '../utils/attributes.js';
 import { normalizeProductInput, mapFilesToVariants, safeParse } from '../utils/adminProductHelper.js';
+import { getColorName } from '../utils/colorHelper.js';
 
   // Recalculate and persist monetary totals on an Order document.
   // Honors server-side TAX_FEATURE_ENABLED (env). If disabled, preserve legacy fields
@@ -804,7 +805,10 @@ export const listRecommendationMappings = async (req, res) => {
   try {
     const { category = '', subcategory = '' } = req.query;
     const q = {};
-    if (category && subcategory) q['from.category'] = category, q['from.subcategory'] = subcategory;
+    if (category && subcategory) {
+      q['from.category'] = category;
+      q['from.subcategory'] = subcategory;
+    }
     const items = await RecommendationMapping.find(q).lean();
     res.status(200).json({ success: true, data: { mappings: items } });
   } catch (err) {
@@ -932,14 +936,22 @@ export const createProduct = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const dedup = mapFilesToVariants(files, parsedVariants, baseUrl);
 
-    // Basic validation: ensure each variant has at least one image
-    const missingImages = dedup.filter(v => !(v.images && v.images.length));
-    if (missingImages.length) {
-      try {
-        console.error('createProduct: variant image validation failed. dedupedVariants:', JSON.stringify(dedup, null, 2));
-        console.error('createProduct: request files:', (req.files || []).map(f => ({ field: f.fieldname, filename: f.filename })));
-      } catch (le) {}
-      return res.status(400).json({ success: false, message: `Each color variant must have at least one image. Missing images for: ${missingImages.map(v => v.name || v.tempId).join(', ')}` });
+    // If variants exist, inherit general product images if variant has none, or populate product images if empty
+    if (dedup.length > 0) {
+      if ((!productData.images || !productData.images.length) && dedup.some(v => v.images && v.images.length)) {
+        productData.images = dedup.flatMap(v => v.images || []);
+      }
+      dedup.forEach(v => {
+        if ((!v.images || !v.images.length) && productData.images && productData.images.length) {
+          v.images = [...productData.images];
+        }
+      });
+    }
+
+    // Ensure product as a whole has at least one image
+    const hasAnyImage = (productData.images && productData.images.length > 0) || dedup.some(v => v.images && v.images.length > 0);
+    if (!hasAnyImage) {
+      return res.status(400).json({ success: false, message: 'Product must have at least one image.' });
     }
 
     // If a stock mapping was provided referencing temporary color ids, map those to stable variant identifiers (name or hex)
@@ -954,7 +966,17 @@ export const createProduct = async (req, res) => {
       });
     }
 
-    productData.variants = dedup.map(v => ({ name: v.name, hex: v.hex, sku: v.sku, images: v.images || [], swatchImage: v.swatchImage || '', availableSizes: v.availableSizes || [] }));
+    productData.variants = dedup.map(v => {
+      const vName = v.name && !v.name.startsWith('#') ? v.name : getColorName(v.name || v.hex);
+      return {
+        name: vName || 'Default',
+        hex: v.hex,
+        sku: v.sku,
+        images: v.images || [],
+        swatchImage: v.swatchImage || '',
+        availableSizes: v.availableSizes || []
+      };
+    });
 
     // Parse legacy or new colors payload into structured color objects
     if (req.body.colors) {
@@ -964,11 +986,14 @@ export const createProduct = async (req, res) => {
           productData.colors = rawColors.map((c) => {
             if (typeof c === 'string') {
               const n = normalizeColor(c);
-              return { name: c, value: n.value, hex: n.normalizedHex || c, normalizedHex: n.normalizedHex || null };
+              const name = getColorName(c);
+              return { name: name || c, value: n.value, hex: n.normalizedHex || c, normalizedHex: n.normalizedHex || null };
             }
             const val = c.value || c.hex || c.name || '';
             const n = normalizeColor(String(val));
-            return { name: c.name || c.displayName || val, value: val, hex: n.normalizedHex || c.hex || val, normalizedHex: n.normalizedHex || null };
+            const rawName = c.name || c.displayName || '';
+            const resolvedName = rawName && !rawName.startsWith('#') ? getColorName(rawName) : getColorName(val || c.hex);
+            return { name: resolvedName || 'Default', value: val, hex: n.normalizedHex || c.hex || val, normalizedHex: n.normalizedHex || null };
           });
         }
       } catch (e) {
@@ -1004,6 +1029,15 @@ export const createProduct = async (req, res) => {
 
 export const updateProduct = async (req, res) => {
   try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
     // Map admin form -> stored product shape before updating
     const updateData = await normalizeProductInput(req.body, Product);
 
@@ -1027,14 +1061,24 @@ export const updateProduct = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const dedup = mapFilesToVariants(files, parsedVariants, baseUrl);
 
-    // Basic validation: ensure each variant has at least one image
-    const missingImages = dedup.filter(v => !(v.images && v.images.length));
-    if (missingImages.length) {
-      try {
-        console.error('updateProduct: variant image validation failed. dedupedVariants:', JSON.stringify(dedup, null, 2));
-        console.error('updateProduct: request files:', (req.files || []).map(f => ({ field: f.fieldname, filename: f.filename })));
-      } catch (le) {}
-      return res.status(400).json({ success: false, message: `Each color variant must have at least one image. Missing images for: ${missingImages.map(v => v.name || v.tempId).join(', ')}` });
+    // If variants exist, inherit product images if variant has none, or populate product images if empty
+    const currentImgs = (updateData.images && updateData.images.length) ? updateData.images : (product.images || []);
+    if (dedup.length > 0) {
+      if (!currentImgs.length && dedup.some(v => v.images && v.images.length)) {
+        updateData.images = dedup.flatMap(v => v.images || []);
+      }
+      const fallbackImgs = (updateData.images && updateData.images.length) ? updateData.images : (product.images || []);
+      dedup.forEach(v => {
+        if ((!v.images || !v.images.length) && fallbackImgs.length) {
+          v.images = [...fallbackImgs];
+        }
+      });
+    }
+
+    // Ensure product as a whole has at least one image
+    const hasAnyImage = (updateData.images && updateData.images.length > 0) || (product.images && product.images.length > 0) || dedup.some(v => v.images && v.images.length > 0);
+    if (!hasAnyImage) {
+      return res.status(400).json({ success: false, message: 'Product must have at least one image.' });
     }
 
     // If a stock mapping was provided referencing temporary color ids, map those to stable variant identifiers (name or hex)
@@ -1049,7 +1093,18 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    updateData.variants = dedup.map(v => ({ _id: v._id, name: v.name, hex: v.hex, sku: v.sku, images: v.images || [], swatchImage: v.swatchImage || '', availableSizes: v.availableSizes || [] }));
+    updateData.variants = dedup.map(v => {
+      const vName = v.name && !v.name.startsWith('#') ? v.name : getColorName(v.name || v.hex);
+      return {
+        _id: v._id,
+        name: vName || 'Default',
+        hex: v.hex,
+        sku: v.sku,
+        images: v.images || [],
+        swatchImage: v.swatchImage || '',
+        availableSizes: v.availableSizes || []
+      };
+    });
 
     // Parse and normalize colors on update as well
     if (req.body.colors) {
@@ -1059,25 +1114,19 @@ export const updateProduct = async (req, res) => {
           updateData.colors = rawColors.map((c) => {
             if (typeof c === 'string') {
               const n = normalizeColor(c);
-              return { name: c, value: n.value, hex: n.normalizedHex || c, normalizedHex: n.normalizedHex || null };
+              const name = getColorName(c);
+              return { name: name || c, value: n.value, hex: n.normalizedHex || c, normalizedHex: n.normalizedHex || null };
             }
             const val = c.value || c.hex || c.name || '';
             const n = normalizeColor(String(val));
-            return { name: c.name || c.displayName || val, value: val, hex: n.normalizedHex || c.hex || val, normalizedHex: n.normalizedHex || null };
+            const rawName = c.name || c.displayName || '';
+            const resolvedName = rawName && !rawName.startsWith('#') ? getColorName(rawName) : getColorName(val || c.hex);
+            return { name: resolvedName || 'Default', value: val, hex: n.normalizedHex || c.hex || val, normalizedHex: n.normalizedHex || null };
           });
         }
       } catch (e) {
         // ignore
       }
-    }
-
-    const product = await Product.findById(req.params.id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
     }
 
     // Set updated properties on document and run Mongoose save hooks/validators

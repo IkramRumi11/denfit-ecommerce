@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { validateUploadedFilesBuffer } from '../middleware/upload.js';
 
+import { validateUploadedFilesBuffer } from '../middleware/upload.js';
 import { protect, authorize } from '../middleware/auth.js';
 import {
   uploadImage,

@@ -3,6 +3,7 @@ import Category from '../models/Category.js';
 import DetailTemplate from '../models/DetailTemplate.js';
 import SystemSetting from '../models/SystemSetting.js';
 import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from '../utils/inventory.js';
+import { getColorName } from '../utils/colorHelper.js';
 
 const parseArray = (val) => {
   if (!val) return [];
@@ -31,9 +32,34 @@ const normalizeProductForClient = (doc) => {
     if (Array.isArray(obj.colors)) {
       obj.colors = obj.colors.map((c) => {
         if (!c) return c;
-        if (typeof c === 'string') return { name: c };
-        if (typeof c === 'object') return c;
+        if (typeof c === 'string') {
+          const name = getColorName(c);
+          return { name: name || c, value: c, hex: c.startsWith('#') ? c : undefined };
+        }
+        if (typeof c === 'object') {
+          const raw = c.name || c.displayName || c.value || c.hex || '';
+          const name = getColorName(raw);
+          return {
+            ...c,
+            name: name || c.name || 'Default'
+          };
+        }
         return c;
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  // Normalize variants
+  try {
+    if (Array.isArray(obj.variants)) {
+      obj.variants = obj.variants.map((v) => {
+        if (!v) return v;
+        const raw = v.name || v.hex || '';
+        const name = getColorName(raw);
+        return {
+          ...v,
+          name: name || v.name || 'Default'
+        };
       });
     }
   } catch (e) { /* ignore */ }
@@ -88,10 +114,76 @@ export const getAllProducts = async (req, res) => {
     const appliedPage = Math.max(1, Number(page) || 1);
 
     const mongoQuery = {};
-    // category historically stores the product subcategory (e.g. 't-shirts').
-    // Support both `category` and `subcategory` params for compatibility.
-    if (subcategory) mongoQuery.category = String(subcategory);
-    else if (category) mongoQuery.category = String(category);
+    const andClauses = [];
+
+    // Category / Subcategory matching: check category, categorySlug, subcategory, tags, and product name
+    const catSearch = subcategory || category;
+    if (catSearch) {
+      const catStr = String(catSearch).trim();
+      const escaped = escapeRegex(catStr);
+      const singular = catStr.endsWith('s') && catStr.length > 2 ? catStr.slice(0, -1) : catStr;
+      const regexPattern = new RegExp(`(^|\\b|[-_])${escapeRegex(singular)}`, 'i');
+
+      andClauses.push({
+        $or: [
+          { category: { $regex: regexPattern } },
+          { categorySlug: { $regex: regexPattern } },
+          { subcategory: { $regex: regexPattern } },
+          { tags: { $in: [new RegExp(`^${escaped}$`, 'i'), new RegExp(`^${escapeRegex(singular)}$`, 'i'), regexPattern] } },
+          { name: { $regex: regexPattern } }
+        ]
+      });
+    }
+
+    // Gender / Collection matching: include unisex and accessories flexibly
+    if (gender) {
+      const g = String(gender).toLowerCase().trim();
+      if (g === 'men') {
+        andClauses.push({
+          $or: [
+            { gender: { $in: ['men', 'unisex', 'Men', 'Unisex', 'accessories', 'Accessories'] } },
+            { gender: { $exists: false } }
+          ]
+        });
+      } else if (g === 'women') {
+        andClauses.push({
+          $or: [
+            { gender: { $in: ['women', 'unisex', 'Women', 'Unisex', 'accessories', 'Accessories'] } },
+            { gender: { $exists: false } }
+          ]
+        });
+      } else if (g === 'kids') {
+        andClauses.push({
+          $or: [
+            { gender: { $in: ['kids', 'boys', 'girls', 'baby', 'unisex', 'Kids', 'Boys', 'Girls', 'Baby', 'Unisex'] } },
+            { ageGroup: { $in: ['kids', 'baby', 'toddler'] } }
+          ]
+        });
+      } else if (g === 'accessories') {
+        andClauses.push({
+          $or: [
+            { gender: { $in: ['accessories', 'unisex', 'Accessories', 'Unisex', 'men', 'women'] } },
+            { category: { $regex: /accessories|bags|wallets|belts|watches|sunglasses|hats|jewel/i } },
+            { categorySlug: { $regex: /accessories|bags|wallets|belts|watches|sunglasses|hats|jewel/i } },
+            { subcategory: { $regex: /accessories|bags|wallets|belts|watches|sunglasses|hats|jewel/i } },
+            { tags: { $in: ['accessories', 'bags', 'bag', 'wallet', 'belt', 'watch', 'sunglasses', 'hat'] } }
+          ]
+        });
+      } else if (g === 'sale') {
+        andClauses.push({
+          $or: [
+            { isOnSale: true },
+            { onSale: true },
+            { discountPercentage: { $gt: 0 } },
+            { originalPrice: { $exists: true, $gt: 0 } },
+            { discountTags: { $in: ['sale', 'clearance', 'discount'] } }
+          ]
+        });
+      } else {
+        andClauses.push({ gender: new RegExp(`^${escapeRegex(g)}$`, 'i') });
+      }
+    }
+
     // Brand — support multi-select (comma-separated)
     const brandArr = parseArray(brand);
     if (brandArr.length === 1) mongoQuery.brand = brandArr[0];
@@ -99,15 +191,12 @@ export const getAllProducts = async (req, res) => {
     if (brandSlug) mongoQuery.brandSlug = String(brandSlug).toLowerCase();
     if (collection) mongoQuery.collectionName = String(collection);
     if (collectionSlug) mongoQuery.collectionSlug = String(collectionSlug).toLowerCase();
-    if (gender) mongoQuery.gender = String(gender);
     if (featured === 'true' || featured === true) mongoQuery.featured = true;
     if (minPrice && !Number.isNaN(Number(minPrice))) mongoQuery.price = Object.assign(mongoQuery.price || {}, { $gte: Number(minPrice) });
     if (maxPrice && !Number.isNaN(Number(maxPrice))) mongoQuery.price = Object.assign(mongoQuery.price || {}, { $lte: Number(maxPrice) });
     const tagArr = parseArray(tags);
     if (tagArr.length) mongoQuery.tags = { $in: tagArr };
 
-    // Sizes / Colors / Search may need to be combined via $and so they don't overwrite each other.
-    const andClauses = [];
     // Sizes filter can come as repeated query params or comma separated
     const sizeArr = parseArray(sizes);
     if (sizeArr.length) {

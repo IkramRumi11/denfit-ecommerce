@@ -1,4 +1,5 @@
 import EventEmitter from 'events';
+
 import notificationService from '../services/notification.service.js';
 
 const bus = new EventEmitter();

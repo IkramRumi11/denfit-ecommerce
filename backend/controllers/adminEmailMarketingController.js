@@ -172,7 +172,7 @@ export const createAndSendCampaign = async (req, res, next) => {
             personalized = personalized.replace(/{{\s*unsubscribeUrl\s*}}/g, unsubscribeUrl).replace(/{{\s*unsubscribe\s*}}/g, unsubscribeUrl);
           } else {
             // Append a small footer with unsubscribe link to ensure every email has one
-            personalized = `${personalized}\n<hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />\n<p style="font-size:12px;color:#666;">If you no longer wish to receive these emails, <a href=\"${unsubscribeUrl}\">unsubscribe</a>.</p>`;
+            personalized = `${personalized}\n<hr style="border:none;border-top:1px solid #eee;margin:16px 0;" />\n<p style="font-size:12px;color:#666;">If you no longer wish to receive these emails, <a href="${unsubscribeUrl}">unsubscribe</a>.</p>`;
           }
 
           const mailPayload = { to: e, subject, html: personalized };

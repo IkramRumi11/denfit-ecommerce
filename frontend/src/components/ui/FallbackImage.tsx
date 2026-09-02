@@ -9,6 +9,10 @@ const DEFAULT_FALLBACK = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/
 export const FallbackImage: React.FC<Props> = ({ src, alt = '', fallback = DEFAULT_FALLBACK, onError, ...rest }) => {
   const [current, setCurrent] = useState<string | undefined>(typeof src === 'string' ? src : undefined);
 
+  React.useEffect(() => {
+    setCurrent(typeof src === 'string' ? src : undefined);
+  }, [src]);
+
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     // call user onError if present
     if (onError) onError(e as any);

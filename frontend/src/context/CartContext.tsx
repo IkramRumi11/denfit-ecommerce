@@ -1,4 +1,4 @@
-﻿// frontend/src/context/CartContext.tsx
+// frontend/src/context/CartContext.tsx
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { TAX_FEATURE } from "../config/taxFeatureFlag";
 
@@ -16,6 +16,15 @@ export interface CartItem {
   variantHex?: string;
   variantImage?: string;
   quantity: number;
+  maxStock?: number;
+}
+
+export interface AddItemResult {
+  success: boolean;
+  addedQuantity: number;
+  currentInCart: number;
+  maxStock?: number;
+  reason?: 'FULL_ADD' | 'PARTIAL_ADD' | 'MAX_REACHED' | 'OUT_OF_STOCK';
 }
 
 interface CartState {
@@ -27,11 +36,13 @@ interface CartState {
 }
 
 interface CartContextType extends CartState {
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem, maxStock?: number) => AddItemResult;
   removeItem: (productId: string, size: string, color?: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number, color?: string) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, color?: string, maxStock?: number) => void;
   clearCart: () => void;
   getItemCount: () => number;
+  getItemQuantity: (productId: string, size?: string, color?: string, variantId?: string) => number;
+  adjustItemToMaxStock: (productId: string, size: string, maxStock: number, color?: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -48,34 +59,61 @@ const calculateTotals = (items: CartItem[]) => {
 };
 
 type CartAction =
-  | { type: "ADD_ITEM"; payload: CartItem }
+  | { type: "ADD_ITEM"; payload: { item: CartItem; maxStock?: number } }
   | { type: "REMOVE_ITEM"; payload: { productId: string; size: string; color?: string } }
-  | { type: "UPDATE_QUANTITY"; payload: { productId: string; size: string; color?: string; quantity: number } }
+  | { type: "UPDATE_QUANTITY"; payload: { productId: string; size: string; color?: string; quantity: number; maxStock?: number } }
   | { type: "CLEAR_CART" }
   | { type: "LOAD_CART"; payload: CartItem[] };
+
+const colorMatches = (item: CartItem, key: string) => {
+  if (!key) return !(item.color || item.variantHex || item.variantName || item.colorName || item.variantId);
+  const k = key.trim().toLowerCase();
+  return (
+    (item.color && String(item.color).trim().toLowerCase() === k) ||
+    (item.variantHex && String(item.variantHex).trim().toLowerCase() === k) ||
+    (item.variantName && String(item.variantName).trim().toLowerCase() === k) ||
+    (item.colorName && String(item.colorName).trim().toLowerCase() === k) ||
+    (item.variantId && String(item.variantId).trim().toLowerCase() === k)
+  );
+};
 
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case "ADD_ITEM": {
-      const payloadColorKey = String(action.payload.color ?? action.payload.variantHex ?? action.payload.variantName ?? '');
-
-      const colorMatches = (item: CartItem, key: string) => {
-        if (!key) return !(item.color || item.variantHex || item.variantName);
-        return (item.color && String(item.color) === key) || (item.variantHex && String(item.variantHex) === key) || (item.variantName && String(item.variantName) === key);
-      };
+      const incomingItem = action.payload.item;
+      const maxStock = action.payload.maxStock;
+      const payloadColorKey = String(incomingItem.variantId ?? incomingItem.color ?? incomingItem.variantHex ?? incomingItem.variantName ?? incomingItem.colorName ?? '');
 
       const existingItemIndex = state.items.findIndex(
-        (item) => item.productId === action.payload.productId && item.size === action.payload.size && colorMatches(item, payloadColorKey)
+        (item) => item.productId === incomingItem.productId && item.size === incomingItem.size && colorMatches(item, payloadColorKey)
       );
-      let newItems;
+
+      let newItems: CartItem[];
       if (existingItemIndex >= 0) {
-        newItems = state.items.map((item, index) =>
-          index === existingItemIndex
-            ? { ...item, quantity: item.quantity + action.payload.quantity }
-            : item
-        );
+        const existing = state.items[existingItemIndex];
+        let targetQty = existing.quantity + incomingItem.quantity;
+        if (typeof maxStock === 'number' && maxStock >= 0) {
+          targetQty = Math.min(targetQty, maxStock);
+        }
+        if (targetQty <= 0) {
+          newItems = state.items.filter((_, idx) => idx !== existingItemIndex);
+        } else {
+          newItems = state.items.map((item, index) =>
+            index === existingItemIndex
+              ? { ...item, quantity: targetQty, maxStock: maxStock ?? item.maxStock }
+              : item
+          );
+        }
       } else {
-        newItems = [...state.items, action.payload];
+        let initialQty = incomingItem.quantity;
+        if (typeof maxStock === 'number' && maxStock >= 0) {
+          initialQty = Math.min(initialQty, maxStock);
+        }
+        if (initialQty > 0) {
+          newItems = [...state.items, { ...incomingItem, quantity: initialQty, maxStock }];
+        } else {
+          newItems = [...state.items];
+        }
       }
       const totals = calculateTotals(newItems);
       return { ...state, ...totals, items: newItems };
@@ -86,8 +124,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         if (item.productId !== payload.productId) return false;
         if (item.size !== payload.size) return false;
         if (!payload.color) return true;
-        const pc = String(payload.color);
-        return (item.color && String(item.color) === pc) || (item.variantHex && String(item.variantHex) === pc) || (item.variantName && String(item.variantName) === pc);
+        return colorMatches(item, payload.color);
       };
 
       const newItems = state.items.filter((item) => !matchesRemove(item, action.payload));
@@ -96,11 +133,19 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
 
     case "UPDATE_QUANTITY": {
+      const maxStock = action.payload.maxStock;
       const newItems = state.items
         .map((item) => {
           const sameProduct = item.productId === action.payload.productId && item.size === action.payload.size;
-          const colorMatch = !action.payload.color || ( (item.color && String(item.color) === String(action.payload.color)) || (item.variantHex && String(item.variantHex) === String(action.payload.color)) || (item.variantName && String(item.variantName) === String(action.payload.color)) );
-          return sameProduct && colorMatch ? { ...item, quantity: action.payload.quantity } : item;
+          const matchColor = !action.payload.color || colorMatches(item, action.payload.color);
+          if (sameProduct && matchColor) {
+            let finalQty = action.payload.quantity;
+            if (typeof maxStock === 'number' && maxStock >= 0) {
+              finalQty = Math.min(finalQty, maxStock);
+            }
+            return { ...item, quantity: finalQty, maxStock: maxStock ?? item.maxStock };
+          }
+          return item;
         })
         .filter((item) => item.quantity > 0);
       const totals = calculateTotals(newItems);
@@ -126,13 +171,11 @@ function sanitizeCartItem(input: any): CartItem {
   safe.productId = String(input?.productId ?? input?.id ?? '');
   safe.name = String(input?.name ?? '');
   safe.price = Number(input?.price) || 0;
-  // image may be string or object
   if (typeof input?.image === 'string') safe.image = input.image;
   else if (input?.image && typeof input.image === 'object') {
-    // Support common image object shapes from API or Cloudinary
     safe.image = input.image.url || input.image.secure_url || input.image.src || (input.image.filename ? (`/uploads/${input.image.filename}`) : '') || '';
   } else safe.image = String(input?.image ?? '');
-  // size may be primitive or object
+
   if (input?.size == null) safe.size = '';
   else if (typeof input.size === 'string' || typeof input.size === 'number') safe.size = String(input.size);
   else if (typeof input.size === 'object') {
@@ -144,7 +187,8 @@ function sanitizeCartItem(input: any): CartItem {
   safe.variantName = input?.variantName ? String(input.variantName) : undefined;
   safe.variantHex = input?.variantHex ? String(input.variantHex) : undefined;
   safe.variantImage = input?.variantImage ? String(input.variantImage) : undefined;
-  safe.quantity = Number(input?.quantity) || 1;
+  safe.quantity = Math.max(1, Number(input?.quantity) || 1);
+  if (typeof input?.maxStock === 'number') safe.maxStock = input.maxStock;
   return safe as CartItem;
 }
 
@@ -181,22 +225,93 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(timeout);
   }, [state.items]);
 
-  // Ensure externally-provided items are normalized before dispatching
-  const addItemSafe = (item: any) => dispatch({ type: "ADD_ITEM", payload: sanitizeCartItem(item) });
+  const getItemQuantity = (productId: string, size?: string, color?: string, variantId?: string): number => {
+    const targetPid = String(productId || '');
+    if (!targetPid) return 0;
+
+    return state.items
+      .filter((item) => {
+        if (item.productId !== targetPid) return false;
+        if (size && item.size !== size) return false;
+        if (color || variantId) {
+          const colorKey = String(variantId || color || '');
+          if (!colorMatches(item, colorKey)) return false;
+        }
+        return true;
+      })
+      .reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const addItemSafe = (rawItem: any, maxStock?: number): AddItemResult => {
+    const item = sanitizeCartItem(rawItem);
+    const effectiveMaxStock = typeof maxStock === 'number' ? maxStock : (typeof rawItem.maxStock === 'number' ? rawItem.maxStock : undefined);
+    const currentQty = getItemQuantity(item.productId, item.size, item.color || item.variantHex || item.colorName, item.variantId);
+
+    if (typeof effectiveMaxStock === 'number') {
+      if (effectiveMaxStock <= 0) {
+        return {
+          success: false,
+          addedQuantity: 0,
+          currentInCart: currentQty,
+          maxStock: 0,
+          reason: 'OUT_OF_STOCK'
+        };
+      }
+      if (currentQty >= effectiveMaxStock) {
+        return {
+          success: false,
+          addedQuantity: 0,
+          currentInCart: currentQty,
+          maxStock: effectiveMaxStock,
+          reason: 'MAX_REACHED'
+        };
+      }
+      const allowedToAdd = Math.min(item.quantity, effectiveMaxStock - currentQty);
+      dispatch({ type: "ADD_ITEM", payload: { item: { ...item, quantity: allowedToAdd }, maxStock: effectiveMaxStock } });
+      return {
+        success: true,
+        addedQuantity: allowedToAdd,
+        currentInCart: currentQty + allowedToAdd,
+        maxStock: effectiveMaxStock,
+        reason: allowedToAdd < item.quantity ? 'PARTIAL_ADD' : 'FULL_ADD'
+      };
+    }
+
+    dispatch({ type: "ADD_ITEM", payload: { item, maxStock: undefined } });
+    return {
+      success: true,
+      addedQuantity: item.quantity,
+      currentInCart: currentQty + item.quantity,
+      reason: 'FULL_ADD'
+    };
+  };
+
   const removeItem = (productId: string, size: string, color?: string) =>
     dispatch({ type: "REMOVE_ITEM", payload: { productId, size, color } });
-  const updateQuantity = (productId: string, size: string, quantity: number, color?: string) =>
-    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, size, color, quantity } });
+
+  const updateQuantity = (productId: string, size: string, quantity: number, color?: string, maxStock?: number) =>
+    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, size, color, quantity, maxStock } });
+
+  const adjustItemToMaxStock = (productId: string, size: string, maxStock: number, color?: string) => {
+    if (maxStock <= 0) {
+      removeItem(productId, size, color);
+    } else {
+      updateQuantity(productId, size, maxStock, color, maxStock);
+    }
+  };
+
   const clearCart = () => dispatch({ type: "CLEAR_CART" });
   const getItemCount = () => state.items.reduce((t, i) => t + i.quantity, 0);
 
   const value: CartContextType = {
     ...state,
-    addItem: addItemSafe as any,
+    addItem: addItemSafe,
     removeItem,
     updateQuantity,
+    adjustItemToMaxStock,
     clearCart,
     getItemCount,
+    getItemQuantity,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -205,12 +320,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
-    // Development-time safe fallback: avoid throwing so a missing provider
-    // doesn't crash the whole app. Log a helpful warning and return a
-    // no-op context that preserves component behavior.
-    // If you see this warning in production, ensure the app root wraps
-    // components with `<CartProvider>` (see `src/main.tsx`).
-    // eslint-disable-next-line no-console
     console.warn('useCart called outside CartProvider — returning fallback no-op cart context');
     const fallback: CartContextType = {
       items: [],
@@ -218,11 +327,13 @@ export const useCart = () => {
       shipping: 0,
       tax: 0,
       total: 0,
-      addItem: () => { /* no-op */ },
+      addItem: () => ({ success: false, addedQuantity: 0, currentInCart: 0 }),
       removeItem: () => { /* no-op */ },
       updateQuantity: () => { /* no-op */ },
+      adjustItemToMaxStock: () => { /* no-op */ },
       clearCart: () => { /* no-op */ },
       getItemCount: () => 0,
+      getItemQuantity: () => 0,
     };
     return fallback;
   }

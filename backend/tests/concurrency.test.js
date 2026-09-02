@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test, before, after } from 'node:test';
 import mongoose from 'mongoose';
+
 import { connectDB } from '../src/config/database.js';
 import Product from '../models/Product.js';
 import StockReservation from '../models/StockReservation.js';

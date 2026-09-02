@@ -9,8 +9,9 @@
 */
 
 import mongoose from 'mongoose';
-import Order from '../models/Order.js';
 import dotenv from 'dotenv';
+
+import Order from '../models/Order.js';
 
 dotenv.config({ path: './backend/.env' });
 

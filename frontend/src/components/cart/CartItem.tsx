@@ -1,9 +1,10 @@
-﻿// src/components/cart/CartItem.tsx
+// src/components/cart/CartItem.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
+import { getColorName } from '../../utils/colorNames';
 
 interface CartItemProps {
   item: {
@@ -23,28 +24,29 @@ interface CartItemProps {
 }
 
 export const CartItem: React.FC<CartItemProps> = ({ item }) => {
-  const { removeItem, updateQuantity } = useCart();
+  const { updateQuantity, removeItem } = useCart();
   const { showToast } = useToast();
 
   const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity < 1) {
-      removeItem(item.productId, item.size);
+    if (newQuantity <= 0) {
+      removeItem(item.productId, item.size, item.color);
       showToast('Item removed from cart', 'info');
     } else {
-      updateQuantity(item.productId, item.size, newQuantity);
+      updateQuantity(item.productId, item.size, newQuantity, item.color);
     }
   };
 
   const handleRemove = () => {
-    removeItem(item.productId, item.size);
+    removeItem(item.productId, item.size, item.color);
     showToast('Item removed from cart', 'info');
   };
 
   return (
-    <div className="flex items-center gap-4 py-4 border-b border-gray-200 last:border-b-0">
+    <div className="flex items-center gap-4 py-4 border-b border-gray-200">
+      {/* Product Image */}
       <Link to={`/product/${item.productId}`} className="flex-shrink-0">
         <img
-          src={item.variantImage || item.image}
+          src={item.variantImage || item.image || 'https://via.placeholder.com/64'}
           alt={item.name}
           className="w-16 h-16 object-cover rounded-lg"
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="%23f3f4f6"/></svg>' }}
@@ -65,12 +67,13 @@ export const CartItem: React.FC<CartItemProps> = ({ item }) => {
             const colorValue = item.variantHex || item.color || '';
             const label = variantLabel || colorValue;
             if (!label) return null;
+            const friendlyName = getColorName(label);
             return (
               <div className="mt-1 flex items-center gap-2">
                 {colorValue ? (
                   <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
                 ) : null}
-                <span className="text-sm text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{label}</span></span>
+                <span className="text-sm text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
               </div>
             );
           })()}

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, Eye, ShoppingCart, Plus, X } from 'lucide-react';
+import { Star, Heart, Eye, ShoppingCart, Plus, X, Search } from 'lucide-react';
 import FallbackImage from './ui/FallbackImage';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useReducedMotion from '../hooks/useReducedMotion';
@@ -13,7 +13,7 @@ import { QuickViewModal } from './QuickViewModal';
 import type { Product } from '../types';
 import { productId, primaryImage, priceNumber } from '../utils/productHelpers';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
-import { getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
+import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
 
 export interface ProductCardProps {
@@ -24,7 +24,7 @@ export interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
-  const { addItem } = useCart();
+  const { addItem, getItemQuantity } = useCart();
   const navigate = useNavigate();
 
   // State
@@ -34,6 +34,66 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const [selectedColorName, setSelectedColorName] = useState<string>('');
   const { selectedVariantId, setSelectedVariantId } = useProductVariant(productId(product));
   const [showQuickView, setShowQuickView] = useState(false);
+
+  // Normalize color list across variants or colors array
+  const colorList = React.useMemo(() => {
+    if (!product) return [];
+    if (Array.isArray((product as any).variants) && (product as any).variants.length > 0) {
+      return (product as any).variants.map((v: any, idx: number) => {
+        const swatchImage = v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined;
+        const hex = v?.hex || v?.normalizedHex || v?.value || undefined;
+        const rawName = v?.name || hex || `Color ${idx + 1}`;
+        const name = getColorName(rawName);
+        const id = String(v._id || v.id || `var-${idx}`);
+        return { id, hex, name, rawName, swatchImage, variantId: id };
+      });
+    }
+    if (Array.isArray((product as any).colors) && (product as any).colors.length > 0) {
+      return (product as any).colors.map((c: any, idx: number) => {
+        const swatchImage = c?.swatchImage ? (typeof c.swatchImage === 'string' ? c.swatchImage : c.swatchImage.url) : undefined;
+        const hex = c?.hex || c?.normalizedHex || c?.value || undefined;
+        const rawName = c?.name || c?.displayName || c?.value || hex || `Color ${idx + 1}`;
+        const name = getColorName(rawName);
+        const id = String(c._id || c.id || hex || `col-${idx}`);
+        return { id, hex, name, rawName, swatchImage, variantId: undefined };
+      });
+    }
+    return [];
+  }, [product]);
+
+  // Auto-select first in-stock color and size when opening mobile quick add
+  React.useEffect(() => {
+    if (!showMobileQuickAdd || !product) return;
+
+    let pickedColor = '';
+    let pickedColorName = '';
+    let pickedVariantId: any = null;
+
+    if (colorList.length > 0) {
+      const firstInStock = colorList.find((c: any) => {
+        const stock = getAvailableStockForItem(product, { color: c.hex || c.rawName, colorName: c.name, variantId: c.variantId });
+        return stock > 0;
+      }) || colorList[0];
+
+      if (firstInStock) {
+        pickedColor = firstInStock.hex || firstInStock.rawName || '';
+        pickedColorName = firstInStock.name || '';
+        pickedVariantId = firstInStock.variantId || null;
+      }
+    }
+
+    setSelectedColor(pickedColor);
+    setSelectedColorName(pickedColorName);
+    if (pickedVariantId) setSelectedVariantId(pickedVariantId);
+
+    const allSizes = getDisplaySizesForProduct(product as any);
+    const firstInStockSize = allSizes.find((s: string) => {
+      const stock = getAvailableStockForItem(product, { size: s, color: pickedColor, colorName: pickedColorName, variantId: pickedVariantId });
+      return stock > 0;
+    }) || allSizes[0] || '';
+
+    setSelectedSize(firstInStockSize);
+  }, [showMobileQuickAdd, product, colorList]);
 
   // Derived data
   const categoryGroup = getCategoryGroup(product.category, product.subcategory);
@@ -80,7 +140,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         }
       } catch (e) {}
       if (s.includes(',')) return s.split(',').map((x:string) => x.trim()).filter(Boolean);
-      return [s.replace(/^['`\"]+|['`\"]+$/g, '').trim()].filter(Boolean);
+      return [s.replace(/^['`"]+|['`"]+$/g, '').trim()].filter(Boolean);
     }
     return [String(input)];
   };
@@ -140,7 +200,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
         const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || undefined);
 
-        addItem({
+        const availableStock = getAvailableStockForItem(product, {
+          size,
+          color: colorNormalized,
+          colorName: variantSnapshot?.name || selectedColorName,
+          variantId: variantSnapshot?.id || variantId
+        });
+
+        if (availableStock <= 0) {
+          showToast('Selected variant is out of stock', 'error');
+          return;
+        }
+
+        const result = addItem({
           productId: product._id ?? product.id ?? '',
           name: String(product.name),
           price,
@@ -152,8 +224,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           variantName: variantSnapshot?.name || undefined,
           variantHex: variantSnapshot?.hex || undefined,
           quantity: 1,
-        });
-        showToast(`${String(product.name)} has been added to the cart`, 'success');
+          maxStock: availableStock
+        }, availableStock);
+
+        if (!result.success) {
+          if (result.reason === 'MAX_REACHED') {
+            showToast(`You already have all ${availableStock} available units in your cart`, 'warning');
+          } else {
+            showToast('Product is out of stock', 'error');
+          }
+          return;
+        }
+
+        showToast(`${String(product.name)} added to the cart`, 'success');
       } catch (err) {
         console.error('Error adding to cart:', err);
         showToast('Failed to add to cart', 'error');
@@ -223,50 +306,78 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     navigate(`/product/${productId(product)}`);
   };
 
-  // Hover preview
-  const imgWrapperRef = useRef<HTMLDivElement | null>(null);
-  const [previewStyle, setPreviewStyle] = useState<{ transform?: string }>({});
-  const [hoveredSrc, setHoveredSrc] = useState<string | null>(null);
-  const { reducedMotion } = useReducedMotion();
-  const MICRO_PREVIEW_SCALE = 1.03;
+  // List of images for hover preview & rotation
+  const productImages = React.useMemo(() => {
+    const toUrl = (i: any) => (typeof i === 'string' ? i : i?.url);
+    const list: string[] = [];
 
-  const handleCardMouseEnter = () => {
-    if (!reducedMotion) setPreviewStyle({ transform: `scale(${MICRO_PREVIEW_SCALE})` });
-    // Swap to the product's secondary main image (images[1]) on desktop hover only.
-    try {
-      if (typeof window !== 'undefined' && !('ontouchstart' in window)) {
-        const imgs = Array.isArray((product as any).images)
-          ? (product as any).images.map((i: any) => (typeof i === 'string' ? i : i.url)).filter(Boolean)
-          : [];
-        const primary = primaryImage({ ...product, selectedVariantId });
-        const secondary = imgs.length > 1 ? imgs[1] : undefined; // strictly the second main image
-        if (secondary && secondary !== primary) {
-          const img = new Image();
-          img.src = secondary; // preload
-          setHoveredSrc(secondary);
-        }
-      }
-    } catch (e) {
-      // ignore errors
+    // If a variant is selected, prioritize its color-specific images
+    if (selectedVariant && Array.isArray((selectedVariant as any).images) && (selectedVariant as any).images.length > 0) {
+      (selectedVariant as any).images.map(toUrl).filter(Boolean).forEach((url: string) => {
+        if (!list.includes(url)) list.push(url);
+      });
+    }
+
+    // Include general product images
+    if (Array.isArray((product as any).images)) {
+      (product as any).images.map(toUrl).filter(Boolean).forEach((url: string) => {
+        if (!list.includes(url)) list.push(url);
+      });
+    }
+
+    // Ensure primary image is at start
+    const prim = primaryImage({ ...product, selectedVariantId });
+    if (prim && !list.includes(prim)) {
+      list.unshift(prim);
+    }
+
+    return list;
+  }, [product, selectedVariant, selectedVariantId]);
+
+  // Smooth hover cycling state
+  const [hoverIndex, setHoverIndex] = useState<number>(0);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const cycleIntervalRef = useRef<number | null>(null);
+
+  const clearCycleInterval = () => {
+    if (cycleIntervalRef.current) {
+      window.clearInterval(cycleIntervalRef.current);
+      cycleIntervalRef.current = null;
     }
   };
 
-  const handleCardMouseMove = (e: React.MouseEvent) => {
-    const el = imgWrapperRef.current;
-    if (!el || reducedMotion) return;
-    const rect = el.getBoundingClientRect();
-    const rx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ry = (e.clientY - rect.top) / rect.height - 0.5;
-    setPreviewStyle({
-      transform: `scale(${MICRO_PREVIEW_SCALE}) translate(${-rx * 8}px, ${-ry * 6}px)`,
-    });
-    // Keep hovered image positioned under cursor by adjusting translate slightly — anchored by preview transform above
+  const handleCardMouseEnter = () => {
+    if (reducedMotion || (typeof window !== 'undefined' && 'ontouchstart' in window)) return;
+    setIsHovered(true);
+
+    if (productImages.length > 1) {
+      setHoverIndex(1); // Immediate smooth transition to 2nd image on hover
+      clearCycleInterval();
+
+      // If product has 3 or more images, smoothly cycle every 2.6 seconds
+      if (productImages.length > 2) {
+        cycleIntervalRef.current = window.setInterval(() => {
+          setHoverIndex(prev => (prev + 1) % productImages.length);
+        }, 2600) as unknown as number;
+      }
+    }
   };
 
   const handleCardMouseLeave = () => {
-    setPreviewStyle({ transform: 'scale(1)' });
-    setHoveredSrc(null);
+    setIsHovered(false);
+    clearCycleInterval();
+    setHoverIndex(0);
   };
+
+  useEffect(() => {
+    return () => clearCycleInterval();
+  }, []);
+
+  const displayImageSrc = (isHovered && productImages[hoverIndex]) 
+    ? productImages[hoverIndex] 
+    : (primaryImage({ ...product, selectedVariantId }) || productImages[0]);
+
+  const totalInCartForProduct = getItemQuantity(productId(product));
 
   return (
     <>
@@ -276,29 +387,49 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         className="group relative flex flex-col bg-white rounded-none sm:rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg border border-transparent hover:border-gray-100"
       >
         {/* IMAGE */}
-        <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+        <div 
+          className="relative aspect-[3/4] overflow-hidden bg-gray-100 cursor-pointer"
+          onMouseEnter={handleCardMouseEnter}
+          onMouseLeave={handleCardMouseLeave}
+          onFocus={handleCardMouseEnter}
+          onBlur={handleCardMouseLeave}
+        >
           <button
             type="button"
             className="w-full h-full cursor-pointer focus:outline-none"
             onClick={handleViewDetails}
-            onMouseEnter={handleCardMouseEnter}
-            onMouseMove={handleCardMouseMove}
-            onMouseLeave={handleCardMouseLeave}
-            onFocus={handleCardMouseEnter}
-            onBlur={handleCardMouseLeave}
+            aria-label={`View details for ${product.name}`}
           >
-            <div ref={imgWrapperRef} className="w-full h-full overflow-hidden">
+            <div className="w-full h-full overflow-hidden">
               <FallbackImage
-                src={hoveredSrc || primaryImage({ ...product, selectedVariantId })}
+                src={displayImageSrc}
                 alt={String(product.name)}
-                className="w-full h-full object-cover transition-transform duration-500 ease-out"
-                style={previewStyle}
+                className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-105"
               />
             </div>
           </button>
 
+          {/* IMAGE ROTATION INDICATOR DOTS (When cycling on hover) */}
+          {productImages.length > 1 && isHovered && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none transition-opacity duration-300">
+              {productImages.slice(0, 5).map((_, idx) => (
+                <span
+                  key={idx}
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    hoverIndex === idx ? 'w-3.5 bg-white shadow-md' : 'w-1 bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
           {/* BADGES */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1 pointer-events-none">
+          <div className="absolute top-2 left-2 flex flex-col gap-1 pointer-events-none z-10">
+            {totalInCartForProduct > 0 && (
+              <span className="bg-blue-600 text-white text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider shadow-sm rounded-sm">
+                {totalInCartForProduct} in Cart
+              </span>
+            )}
             {isOutOfStock(product) && (
               <span className="bg-gray-900 text-white text-[10px] font-semibold uppercase px-2 py-1 tracking-wider">
                 Sold Out
@@ -318,8 +449,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
           {/* WISHLIST */}
           <button
+            type="button"
             onClick={handleWishlistToggle}
-            className="absolute top-2 right-2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-gray-800 transition-all z-10"
+            className="absolute top-2 right-2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-gray-800 transition-all z-10 shadow-sm"
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Heart
               className={`h-4 w-4 ${
@@ -328,14 +461,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             />
           </button>
 
-          {/* DESKTOP QUICK VIEW */}
-          <div className="hidden md:flex flex-col absolute top-10 right-2 gap-2 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 z-10">
+          {/* DESKTOP QUICK VIEW / ZOOM ACTION */}
+          <div className="hidden md:flex flex-col absolute top-11 right-2 gap-2 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300 z-10">
             <button
+              type="button"
               onClick={handleQuickView}
-              className="p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-gray-800 shadow-sm"
-              title="Quick View"
+              className="p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-gray-800 shadow-sm hover:scale-105 transition-transform"
+              title="Inspect Product & Quick View"
+              aria-label="Inspect Product & Quick View"
             >
-              <Eye className="h-4 w-4" />
+              <Search className="h-4 w-4" />
             </button>
           </div>
 
@@ -435,10 +570,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                         );
                       })}
                     </div>
-                  </div>
-
-                  {/* Color Selection - Only show if product has colors */}
-                  {hasColors && (
+                  </div>                  {/* Color Selection - Only show if product has colors */}
+                  {colorList.length > 0 && (
                     <div className="mt-5 mb-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-normal text-gray-700 uppercase tracking-wider">
@@ -451,65 +584,136 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                         )}
                       </div>
                       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-                        {(product.variants || product.colors || []).map(
-                          (v: any, idx: number) => {
-                            const swatchImage = v?.swatchImage
-                              ? typeof v.swatchImage === 'string'
-                                ? v.swatchImage
-                                : v.swatchImage.url
-                              : undefined;
-                            const hex =
-                              v?.hex || v?.normalizedHex || v?.value || undefined;
-                            const rawName =
-                              v?.name ||
-                              v?.displayName ||
-                              v?.value ||
-                              hex ||
-                              `Color ${idx + 1}`;
-                            const name = getColorName(rawName);
-                            const id = String(v._id || v.id || idx);
-                            const isSelected =
-                              selectedVariantId === id || selectedColor === (hex || rawName);
+                        {colorList.map((c: any) => {
+                          const isSelected = (selectedVariantId && selectedVariantId === c.id) || selectedColor === c.hex || selectedColor === c.rawName;
+                          const colorStock = getAvailableStockForItem(product, {
+                            color: c.hex || c.rawName,
+                            colorName: c.name,
+                            variantId: c.variantId
+                          });
+                          const isColorOutOfStock = colorStock <= 0;
 
-                            return (
-                              <div key={id} className="flex flex-col items-center gap-1.5 min-w-[60px]">
-                                <button
-                                  onClick={() => {
-                                    if (product.variants) setSelectedVariantId(id);
-                                    setSelectedColor(hex || rawName);
-                                    setSelectedColorName(name);
-                                  }}
-                                  className={`w-9 h-9 md:w-11 md:h-11 rounded-sm border border-gray-300 overflow-hidden transition-all flex items-center justify-center ${
-                                    isSelected ? 'border-black shadow-sm' : 'hover:border-gray-400'
-                                  }`}
-                                  style={hex && !swatchImage ? { backgroundColor: hex } : undefined}
-                                  aria-label={String(name)}
-                                >
-                                  {swatchImage ? (
-                                    <img src={swatchImage} alt={String(name)} className="w-full h-full object-cover" />
-                                  ) : null}
-                                </button>
-                                <span className="text-[10px] text-gray-600 font-normal text-center leading-tight px-1">
-                                  {String(name)}
-                                </span>
-                              </div>
-                            );
-                          },
-                        )}
+                          return (
+                            <div key={c.id} className="flex flex-col items-center gap-1.5 min-w-[60px]">
+                              <button
+                                type="button"
+                                disabled={isColorOutOfStock}
+                                onClick={() => {
+                                  if (isColorOutOfStock) return;
+                                  const colVal = c.hex || c.rawName || '';
+                                  const colName = c.name || '';
+                                  const vId = c.variantId;
+                                  setSelectedColor(colVal);
+                                  setSelectedColorName(colName);
+                                  if (vId) setSelectedVariantId(vId);
+
+                                  const currentSizeStock = getAvailableStockForItem(product, {
+                                    size: selectedSize,
+                                    color: colVal,
+                                    colorName: colName,
+                                    variantId: vId
+                                  });
+                                  if (currentSizeStock <= 0) {
+                                    const allSizes = getDisplaySizesForProduct(product as any);
+                                    const newSize = allSizes.find((s: string) => {
+                                      return getAvailableStockForItem(product, { size: s, color: colVal, colorName: colName, variantId: vId }) > 0;
+                                    }) || '';
+                                    setSelectedSize(newSize);
+                                  }
+                                }}
+                                className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border overflow-hidden transition-all flex items-center justify-center ${
+                                  isColorOutOfStock
+                                    ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-100'
+                                    : isSelected
+                                    ? 'border-black ring-2 ring-black/20 shadow-sm cursor-pointer'
+                                    : 'border-gray-300 hover:border-gray-500 cursor-pointer'
+                                }`}
+                                style={c.hex && !c.swatchImage ? { backgroundColor: c.hex } : undefined}
+                                aria-label={String(c.name)}
+                                title={isColorOutOfStock ? `${c.name} (Out of stock)` : c.name}
+                              >
+                                {c.swatchImage ? (
+                                  <img src={c.swatchImage} alt={String(c.name)} className="w-full h-full object-cover" />
+                                ) : c.hex ? null : (
+                                  <span className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-700 bg-gray-100">
+                                    {(c.name || '?').charAt(0)}
+                                  </span>
+                                )}
+                                {isSelected && !isColorOutOfStock && (
+                                  <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-sm border border-white/40">
+                                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
+                                      <path d="M1 4L4 6.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </span>
+                                )}
+                                {isColorOutOfStock && (
+                                  <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45 shadow-[0_0_2px_rgba(0,0,0,0.4)]" />
+                                  </span>
+                                )}
+                              </button>
+                              <span className={`text-[10px] text-center leading-tight px-1 ${isColorOutOfStock ? 'text-gray-400 line-through' : 'text-gray-700 font-normal'}`}>
+                                {String(c.name)}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
                   {/* Add to cart button */}
                   <div className="sticky bottom-0 pt-4 pb-3 bg-white border-t border-gray-100 mt-4">
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={!selectedSize || (hasColors && !selectedColor && !selectedVariantId)}
-                      className="w-full bg-black text-white py-3 rounded text-sm font-medium uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all duration-200"
-                    >
-                      <ShoppingCart className="h-4 w-4" />
-                      Add to cart
-                    </button>
+                    {(() => {
+                      const selectedStock = getAvailableStockForItem(product, {
+                        size: selectedSize,
+                        color: selectedColor,
+                        colorName: selectedColorName,
+                        variantId: selectedVariantId
+                      });
+                      const inCartQty = getItemQuantity(
+                        productId(product),
+                        selectedSize,
+                        selectedColor || selectedColorName,
+                        selectedVariantId
+                      );
+                      const isCurrentSelectionOutOfStock = selectedStock <= 0;
+                      const isAllInCart = selectedStock > 0 && inCartQty >= selectedStock;
+
+                      return (
+                        <div>
+                          {isAllInCart ? (
+                            <div className="mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 font-medium text-center">
+                              All {selectedStock} available units are already in your cart.
+                            </div>
+                          ) : inCartQty > 0 && !isCurrentSelectionOutOfStock ? (
+                            <p className="mb-2 text-xs text-blue-600 font-medium text-center">
+                              {inCartQty} in cart ({selectedStock - inCartQty} more available)
+                            </p>
+                          ) : null}
+
+                          <button
+                            onClick={handleAddToCart}
+                            disabled={
+                              !selectedSize ||
+                              (colorList.length > 0 && !selectedColor && !selectedVariantId) ||
+                              isCurrentSelectionOutOfStock ||
+                              isAllInCart
+                            }
+                            className="w-full bg-black text-white py-3 rounded text-sm font-medium uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-all duration-200"
+                          >
+                            <ShoppingCart className="h-4 w-4" />
+                            {isCurrentSelectionOutOfStock 
+                              ? 'Out of stock' 
+                              : isAllInCart 
+                              ? 'All in Cart' 
+                              : inCartQty > 0 
+                              ? 'Add Another to Cart' 
+                              : 'Add to cart'}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </motion.div>
@@ -527,7 +731,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                     className="flex-1 py-1.5 bg-black text-white text-[11px] font-medium uppercase tracking-wide hover:bg-gray-900 flex items-center justify-center gap-1"
                   >
                     <ShoppingCart className="h-3 w-3" />
-                    Quick add
+                    {totalInCartForProduct > 0 ? `Quick add (${totalInCartForProduct} in cart)` : 'Quick add'}
                   </button>
                   <button
                     onClick={handleViewDetails}
@@ -587,6 +791,55 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
               <span className="text-[10px] text-gray-400">({reviewCount})</span>
             )}
           </div>
+
+          {/* Color Dots on Card */}
+          {colorList.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+              {colorList.map((c: any) => {
+                const isSelected = (selectedVariantId && selectedVariantId === c.id) || selectedColor === c.hex || selectedColor === c.rawName;
+                const colorStock = getAvailableStockForItem(product, {
+                  color: c.hex || c.rawName,
+                  colorName: c.name,
+                  variantId: c.variantId
+                });
+                const isOutOfStockColor = colorStock <= 0;
+
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={isOutOfStockColor}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isOutOfStockColor) return;
+                      if (c.variantId) setSelectedVariantId(c.variantId);
+                      setSelectedColor(c.hex || c.rawName || '');
+                      setSelectedColorName(c.name);
+                    }}
+                    title={isOutOfStockColor ? `${c.name} (Out of stock)` : c.name}
+                    className={`relative w-4 h-4 rounded-full border transition-all ${
+                      isOutOfStockColor
+                        ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-200'
+                        : isSelected
+                        ? 'border-black ring-1 ring-black/40 scale-110 shadow-sm cursor-pointer'
+                        : 'border-gray-300 hover:scale-110 hover:border-gray-600 cursor-pointer'
+                    }`}
+                    style={c.hex && !c.swatchImage ? { backgroundColor: c.hex } : undefined}
+                  >
+                    {c.swatchImage ? (
+                      <img src={c.swatchImage} alt={c.name} className="w-full h-full object-cover rounded-full" />
+                    ) : null}
+                    {isOutOfStockColor && (
+                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-[140%] h-[1px] bg-red-500/80 -rotate-45" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Tags */}
           {(() => {
             const tags = normalizeTagsForDisplay((product as any).tags || []);

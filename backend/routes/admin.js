@@ -79,7 +79,7 @@ const router = express.Router();
 // ========================
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 5000, // 5000 in dev/test, 100 in prod
   message: {
     success: false,
     message: 'Too many admin requests from this IP. Please try again after 15 minutes.'

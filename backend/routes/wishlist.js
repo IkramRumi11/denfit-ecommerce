@@ -1,4 +1,5 @@
 import express from 'express';
+
 import { protect } from '../middleware/auth.js';
 import { addNotificationJob } from '../queues/notificationQueue.js';
 import User from '../models/User.js';

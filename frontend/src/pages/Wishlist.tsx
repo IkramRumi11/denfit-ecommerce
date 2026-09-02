@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, Trash2, ArrowRight } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatCurrency';
 import { primaryImage } from '../utils/productHelpers';
+import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { productsAPI } from '../api';
 
@@ -28,15 +29,9 @@ export const Wishlist: React.FC = () => {
         p = product;
       }
       // Normalize common id field
-      const normalized = Array.isArray(p) ? p[0] : p;
-      if (normalized && typeof normalized === 'object') {
-        normalized.id = normalized.id || normalized._id || normalized.slug || product.id;
-      }
-      // Allow opening quick-add even if product is currently out of stock.
-      // The UI will mark the item as out-of-stock and prevent adding to cart.
-      setQuickAddProduct(normalized);
+      const canonicalId = p?.id || p?._id || product?.id || product?._id || '';
+      setQuickAddProduct({ ...(p || {}), id: canonicalId });
     } catch (e) {
-      console.warn('Failed to load product details for quick-add, opening lightweight view', e);
       setQuickAddProduct(product);
     }
   };
@@ -55,8 +50,13 @@ export const Wishlist: React.FC = () => {
         variantSnapshot = product.variants.find((v: any) => String(v._id || v.id) === String(color) || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === String(color).toLowerCase() || String(v.name || '').toLowerCase() === String(color).toLowerCase());
       }
       const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || product.colorName || product.color || undefined);
+      const availableStock = getAvailableStockForItem(product, {
+        size,
+        color: colorNormalized,
+        variantId: variantSnapshot?.id
+      });
 
-      addItem({
+      const res = addItem({
         productId: product.id,
         name: product.name,
         price: product.price,
@@ -66,9 +66,20 @@ export const Wishlist: React.FC = () => {
         colorName: variantSnapshot?.name || product.colorName || undefined,
         variantId: variantSnapshot?.id,
         variantHex: variantSnapshot?.hex,
-        quantity: 1
-      });
-      showToast(`${product.name} has been added to the cart`, 'success');
+        quantity: 1,
+        maxStock: availableStock
+      }, availableStock);
+
+      if (!res.success) {
+        if (res.reason === 'MAX_REACHED') {
+          showToast(`You already have all ${availableStock} available units in your cart`, 'warning');
+        } else {
+          showToast('Product is out of stock', 'error');
+        }
+        return;
+      }
+
+      showToast(`${product.name} added to the cart`, 'success');
       // Remove from wishlist after successful add-to-cart
       try { removeFromWishlist(product.id); } catch (e) { /* ignore */ }
       closeQuickAdd();

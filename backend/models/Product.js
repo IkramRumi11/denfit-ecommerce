@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 import InventorySyncService from '../services/InventorySyncService.js';
 
 const productSchema = new mongoose.Schema({
@@ -96,6 +97,36 @@ const productSchema = new mongoose.Schema({
         default: 0
       }
     }],
+    set: function(val) {
+      if (!val) return [];
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed.map((item, idx) => {
+              if (!item) return null;
+              if (typeof item === 'string') return { url: item, isPrimary: idx === 0, order: idx };
+              if (typeof item === 'object') return { ...item, url: item.url || item.image || item.path || '', isPrimary: item.isPrimary ?? (idx === 0), order: item.order ?? idx };
+              return null;
+            }).filter(Boolean);
+          }
+        } catch (e) {}
+        return trimmed ? [{ url: trimmed, isPrimary: true, order: 0 }] : [];
+      }
+      if (Array.isArray(val)) {
+        return val.map((item, idx) => {
+          if (!item) return null;
+          if (typeof item === 'string') return { url: item, isPrimary: idx === 0, order: idx };
+          if (typeof item === 'object') return { ...item, url: item.url || item.image || item.path || '', isPrimary: item.isPrimary ?? (idx === 0), order: item.order ?? idx };
+          return item;
+        }).filter(Boolean);
+      }
+      if (typeof val === 'object' && val.url) {
+        return [val];
+      }
+      return val;
+    },
     validate: {
       validator: function (v) {
         return Array.isArray(v) && v.length >= 1;
@@ -115,13 +146,45 @@ const productSchema = new mongoose.Schema({
       filename: String,
       publicId: String
     },
-    images: [{
-      url: { type: String, required: true },
-      filename: String,
-      publicId: String,
-      isPrimary: { type: Boolean, default: false },
-      order: { type: Number, default: 0 }
-    }],
+    images: {
+      type: [{
+        url: { type: String, required: true },
+        filename: String,
+        publicId: String,
+        isPrimary: { type: Boolean, default: false },
+        order: { type: Number, default: 0 }
+      }],
+      set: function(val) {
+        if (!val) return [];
+        if (typeof val === 'string') {
+          const trimmed = val.trim();
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item, idx) => {
+                if (!item) return null;
+                if (typeof item === 'string') return { url: item, isPrimary: idx === 0, order: idx };
+                if (typeof item === 'object') return { ...item, url: item.url || item.image || item.path || '', isPrimary: item.isPrimary ?? (idx === 0), order: item.order ?? idx };
+                return null;
+              }).filter(Boolean);
+            }
+          } catch (e) {}
+          return trimmed ? [{ url: trimmed, isPrimary: true, order: 0 }] : [];
+        }
+        if (Array.isArray(val)) {
+          return val.map((item, idx) => {
+            if (!item) return null;
+            if (typeof item === 'string') return { url: item, isPrimary: idx === 0, order: idx };
+            if (typeof item === 'object') return { ...item, url: item.url || item.image || item.path || '', isPrimary: item.isPrimary ?? (idx === 0), order: item.order ?? idx };
+            return item;
+          }).filter(Boolean);
+        }
+        if (typeof val === 'object' && val.url) {
+          return [val];
+        }
+        return val;
+      }
+    },
     // Sizes available specifically for this variant (optional; falls back to product.availableSizes)
     availableSizes: [{ type: String }],
     // Inventory can be tracked per-variant

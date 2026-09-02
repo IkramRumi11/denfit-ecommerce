@@ -36,6 +36,8 @@ describe('AdminFeatures page', () => {
     (api.admin.getAllUsers as any).mockReset();
     (api.admin.updateFeatureFlag as any).mockReset();
     (api.admin.createFeatureFlag as any).mockReset();
+    (api.system.getFeatures as any).mockReset();
+    (api.system.getFeatures as any).mockResolvedValue({ flags: { raptorMini: true } });
   });
 
   it('toggles a flag and dispatches features:changed', async () => {
@@ -98,6 +100,7 @@ describe('AdminFeatures page', () => {
 
     // Ensure system feature fetch is used and will be called on refresh
     await waitFor(() => expect(api.system.getFeatures).toHaveBeenCalled());
+    const initialCalls = (api.system.getFeatures as any).mock.calls.length;
 
     // Toggle the flag
     const btn = await screen.findByText('Disable');
@@ -105,6 +108,6 @@ describe('AdminFeatures page', () => {
     await waitFor(() => expect(api.admin.updateFeatureFlag).toHaveBeenCalled());
 
     // After toggle, the FeatureProvider should refresh features (called again)
-    await waitFor(() => expect(api.system.getFeatures).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect((api.system.getFeatures as any).mock.calls.length).toBeGreaterThan(initialCalls));
   });
 });

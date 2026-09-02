@@ -1,5 +1,6 @@
 // backend/controllers/orderController.js
 import mongoose from 'mongoose';
+
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { newCorrelationId } from '../utils/correlation.js';
@@ -209,50 +210,78 @@ export const createOrder = async (req, res) => {
       const reserveItems = normalizedItems.map(it => {
         const dbProduct = dbProductMap[String(it.product)];
 
+        const targetSizeStr = typeof it.size === 'string' ? it.size.trim().toLowerCase() : (it.size != null ? String(it.size).trim().toLowerCase() : '');
+        let targetColorStr = '';
+        let targetColorHex = '';
+        let targetColorName = '';
+        let targetVariantId = '';
+
+        if (it.color) {
+          if (typeof it.color === 'string') {
+            targetColorStr = it.color.trim().toLowerCase();
+          } else if (typeof it.color === 'object') {
+            targetColorName = (it.color.name || '').trim().toLowerCase();
+            targetColorHex = (it.color.hex || it.color.value || '').trim().toLowerCase();
+            targetVariantId = String(it.color.tempId || it.color._id || it.color.id || '');
+            targetColorStr = targetColorName || targetColorHex;
+          }
+        }
+        if (it.colorName && typeof it.colorName === 'string') {
+          targetColorName = it.colorName.trim().toLowerCase();
+        }
+
         let resolvedSizeId = it.size || null;
-        if (dbProduct && Array.isArray(dbProduct.sizes)) {
-          const matchedSize = dbProduct.sizes.find(sz =>
-            sz && (
-              String(sz.value).trim().toLowerCase() === String(it.size).trim().toLowerCase() ||
-              String(sz.id).trim().toLowerCase() === String(it.size).trim().toLowerCase()
-            )
-          );
-          if (matchedSize) {
-            resolvedSizeId = matchedSize.id || matchedSize._id;
+        if (dbProduct) {
+          const sizesArr = Array.isArray(dbProduct.sizesObjects) && dbProduct.sizesObjects.length
+            ? dbProduct.sizesObjects
+            : (Array.isArray(dbProduct.sizes) ? dbProduct.sizes : []);
+
+          for (let idx = 0; idx < sizesArr.length; idx++) {
+            const sz = sizesArr[idx];
+            const szVal = sz && typeof sz === 'object' ? String(sz.value || sz.label || sz.name || '').trim().toLowerCase() : String(sz).trim().toLowerCase();
+            const szId = sz && typeof sz === 'object' ? (sz.id || sz._id || `size_${idx}`) : `size_${idx}`;
+            if (targetSizeStr && (szVal === targetSizeStr || String(szId).trim().toLowerCase() === targetSizeStr || `size_legacy_${idx}` === targetSizeStr)) {
+              resolvedSizeId = szId;
+              break;
+            }
           }
         }
 
         let resolvedColorTempId = null;
-        if (dbProduct && it.color) {
-          if (Array.isArray(dbProduct.variants)) {
-            // Match variant by tempId, hex, or name
-            const matchedVar = dbProduct.variants.find(v =>
-              v && (
-                (it.color.tempId && String(v._id || v.id) === String(it.color.tempId)) ||
-                (it.color.hex && v.hex && String(v.hex).toLowerCase() === String(it.color.hex).toLowerCase()) ||
-                (it.color.name && v.name && String(v.name).toLowerCase() === String(it.color.name).toLowerCase())
-              )
-            );
+        if (dbProduct && (targetColorStr || targetColorName || targetColorHex || targetVariantId)) {
+          if (Array.isArray(dbProduct.variants) && dbProduct.variants.length) {
+            const matchedVar = dbProduct.variants.find(v => {
+              if (!v) return false;
+              const vId = String(v._id || v.id || v.tempId || '');
+              const vName = String(v.name || '').trim().toLowerCase();
+              const vHex = String(v.hex || '').trim().toLowerCase();
+              return (targetVariantId && vId === targetVariantId) ||
+                (targetColorName && vName === targetColorName) ||
+                (targetColorHex && (vHex === targetColorHex || vHex.replace(/^#/, '') === targetColorHex.replace(/^#/, ''))) ||
+                (targetColorStr && (vName === targetColorStr || vHex === targetColorStr || vHex.replace(/^#/, '') === targetColorStr.replace(/^#/, '')));
+            });
             if (matchedVar) {
               resolvedColorTempId = matchedVar.name || matchedVar.hex || String(matchedVar._id || matchedVar.id);
             }
           }
-          if (!resolvedColorTempId && Array.isArray(dbProduct.colors)) {
-            // Fallback matching on colors array
-            const matchedCol = dbProduct.colors.find(c =>
-              c && (
-                (it.color.hex && c.hex && String(c.hex).toLowerCase() === String(it.color.hex).toLowerCase()) ||
-                (it.color.name && c.name && String(c.name).toLowerCase() === String(it.color.name).toLowerCase()) ||
-                (it.color.name && c.value && String(c.value).toLowerCase() === String(it.color.name).toLowerCase())
-              )
-            );
+
+          if (!resolvedColorTempId && Array.isArray(dbProduct.colors) && dbProduct.colors.length) {
+            const matchedCol = dbProduct.colors.find(c => {
+              if (!c) return false;
+              const cName = String(c.name || '').trim().toLowerCase();
+              const cHex = String(c.hex || c.value || '').trim().toLowerCase();
+              const cVal = String(c.value || '').trim().toLowerCase();
+              return (targetColorName && cName === targetColorName) ||
+                (targetColorHex && (cHex === targetColorHex || cVal === targetColorHex)) ||
+                (targetColorStr && (cName === targetColorStr || cHex === targetColorStr || cVal === targetColorStr));
+            });
             if (matchedCol) {
               resolvedColorTempId = matchedCol.name || matchedCol.hex || matchedCol.value;
             }
           }
-          // If still not matched, use it.color.name or it.color.hex
+
           if (!resolvedColorTempId) {
-            resolvedColorTempId = it.color.name || it.color.hex || null;
+            resolvedColorTempId = targetColorName || targetColorStr || targetColorHex || null;
           }
         }
 

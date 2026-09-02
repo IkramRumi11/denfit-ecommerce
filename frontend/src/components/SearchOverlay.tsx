@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, ShoppingCart, Star, Heart } from 'lucide-react';
 
@@ -55,7 +55,7 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
         variantHex: variantSnapshot?.hex,
         quantity: 1
       });
-      showToast(`${product.name} has been added to the cart`, 'success');
+      showToast(`${product.name} added to the cart`, 'success');
       closeQuickAdd();
     } catch (error) {
       console.error('Error adding to cart from search:', error);

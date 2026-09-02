@@ -1,11 +1,15 @@
-﻿// src/components/cart/CartSidebar.tsx
+// src/components/cart/CartSidebar.tsx
 import { useState, useEffect } from "react";
 import { useCart } from "../../context/CartContext";
 import { Link } from "react-router-dom";
+import { productsAPI } from "../../api";
+import { getAvailableStockForItem } from "../../utils/stockHelpers";
+import { getColorName } from "../../utils/colorNames";
 
 export default function CartSidebar() {
   const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, getItemCount } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+  const [productStocks, setProductStocks] = useState<Record<string, any>>({});
 
   const totalItems = getItemCount();
 
@@ -17,16 +21,60 @@ export default function CartSidebar() {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchStocks = async () => {
+      const uniqueProductIds = Array.from(new Set(items.map(it => it.productId).filter(Boolean)));
+      if (!uniqueProductIds.length) return;
+      try {
+        const results = await Promise.all(
+          uniqueProductIds.map(id => productsAPI.getById(id).catch(() => null))
+        );
+        const stocks: Record<string, any> = {};
+        results.forEach((res: any) => {
+          const prod = res && (res.product || res.data?.product || res);
+          if (prod) {
+            stocks[String(prod._id || prod.id)] = prod;
+            if (prod._id) stocks[String(prod._id)] = prod;
+            if (prod.id) stocks[String(prod.id)] = prod;
+          }
+        });
+        setProductStocks(stocks);
+      } catch (e) {
+        console.error('Failed to load stocks in CartSidebar:', e);
+      }
+    };
+    fetchStocks();
+  }, [isOpen, items.map(it => it.productId).sort().join(',')]);
+
+  const getCartItemStock = (item: any): number => {
+    const prod = productStocks[String(item.productId)] || productStocks[String(item.id)];
+    if (!prod) return 999;
+
+    return getAvailableStockForItem(prod, {
+      size: item.size,
+      color: item.color,
+      colorName: item.colorName,
+      variantId: item.variantId,
+      variantName: item.variantName,
+      variantHex: item.variantHex
+    });
+  };
+
   const handleRemoveItem = (productId: string, size: string, color?: string) => {
     removeItem(productId, size, color);
   };
 
-  const handleUpdateQuantity = (productId: string, size: string, quantity: number, color?: string) => {
+  const handleUpdateQuantity = (item: any, quantity: number) => {
     if (quantity < 1) {
-      handleRemoveItem(productId, size, color);
+      handleRemoveItem(String(item.productId), item.size, item.color);
       return;
     }
-    updateQuantity(productId, size, quantity, color);
+    const availableStock = getCartItemStock(item);
+    if (availableStock !== 999 && quantity > availableStock) {
+      return;
+    }
+    updateQuantity(String(item.productId), item.size, quantity, item.color);
   };
 
   const formatCurrency = (amount: number) => {
@@ -85,6 +133,9 @@ export default function CartSidebar() {
                     const variantLabel = item.variantName || item.colorName || '';
                     const colorValue = item.variantHex || item.color || '';
                     const colorKey = variantLabel || colorValue || '';
+                    const availableStock = getCartItemStock(item);
+                    const isMaxReached = availableStock !== 999 && item.quantity >= availableStock;
+                    const isOverStock = availableStock !== 999 && item.quantity > availableStock;
 
                     return (
                       <div key={`${String(item.productId)}-${safeSize}-${colorKey}`} className="flex">
@@ -103,22 +154,56 @@ export default function CartSidebar() {
                             {(() => {
                               const label = variantLabel || colorValue;
                               if (!label) return null;
+                              const friendlyName = getColorName(label);
                               return (
                                 <div className="mt-1 flex items-center gap-2">
                                   {colorValue ? (
                                     <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
                                   ) : null}
-                                  <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{String(label)}</span></span>
+                                  <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
                                 </div>
                               );
                             })()}
                           </div>
-                          <div className="mt-2 flex items-center">
-                            <button className="border rounded-l px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(String(item.productId), safeSize, item.quantity - 1, colorValue || undefined)}>-</button>
-                            <span className="border-t border-b px-3 py-1">{item.quantity}</span>
-                            <button className="border rounded-r px-2 py-1 text-gray-500 hover:bg-gray-100" onClick={() => handleUpdateQuantity(String(item.productId), safeSize, item.quantity + 1, colorValue || undefined)}>+</button>
-                            <p className="ml-4 font-medium">{formatCurrency(safePrice * item.quantity)}</p>
-                          </div>
+                          {availableStock !== 999 && availableStock <= 0 ? (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                                Out of stock
+                              </span>
+                              <button
+                                onClick={() => handleRemoveItem(String(item.productId), safeSize, colorValue || undefined)}
+                                className="text-[11px] text-red-600 underline font-medium hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : availableStock !== 999 && item.quantity > availableStock ? (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                                Only {availableStock} left
+                              </span>
+                              <button
+                                onClick={() => handleUpdateQuantity(item, availableStock)}
+                                className="text-[11px] text-blue-600 underline font-semibold hover:text-blue-800"
+                              >
+                                Adjust to {availableStock}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="mt-2 flex items-center">
+                              <button className="border rounded-l px-2 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40" onClick={() => handleUpdateQuantity(item, item.quantity - 1)}>-</button>
+                              <span className="border-t border-b px-3 py-1">{item.quantity}</span>
+                              <button className="border rounded-r px-2 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed" disabled={isMaxReached} title={isMaxReached ? `Only ${availableStock} available` : 'Increase quantity'} onClick={() => handleUpdateQuantity(item, item.quantity + 1)}>+</button>
+                              <p className="ml-4 font-medium">{formatCurrency(safePrice * item.quantity)}</p>
+                            </div>
+                          )}
+                          {!isOverStock && isMaxReached && (
+                            <div className="mt-1">
+                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
+                                Only {availableStock} available
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

@@ -48,6 +48,7 @@ export const createFlag = async (req, res) => {
           message: `${req.user ? req.user.name : 'system'} updated feature flag ${name} to ${enabled}`
         });
       } catch (e) { console.warn('Failed to create audit log for createFlag update', e?.message || e); }
+      try { await clearAllFlagsCache(); } catch (e) { /* non-fatal */ }
       return res.status(200).json({ success: true, message: 'Flag updated', data: { flag: existing } });
     }
 

@@ -79,10 +79,10 @@ export default function Accessories(): JSX.Element {
       return false;
     };
 
-    if (selectedCategory === 'men' && productGender === 'men') return matchSub(p);
-    if (selectedCategory === 'women' && productGender === 'women') return matchSub(p);
-    if (selectedCategory === 'boys' && (productGender === 'boys' || productGender === 'kids')) return matchSub(p);
-    if (selectedCategory === 'girls' && (productGender === 'girls' || productGender === 'kids')) return matchSub(p);
+    if (selectedCategory === 'men' && (productGender === 'men' || productGender === 'unisex' || productGender === 'accessories' || !productGender)) return matchSub(p);
+    if (selectedCategory === 'women' && (productGender === 'women' || productGender === 'unisex' || productGender === 'accessories' || !productGender)) return matchSub(p);
+    if (selectedCategory === 'boys' && (productGender === 'boys' || productGender === 'kids' || productGender === 'unisex')) return matchSub(p);
+    if (selectedCategory === 'girls' && (productGender === 'girls' || productGender === 'kids' || productGender === 'unisex')) return matchSub(p);
 
     return false;
   });

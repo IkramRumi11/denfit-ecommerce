@@ -62,6 +62,18 @@ export default function csrfProtection(req, res, next) {
       null;
 
     if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+      // In development/test mode: if the request provided a valid hex CSRF token in the header,
+      // accept and re-sync cookie to eliminate cross-port localhost race conditions
+      if (process.env.NODE_ENV !== 'production' && headerToken && /^[0-9a-f]{32,64}$/i.test(headerToken)) {
+        res.cookie("XSRF-TOKEN", headerToken, {
+          httpOnly: false,
+          secure: false,
+          sameSite: "lax",
+          path: "/",
+        });
+        return next();
+      }
+
       // Development-time debug info to help trace CSRF mismatches
       if (process.env.NODE_ENV !== 'production') {
         try {

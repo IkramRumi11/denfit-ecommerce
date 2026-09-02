@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+
 import { supportsTransactions } from '../utils/dbUtils.js';
 
 dotenv.config();

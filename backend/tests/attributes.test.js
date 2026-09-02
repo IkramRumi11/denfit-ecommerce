@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
 import { normalizeAttributesInput } from '../utils/attributes.js';
 
 test('normalizeAttributesInput converts JSON strings into plain objects for Mongoose Map fields', () => {

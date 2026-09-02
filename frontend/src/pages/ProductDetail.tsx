@@ -21,7 +21,7 @@ import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
 import useReducedMotion from '../hooks/useReducedMotion';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
-import { getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
+import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
 
 // --- Accordion Component ---
@@ -66,12 +66,12 @@ const AccordionItem: React.FC<{
 export const ProductDetail: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addItem, getItemQuantity } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
   
   // Safe access to auth context
-  const authContext = useAuth ? useAuth() : null;
+  const authContext = useAuth();
   const user = authContext?.user;
 
   const [selectedSize, setSelectedSize] = useState<string>('');
@@ -112,6 +112,7 @@ export const ProductDetail: React.FC = () => {
   const [product, setProduct] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentlyViewedList, setRecentlyViewedList] = useState<any[]>([]);
 
   const pid = String(productId ?? '');
   const { selectedVariantId, setSelectedVariantId } = useProductVariant(pid);
@@ -221,6 +222,7 @@ export const ProductDetail: React.FC = () => {
   const autoPlayIntervalRef = useRef<number | null>(null);
   const idleTimeoutRef = useRef<number | null>(null);
   const isInteractingRef = useRef(false);
+  const { reducedMotion, setReducedMotion } = useReducedMotion();
 
   const clearAutoPlay = () => {
     if (autoPlayIntervalRef.current) { window.clearInterval(autoPlayIntervalRef.current); autoPlayIntervalRef.current = null; }
@@ -228,20 +230,21 @@ export const ProductDetail: React.FC = () => {
 
   const startAutoPlay = () => {
     clearAutoPlay();
-    if (!galleryImages || galleryImages.length <= 1) return;
+    if (!galleryImages || galleryImages.length <= 1 || reducedMotion) return;
     autoPlayIntervalRef.current = window.setInterval(() => {
-      if (isInteractingRef.current) return;
+      if (isInteractingRef.current || gallery.scale > 1) return;
       try { gallery.next(); } catch (e) {}
-    }, 4000) as unknown as number;
+    }, 2800) as unknown as number;
   };
 
   const scheduleResumeAfterIdle = () => {
     if (idleTimeoutRef.current) window.clearTimeout(idleTimeoutRef.current);
+    if (reducedMotion) return;
     idleTimeoutRef.current = window.setTimeout(() => {
       isInteractingRef.current = false;
       startAutoPlay();
       idleTimeoutRef.current = null;
-    }, 4000) as unknown as number;
+    }, 3500) as unknown as number;
   };
 
   const markInteraction = () => {
@@ -274,13 +277,17 @@ export const ProductDetail: React.FC = () => {
 
   // Start autoplay when gallery images change; stop on unmount
   useEffect(() => {
-    isInteractingRef.current = false;
-    startAutoPlay();
+    if (!reducedMotion) {
+      isInteractingRef.current = false;
+      startAutoPlay();
+    } else {
+      clearAutoPlay();
+    }
     return () => {
       clearAutoPlay();
       if (idleTimeoutRef.current) { window.clearTimeout(idleTimeoutRef.current); idleTimeoutRef.current = null; }
     };
-  }, [galleryImages.length]);
+  }, [galleryImages.length, reducedMotion]);
 
   const scrollThumbsBy = (amount: number) => {
     const el = thumbsRef.current;
@@ -354,7 +361,6 @@ export const ProductDetail: React.FC = () => {
   const HOVER_ZOOM_SCALE = 2.0;
   const FOCUS_ZOOM_SCALE = 1.4;
   const TRANSITION_MS = 200;
-  const { reducedMotion, setReducedMotion } = useReducedMotion();
   const handleMouseEnter = (e: React.MouseEvent) => {
     if (!containerRef.current || reducedMotion) return;
     gallery.zoomTo(HOVER_ZOOM_SCALE);
@@ -477,24 +483,30 @@ export const ProductDetail: React.FC = () => {
     };
   }, [productId, setSelectedVariantId, location.search]);
 
-  // Persist recently viewed
+  // Persist and load recently viewed
   useEffect(() => {
     if (!product) return;
     try {
       const key = 'recentlyViewed';
+      const currentId = String(product.id || product._id || product.slug || '');
+      const rawImg = primaryImage(product) || (product.images && product.images[0] ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0].url) : '') || '';
       const snapshot = {
-        id: product.id || product._id,
+        id: currentId,
+        _id: product._id || currentId,
         name: String(product.name ?? ''),
-        image: String(primaryImage(product) ?? ''),
+        image: String(rawImg ?? ''),
         price: typeof product.price === 'number' ? product.price : String(product.price ?? ''),
-        slug: String(product.seo?.slug ?? '')
+        slug: String(product.seo?.slug ?? product.slug ?? currentId)
       };
       const raw = localStorage.getItem(key);
       let arr = raw ? JSON.parse(raw) : [];
-      arr = arr.filter((p: any) => String(p.id) !== String(snapshot.id));
-      arr.unshift(snapshot);
-      arr = arr.slice(0, 12);
-      localStorage.setItem(key, JSON.stringify(arr));
+      if (!Array.isArray(arr)) arr = [];
+      
+      const filteredExisting = arr.filter((p: any) => String(p.id || p._id) !== currentId);
+      setRecentlyViewedList(filteredExisting.slice(0, 6));
+
+      const updatedArr = [snapshot, ...filteredExisting].slice(0, 12);
+      localStorage.setItem(key, JSON.stringify(updatedArr));
     } catch (e) {
       // ignore storage errors
     }
@@ -596,70 +608,25 @@ export const ProductDetail: React.FC = () => {
 
   const itemsAvailable = useMemo(() => {
     if (!product) return 0;
-
-    try {
-      // If a variant or color is selected, prefer variant-level inventory
-      if (selectedVariantId || selectedColor) {
-        const variant = Array.isArray(product.variants)
-          ? product.variants.find((v: any) =>
-              String(v._id || v.id) === String(selectedVariantId) ||
-              (v.hex && String(v.hex).toLowerCase() === String(selectedColor).toLowerCase()) ||
-              (v.normalizedHex && String(v.normalizedHex).toLowerCase() === String(selectedColor).toLowerCase()) ||
-              (v.name && String(v.name).toLowerCase() === String(selectedColor).toLowerCase())
-            )
-          : null;
-        if (variant && typeof variant.inventory === 'number') return variant.inventory;
-      }
-
-      // If explicit stock mapping exists, try to find matching entries
-      if (Array.isArray(product.stock) && product.stock.length) {
-        // Exact match for color+size
-        if ((selectedVariantId || selectedColor) && selectedSize) {
-          const match = product.stock.find((s: any) => {
-            const matchesColor = selectedVariantId
-              ? String(s.colorTempId) === String(selectedVariantId)
-              : String(s.colorTempId).toLowerCase() === String(selectedColor).toLowerCase();
-            const matchesSize = String(s.sizeId) === String(selectedSize) || String(s.sizeId) === String((product.sizes || []).find((sz: any) => String(sz.value) === String(selectedSize))?.id);
-            return matchesColor && matchesSize;
-          });
-          if (match && typeof match.quantity === 'number') return match.quantity;
-        }
-
-        // Sum quantities for selected color if present
-        if (selectedVariantId || selectedColor) {
-          const colorKey = selectedVariantId || selectedColor;
-          const total = product.stock.reduce((acc: number, s: any) => {
-            if (String(s.colorTempId) === String(colorKey) || String(s.colorTempId).toLowerCase() === String(colorKey).toLowerCase()) {
-              return acc + (Number(s.quantity) || 0);
-            }
-            return acc;
-          }, 0);
-          if (total > 0) return total;
-        }
-      }
-
-      // Prefer top-level inventory if available
-      if (typeof product.inventory === 'number') return product.inventory;
-
-      // Fallback to summing sizes quantities
-      if (Array.isArray(product.sizes) && product.sizes.length) {
-        return product.sizes.reduce((acc: number, s: any) => acc + (Number(s.quantity) || 0), 0);
-      }
-
-      // Fallback to summing stock mapping if present
-      if (Array.isArray(product.stock) && product.stock.length) {
-        return product.stock.reduce((acc: number, s: any) => acc + (Number(s.quantity) || 0), 0);
-      }
-    } catch (e) {
-      // If anything goes wrong, log and return 0
-      // eslint-disable-next-line no-console
-      console.error('Failed to compute itemsAvailable', e);
-    }
-
-    return 0;
-  }, [product, selectedVariantId, selectedSize, selectedColor]);
+    return getAvailableStockForItem(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+  }, [product, selectedVariantId, selectedSize, selectedColor, selectedColorName]);
 
   const displayAvailableQuantity = typeof (product as any)?.availableQuantity === 'number' ? (product as any).availableQuantity : itemsAvailable;
+
+  const canonicalPid = String(product?.id || product?._id || productId || '');
+
+  const inCartQty = useMemo(() => {
+    if (!product || !selectedSize) return 0;
+    return getItemQuantity(canonicalPid, selectedSize, selectedColor || selectedVariantId);
+  }, [product, selectedSize, selectedColor, selectedVariantId, canonicalPid, getItemQuantity]);
+
+  const remainingStockAllowed = Math.max(0, displayAvailableQuantity - inCartQty);
+  const isAllInCart = Boolean(selectedSize && (selectedColor || selectedVariantId) && displayAvailableQuantity > 0 && inCartQty >= displayAvailableQuantity);
 
   // --- Reset selected size if it is not available in the newly selected color ---
   useEffect(() => {
@@ -713,15 +680,25 @@ export const ProductDetail: React.FC = () => {
   const handleAddToCart = async () => {
     if (!selectedSize) {
       showToast('Please select a size', 'error');
-      return;
+      return false;
     }
     if (product.variants && Array.isArray(product.variants) && product.variants.length && !selectedVariantId) {
       showToast('Please select a color', 'error');
-      return;
+      return false;
     }
     if (!selectedVariantId && product.colors && Array.isArray(product.colors) && product.colors.length && !selectedColor) {
       showToast('Please select a color', 'error');
-      return;
+      return false;
+    }
+
+    if (displayAvailableQuantity <= 0) {
+      showToast('This product is out of stock', 'error');
+      return false;
+    }
+
+    if (inCartQty >= displayAvailableQuantity) {
+      showToast(`You already have all ${displayAvailableQuantity} available units in your cart`, 'warning');
+      return false;
     }
 
     setIsAdding(true);
@@ -734,8 +711,8 @@ export const ProductDetail: React.FC = () => {
         return undefined;
       })();
 
-      addItem({
-        productId: pid,
+      const result = addItem({
+        productId: canonicalPid,
         name: product.name,
         price: product.price,
         image: primaryImage({ ...product, selectedVariantId } as any),
@@ -746,13 +723,29 @@ export const ProductDetail: React.FC = () => {
         variantName: variantSnapshot?.name,
         variantHex: variantSnapshot?.hex,
         variantImage: variantSnapshot?.image,
-        quantity: quantity
-      });
+        quantity: quantity,
+        maxStock: displayAvailableQuantity
+      }, displayAvailableQuantity);
 
-      showToast(`${product.name} has been added to the cart`, 'success');
+      if (!result.success) {
+        if (result.reason === 'MAX_REACHED') {
+          showToast(`You already have all ${displayAvailableQuantity} available units in your cart`, 'warning');
+        } else if (result.reason === 'OUT_OF_STOCK') {
+          showToast('This product is currently out of stock', 'error');
+        }
+        return false;
+      }
+
+      if (result.reason === 'PARTIAL_ADD') {
+        showToast(`Added ${result.addedQuantity} units to cart (maximum available reached)`, 'info');
+      } else {
+        showToast(`${product.name} added to the cart`, 'success');
+      }
+      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
       showToast('Failed to add to cart', 'error');
+      return false;
     } finally {
       setIsAdding(false);
     }
@@ -764,7 +757,7 @@ export const ProductDetail: React.FC = () => {
       showToast('Removed from wishlist', 'info');
     } else {
       addToWishlist({
-        id: pid,
+        id: canonicalPid,
         name: product.name,
         price: product.price,
         image: primaryImage(product),
@@ -775,11 +768,13 @@ export const ProductDetail: React.FC = () => {
     }
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
-    setTimeout(() => {
-      navigate('/cart');
-    }, 500);
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
+    if (success) {
+      setTimeout(() => {
+        navigate('/cart');
+      }, 300);
+    }
   };
 
   const toggleSection = (section: string) => {
@@ -864,7 +859,7 @@ export const ProductDetail: React.FC = () => {
                 role="group"
                 aria-label="Product image viewer"
                 className="w-full h-full outline-none"
-                style={{ display: 'block', overflow: 'hidden', touchAction: gallery.scale > 1 ? 'none' : 'pan-y', transition: `transform ${TRANSITION_MS}ms cubic-bezier(.2,.9,.2,1)`, overscrollBehavior: 'contain' as any }}
+                style={{ display: 'block', overflow: 'hidden', touchAction: gallery.scale > 1 ? 'none' : 'pan-y', transition: `transform ${TRANSITION_MS}ms cubic-bezier(.2,.9,.2,1)` }}
               >
                 <div
                   style={{
@@ -886,37 +881,30 @@ export const ProductDetail: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Reduced motion / hover-zoom toggle */}
-            <div className="mt-2 text-sm text-gray-600 flex items-center gap-3">
-              <label className="flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={reducedMotion} onChange={() => setReducedMotion(!reducedMotion)} aria-label="Disable hover zoom" />
-                <span>Reduce motion (disable hover zoom)</span>
-              </label>
-            </div>
-
             {/* Thumbnail Slider */}
-            <div className="relative">
+            <div className="relative mt-3">
               <button
                 type="button"
                 aria-label="Scroll thumbnails left"
-                onClick={() => scrollThumbsBy(-Math.floor((thumbsRef.current?.clientWidth || 240) * 0.8))}
-                className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 p-1 bg-white rounded-full shadow-sm ${canScrollLeft ? 'opacity-100' : 'opacity-40 pointer-events-auto'}`}
+                onClick={() => { markInteraction(); scrollThumbsBy(-Math.floor((thumbsRef.current?.clientWidth || 240) * 0.8)); }}
+                className={`absolute left-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-800 ${canScrollLeft ? 'opacity-100' : 'opacity-40 pointer-events-auto'}`}
               >
                 ‹
               </button>
 
               <div
                 ref={thumbsRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-4 scroll-smooth touch-pan-x"
+                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-2 scroll-smooth touch-pan-x"
               >
                 {galleryImages.map((image: any, index: number) => {
                   const imageSrc = typeof image === 'string' ? image : (image as any).url;
                   return (
                     <button
                       key={`thumbnail-${index}-${imageSrc}`}
+                      type="button"
                       onClick={() => { gallery.setIndex(index); markInteraction(); }}
                       className={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border transition-all ${
-                        gallery.index === index ? 'border-blue-600' : 'border-gray-200'
+                        gallery.index === index ? 'border-gray-900 ring-2 ring-gray-900/20 shadow-sm' : 'border-gray-200 hover:border-gray-400 opacity-75 hover:opacity-100'
                       }`}
                     >
                       <FallbackImage src={imageSrc} alt={`${product.name} ${index + 1}`} loading="lazy" className="w-full h-full object-cover" />
@@ -928,11 +916,25 @@ export const ProductDetail: React.FC = () => {
               <button
                 type="button"
                 aria-label="Scroll thumbnails right"
-                onClick={() => scrollThumbsBy(Math.floor((thumbsRef.current?.clientWidth || 240) * 0.8))}
-                className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-white rounded-full shadow-sm ${canScrollRight ? 'opacity-100' : 'opacity-40 pointer-events-auto'}`}
+                onClick={() => { markInteraction(); scrollThumbsBy(Math.floor((thumbsRef.current?.clientWidth || 240) * 0.8)); }}
+                className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-800 ${canScrollRight ? 'opacity-100' : 'opacity-40 pointer-events-auto'}`}
               >
                 ›
               </button>
+            </div>
+
+            {/* Reduce Motion Toggle */}
+            <div className="mt-2.5 text-sm text-gray-600 flex items-center gap-3">
+              <label className="flex items-center gap-2 text-xs cursor-pointer select-none text-gray-600 hover:text-gray-900">
+                <input
+                  type="checkbox"
+                  checked={reducedMotion}
+                  onChange={() => setReducedMotion(!reducedMotion)}
+                  aria-label="Reduce motion (disable hover zoom and auto-rotation)"
+                  className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                />
+                <span>Reduce motion (disable hover zoom & auto-rotation)</span>
+              </label>
             </div>
           </div>
 
@@ -1001,7 +1003,7 @@ export const ProductDetail: React.FC = () => {
                     let s = input.trim();
                     try { for (let i=0;i<5;i++) { const parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed.flatMap((x:any)=> typeof x === 'string' ? x : String(x)).map(String).map(s=>s.trim()).filter(Boolean); if (typeof parsed === 'string') { s = parsed; continue; } return [String(parsed)]; } } catch(e) {}
                     if (s.includes(',')) return s.split(',').map((x:string)=>x.trim()).filter(Boolean);
-                    return [s.replace(/^['`\"]+|['`\"]+$/g,'').trim()].filter(Boolean);
+                    return [s.replace(/^['`"]+|['`"]+$/g,'').trim()].filter(Boolean);
                   }
                   return [String(input)];
                 };
@@ -1024,15 +1026,21 @@ export const ProductDetail: React.FC = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Select Color: <span className="text-gray-500 font-normal">{getColorName(selectedColorName || selectedColor)}</span></h3>
                 <div className="flex items-center gap-3 mb-3">
-                        {product.colors.map((c: any, idx: number) => {
+                  {product.colors.map((c: any, idx: number) => {
                     const hex = c?.hex || c?.normalizedHex || c?.value || '#000000';
                     const name = c?.name && !c.name.startsWith('#') ? c.name : getColorName(hex);
                     const colorId = c?.id || c?._id || hex || `color-${idx}`;
                     const isSelected = selectedColor === hex || selectedColor === name;
+                    const colorStock = getAvailableStockForItem(product, { color: hex, colorName: name });
+                    const isColorOutOfStock = colorStock <= 0;
+
                     return (
                       <div key={colorId} className="flex flex-col items-center">
                         <button
+                          type="button"
+                          disabled={isColorOutOfStock}
                           onClick={() => {
+                            if (isColorOutOfStock) return;
                             setSelectedColor(hex);
                             setSelectedColorName(String(name || hex || ''));
                             try {
@@ -1041,8 +1049,8 @@ export const ProductDetail: React.FC = () => {
                                 const tid = normalize(hex);
                                 const matched = product.variants.find((v: any) => {
                                   const hv = v?.hex || v?.normalizedHex || v?.value || '';
-                                  const name = v?.name || '';
-                                  return normalize(hv) === tid || String(name).toLowerCase().trim() === tid;
+                                  const vName = v?.name || '';
+                                  return normalize(hv) === tid || String(vName).toLowerCase().trim() === tid;
                                 });
                                 if (matched && (matched._id || matched.id)) setSelectedVariantId(String(matched._id || matched.id));
                               }
@@ -1050,19 +1058,32 @@ export const ProductDetail: React.FC = () => {
                               // ignore selection errors
                             }
                           }}
-                          title={name}
-                          className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border border-gray-300 transition-all flex items-center justify-center ${isSelected ? 'border-black shadow-sm' : 'hover:border-gray-400'}`}
+                          title={isColorOutOfStock ? `${name} (Out of stock)` : name}
+                          className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border transition-all flex items-center justify-center overflow-hidden ${
+                            isColorOutOfStock
+                              ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-100'
+                              : isSelected
+                              ? 'border-black shadow-sm cursor-pointer'
+                              : 'border-gray-300 hover:border-gray-400 cursor-pointer'
+                          }`}
                           style={{ backgroundColor: hex }}
                         >
-                          {isSelected && (
+                          {isSelected && !isColorOutOfStock && (
                             <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-sm border border-white/40">
                               <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
                                 <path d="M1 4L4 6.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             </span>
                           )}
+                          {isColorOutOfStock && (
+                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45 shadow-[0_0_2px_rgba(0,0,0,0.4)]" />
+                            </span>
+                          )}
                         </button>
-                        <div className="text-xs text-gray-600 mt-1 capitalize text-center max-w-[4rem] break-words">{String(name || '').trim()}</div>
+                        <div className={`text-xs mt-1 capitalize text-center max-w-[4.5rem] break-words ${isColorOutOfStock ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
+                          {String(name || '').trim()}
+                        </div>
                       </div>
                     );
                   })}
@@ -1083,21 +1104,38 @@ export const ProductDetail: React.FC = () => {
                   const availableNormalized = (available || []).map(String);
                   return allSizes.map((size, idx) => {
                     const sizeStr = String(size);
-                    const isAvailable = availableNormalized.includes(sizeStr);
+                    const isConfigured = availableNormalized.includes(sizeStr);
+                    const sizeStock = getAvailableStockForItem(product, {
+                      size: sizeStr,
+                      color: selectedColor,
+                      colorName: selectedColorName,
+                      variantId: selectedVariantId
+                    });
+                    const isAvailable = isConfigured && sizeStock > 0;
+
                     return (
                       <button
                         key={`${sizeStr}-${idx}`}
-                        onClick={() => setSelectedSize(sizeStr)}
+                        type="button"
+                        onClick={() => isAvailable && setSelectedSize(sizeStr)}
                         disabled={!isAvailable}
-                        className={`px-3 py-1.5 border rounded-lg font-medium transition-all text-sm ${
-                          selectedSize === sizeStr
-                            ? 'border-blue-600 bg-blue-600 text-white'
+                        title={!isAvailable ? `${sizeStr} (Out of stock)` : sizeStr}
+                        className={`relative px-3.5 py-1.5 border rounded-lg font-medium transition-all text-sm overflow-hidden select-none ${
+                          selectedSize === sizeStr && isAvailable
+                            ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
                             : isAvailable
-                            ? 'border-gray-300 text-gray-700 hover:border-gray-400 bg-white'
-                            : 'border-gray-200 text-gray-400 opacity-60 bg-gray-50 cursor-not-allowed'
+                            ? 'border-gray-300 text-gray-700 hover:border-gray-900 bg-white cursor-pointer'
+                            : 'border-gray-200 text-gray-400 opacity-50 bg-gray-50 cursor-not-allowed'
                         }`}
                       >
-                        {sizeStr}
+                        <span className={!isAvailable ? 'line-through decoration-gray-400' : ''}>
+                          {sizeStr}
+                        </span>
+                        {!isAvailable && (
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-[140%] h-[1px] bg-gray-400/80 -rotate-45" />
+                          </span>
+                        )}
                       </button>
                     );
                   });
@@ -1112,12 +1150,20 @@ export const ProductDetail: React.FC = () => {
 
             {/* Quantity */}
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Quantity</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-900">Quantity</h3>
+                {inCartQty > 0 && (
+                  <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full font-medium">
+                    {inCartQty} in cart
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <div className="flex border border-gray-300 rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-2 hover:bg-gray-100 rounded-l-lg transition-colors"
+                    disabled={quantity <= 1 || isAllInCart}
+                    className="px-4 py-2 hover:bg-gray-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     -
                   </button>
@@ -1125,8 +1171,9 @@ export const ProductDetail: React.FC = () => {
                     {quantity}
                   </span>
                   <button
-                    onClick={() => setQuantity(Math.min(displayAvailableQuantity, quantity + 1))}
-                    className="px-4 py-2 hover:bg-gray-100 rounded-r-lg transition-colors"
+                    onClick={() => setQuantity(Math.min(remainingStockAllowed > 0 ? remainingStockAllowed : 1, quantity + 1))}
+                    disabled={quantity >= remainingStockAllowed || isAllInCart}
+                    className="px-4 py-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     +
                   </button>
@@ -1136,8 +1183,12 @@ export const ProductDetail: React.FC = () => {
                 </span>
               </div>
 
-              {/* Low stock warning */}
-              {selectedSize && (selectedVariantId || selectedColor) && displayAvailableQuantity > 0 && displayAvailableQuantity <= 15 && (
+              {/* All in cart or low stock warning */}
+              {isAllInCart ? (
+                <div className="mt-2 text-xs md:text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <span>ℹ️</span> All {displayAvailableQuantity} available units are already in your cart.
+                </div>
+              ) : selectedSize && (selectedVariantId || selectedColor) && displayAvailableQuantity > 0 && displayAvailableQuantity <= 15 ? (
                 <div className="mt-2 text-xs md:text-sm font-medium transition-all duration-300">
                   {displayAvailableQuantity === 1 ? (
                     <span className="text-red-600 flex items-center gap-1.5 animate-pulse font-bold">
@@ -1153,23 +1204,23 @@ export const ProductDetail: React.FC = () => {
                     </span>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 relative">
               <button
                 onClick={handleAddToCart}
-                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding}
+                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || isAllInCart}
                 aria-busy={isAdding}
                 className="flex-1 bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : null}
-                {isAdding ? 'Adding...' : 'Add to Cart'}
+                {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Add to Cart'}
               </button>
               <button
-                onClick={async () => { await handleAddToCart(); setTimeout(() => { navigate('/cart'); }, 500); }}
-                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding}
+                onClick={handleBuyNow}
+                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || (isAllInCart && inCartQty === 0)}
                 className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isAdding ? 'Adding...' : 'Buy Now'}
@@ -1310,7 +1361,10 @@ export const ProductDetail: React.FC = () => {
                   {(() => {
                     try {
                       if (Array.isArray(product.colors) && product.colors.length) {
-                        return product.colors.map((c: any) => (c.name || c.displayName || c.value || (c.hex || ''))).join(', ');
+                        return product.colors.map((c: any) => getColorName(c.name || c.displayName || c.value || c.hex || '')).filter(Boolean).join(', ');
+                      }
+                      if (Array.isArray((product as any).variants) && (product as any).variants.length) {
+                        return (product as any).variants.map((v: any) => getColorName(v.name || v.hex || '')).filter(Boolean).join(', ');
                       }
                     } catch (e) {
                       // ignore
@@ -1461,33 +1515,39 @@ export const ProductDetail: React.FC = () => {
         </div>
 
         {/* Recently Viewed Products */}
-        <div className="mt-20 mb-10">
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-bold text-gray-900">Recently Viewed</h3>
-          </div>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              {(() => {
-                try {
-                  const raw = localStorage.getItem('recentlyViewed');
-                  const arr = raw ? JSON.parse(raw) : [];
-                  const list = arr.filter((p: any) => String(p.id) !== String(product.id)).slice(0, 6);
-                  return list.map((p: any) => (
-                    <Link key={String(p.id || '')} to={`/product/${String(p.id || '')}`} className="border border-gray-100 rounded-lg overflow-hidden p-2 flex flex-col items-start hover:shadow-lg transition-all bg-white">
-                      <div className="w-full h-24 bg-gray-50 overflow-hidden mb-2 rounded-md">
-                        <img src={String(p.image || '')} alt={String(p.name || '')} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="text-sm font-medium truncate w-full text-gray-900">{String(p.name ?? '')}</div>
-                      <div className="text-xs text-gray-500 mt-1">Rs {typeof p.price === 'number' ? p.price.toLocaleString() : String(p.price ?? '')}</div>
-                    </Link>
-                  ));
-                } catch (e) {
-                  return null;
-                }
-              })()}
+        {recentlyViewedList.length > 0 && (
+          <div className="mt-20 mb-10">
+            <div className="text-center mb-8">
+              <h3 className="text-xl font-bold text-gray-900">Recently Viewed</h3>
+            </div>
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                {recentlyViewedList.map((p: any) => (
+                  <Link
+                    key={String(p.id || p._id || '')}
+                    to={`/product/${String(p.id || p._id || '')}`}
+                    className="group border border-gray-100 rounded-lg overflow-hidden p-2 flex flex-col items-start hover:shadow-lg transition-all bg-white"
+                  >
+                    <div className="w-full h-32 bg-gray-50 overflow-hidden mb-2 rounded-md">
+                      <img
+                        src={String(p.image || '')}
+                        alt={String(p.name || '')}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </div>
+                    <div className="text-sm font-medium truncate w-full text-gray-900 group-hover:text-blue-600 transition-colors">
+                      {String(p.name ?? '')}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Rs {typeof p.price === 'number' ? p.price.toLocaleString() : String(p.price ?? '')}
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       <SizeGuide
         open={sizeGuideOpen}

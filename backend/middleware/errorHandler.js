@@ -83,7 +83,8 @@ const errorHandler = (err, req, res, next) => {
     sendErrorDev(err, req, res);
   } else {
     // Allow forcing verbose errors in non-production via DEBUG_ERRORS=true
-    if (String(process.env.DEBUG_ERRORS).toLowerCase() === 'true') {
+    // NEVER allow this in production to prevent stack trace leakage
+    if (process.env.NODE_ENV !== 'production' && String(process.env.DEBUG_ERRORS).toLowerCase() === 'true') {
       return sendErrorDev(err, req, res);
     }
     let error = { ...err };

@@ -59,12 +59,10 @@ jobs:
     - name: Lint backend
       working-directory: ./backend
       run: npm run lint
-      continue-on-error: true
 
     - name: Lint frontend
       working-directory: ./frontend
       run: npm run lint
-      continue-on-error: true
 
     - name: Run backend unit tests
       working-directory: ./backend
@@ -79,6 +77,36 @@ jobs:
         SMTP_PASS: testpass
         CLOUDINARY_API_SECRET: test-secret
 
+    - name: Seed test database
+      working-directory: ./backend
+      run: npm run seed-admin
+      env:
+        MONGODB_URI: mongodb://localhost:27017/denfit-test
+        JWT_SECRET: test-jwt-secret-key-for-ci
+        ALLOW_DEV_BACKDOORS: "true"
+        SEED_ADMIN_EMAIL: admin@denfit.com
+        SEED_ADMIN_PASSWORD: TestAdmin123!
+
+    - name: Start backend server
+      working-directory: ./backend
+      run: npm start &
+      env:
+        NODE_ENV: test
+        PORT: 3002
+        MONGODB_URI: mongodb://localhost:27017/denfit-test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-jwt-secret-key-for-ci
+        ALLOWED_ORIGINS: http://localhost:3000
+        ALLOW_DEV_BACKDOORS: "true"
+        SKIP_CSRF: "true"
+        SMTP_HOST: smtp.example.com
+        SMTP_USER: test@example.com
+        SMTP_PASS: testpass
+        CLOUDINARY_API_SECRET: test-secret
+
+    - name: Wait for backend
+      run: npx wait-on http://localhost:3002/api/v1/health --timeout 60000
+
     - name: Run backend integration tests
       working-directory: ./backend
       run: npm run test:integration
@@ -88,7 +116,6 @@ jobs:
         REDIS_URL: redis://localhost:6379
         JWT_SECRET: test-jwt-secret-key-for-ci
         API_URL: http://localhost:3002
-      continue-on-error: true
 
     - name: Run frontend unit tests
       working-directory: ./frontend
@@ -102,7 +129,6 @@ jobs:
       run: |
         cd backend && npm audit --audit-level=high
         cd ../frontend && npm audit --audit-level=high
-      continue-on-error: true
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -144,6 +170,9 @@ jobs:
       env:
         MONGODB_URI: mongodb://localhost:27017/denfit-test
         JWT_SECRET: test-jwt-secret-key-for-ci
+        ALLOW_DEV_BACKDOORS: "true"
+        SEED_ADMIN_EMAIL: admin@denfit.com
+        SEED_ADMIN_PASSWORD: TestAdmin123!
 
     - name: Start backend server
       working-directory: ./backend
@@ -155,6 +184,8 @@ jobs:
         REDIS_URL: redis://localhost:6379
         JWT_SECRET: test-jwt-secret-key-for-ci
         ALLOWED_ORIGINS: http://localhost:3000
+        ALLOW_DEV_BACKDOORS: "true"
+        SKIP_CSRF: "true"
         SMTP_HOST: smtp.example.com
         SMTP_USER: test@example.com
         SMTP_PASS: testpass

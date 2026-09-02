@@ -174,6 +174,7 @@ function AppContent() {
             }
           >
             <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="products" element={<AdminProducts />} />

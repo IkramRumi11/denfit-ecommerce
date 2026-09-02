@@ -113,7 +113,10 @@ const AuthPage: React.FC = () => {
 
   // ------------------ Redirect if Authenticated ------------------
   useEffect(() => {
-    if (isAuthenticated && user) navigate(from, { replace: true });
+    if (isAuthenticated && user) {
+      const destination = from && from !== '/' ? from : (user.role === 'admin' ? '/admin/dashboard' : '/');
+      navigate(destination, { replace: true });
+    }
   }, [isAuthenticated, user, navigate, from]);
 
   // ------------------ Password Strength ------------------

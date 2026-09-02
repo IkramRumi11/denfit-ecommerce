@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
 import { normalizeProductInput } from '../utils/adminProductHelper.js';
 
 test('normalizeProductInput preserves product gender and category', async () => {

@@ -14,7 +14,7 @@ import { useToast } from '../context/ToastContext';
 // mockProducts intentionally not used in production search — rely on backend
 import { useLocation, useNavigate } from 'react-router-dom';
 import { slugify, primaryImage } from '../utils/productHelpers';
-import { isOutOfStock } from '../utils/stockHelpers';
+import { isOutOfStock, getAvailableStockForItem } from '../utils/stockHelpers';
 import megaMenuData from '../data/megaMenuData';
 import { productsAPI } from '../api';
 
@@ -59,8 +59,13 @@ export const Shop: React.FC = () => {
       })();
 
       const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || undefined);
+      const availableStock = getAvailableStockForItem(product, {
+        size,
+        color: colorNormalized,
+        variantId: variantSnapshot?.id
+      });
 
-      addItem({
+      const res = addItem({
         productId: product.id,
         name: product.name,
         price: product.price,
@@ -72,9 +77,20 @@ export const Shop: React.FC = () => {
         variantName: variantSnapshot?.name,
         variantHex: variantSnapshot?.hex,
         variantImage: variantSnapshot?.image,
-        quantity: 1
-      });
-      showToast(`${product.name} added to cart!`, 'success');
+        quantity: 1,
+        maxStock: availableStock
+      }, availableStock);
+
+      if (!res.success) {
+        if (res.reason === 'MAX_REACHED') {
+          showToast(`You already have all ${availableStock} available units in your cart`, 'warning');
+        } else {
+          showToast('Product is out of stock', 'error');
+        }
+        return;
+      }
+
+      showToast(`${product.name} added to the cart`, 'success');
       closeQuickAdd();
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -253,27 +269,34 @@ export const Shop: React.FC = () => {
         } catch (e) {}
       } else {
         const target = normalize(decoded);
+        const targetSingular = target.endsWith('s') && target.length > 2 ? target.slice(0, -1) : target;
         filtered = filtered.filter((p: any) => {
-          const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section];
-          // include tags or arrays if present
+          const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section, p.name];
           if (Array.isArray(p.tags)) candidates.push(...p.tags);
           if (Array.isArray(p.colors)) candidates.push(...p.colors);
+
           for (const c of candidates.filter(Boolean)) {
-            if (normalize(c) === target) return true;
+            const normC = normalize(c);
+            if (normC === target || normC === targetSingular) return true;
+            if (normC.includes(target) || normC.includes(targetSingular) || target.includes(normC)) return true;
             if (Array.isArray(c)) {
-              if ((c as any[]).map(String).some(x => normalize(x) === target)) return true;
+              if ((c as any[]).map(String).some((x: any) => {
+                const nx = normalize(x);
+                return nx === target || nx === targetSingular || nx.includes(targetSingular);
+              })) return true;
             }
             if (typeof c === 'string') {
               try {
                 const parsed = JSON.parse(c as string);
-                if (Array.isArray(parsed) && parsed.map(String).some((x: any) => normalize(x) === target)) return true;
+                if (Array.isArray(parsed) && parsed.map(String).some((x: any) => {
+                  const nx = normalize(x);
+                  return nx === target || nx === targetSingular || nx.includes(targetSingular);
+                })) return true;
               } catch (e) {
                 // ignore
               }
             }
           }
-          // fallback: check product name
-          if (normalize(p.name) === target) return true;
           return false;
         });
       }
@@ -622,7 +645,7 @@ export const Shop: React.FC = () => {
                               if (typeof input === 'string') {
                                 try { let s = input; for (let i=0;i<5;i++) { const parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed.flatMap((x:any)=> typeof x === 'string' ? x : String(x)).map(String).map(s=>s.trim()).filter(Boolean); if (typeof parsed === 'string') { s = parsed; continue; } return [String(parsed)]; } } catch(e) {}
                                 if (input.includes(',')) return input.split(',').map((x:string)=>x.trim()).filter(Boolean);
-                                return [input.replace(/^['`\"]+|['`\"]+$/g,'').trim()].filter(Boolean);
+                                return [input.replace(/^['`"]+|['`"]+$/g,'').trim()].filter(Boolean);
                               }
                               return [String(input)];
                             };
@@ -694,6 +717,8 @@ export const Shop: React.FC = () => {
                   onProductsChange={handleProductsFromEngine}
                   onLoadingChange={setLoading}
                   headless={false}
+                  inline={true}
+                  showHeader={false}
                 />
               </div>
 

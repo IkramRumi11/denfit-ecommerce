@@ -39,7 +39,7 @@ const RevenueChartInner: React.FC<{ data?: SalesData[] }> = ({ data = [] }) => {
 
     if (chartData.length === 0) {
         return (
-            <div className="w-full rounded-xl bg-white p-6 shadow-sm border border-gray-200 text-center text-gray-600">
+            <div data-testid="revenue-chart" className="w-full rounded-xl bg-white p-6 shadow-sm border border-gray-200 text-center text-gray-600">
                 <div className="font-medium mb-1">Revenue</div>
                 <div className="text-sm">No sales data to display</div>
             </div>
@@ -47,7 +47,7 @@ const RevenueChartInner: React.FC<{ data?: SalesData[] }> = ({ data = [] }) => {
     }
 
     return (
-        <div className="w-full overflow-hidden rounded-xl bg-white p-4 shadow-sm border border-gray-200">
+        <div data-testid="revenue-chart" className="w-full overflow-hidden rounded-xl bg-white p-4 shadow-sm border border-gray-200">
             <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>

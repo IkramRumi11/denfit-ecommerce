@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
 import { createClient } from 'redis';
+
 import { redisUrl } from '../config/redis.js';
 
 const emitter = new EventEmitter();

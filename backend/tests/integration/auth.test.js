@@ -1,19 +1,15 @@
 // Integration tests for authentication endpoints
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
+import { apiRequest, getAdminToken, adminEmail, adminPassword } from './testHelper.js';
 
 describe('Auth API Integration Tests', () => {
-  const baseURL = process.env.API_URL || 'http://localhost:3002';
-  const adminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@denfit.com';
-  const adminPassword = process.env.TEST_ADMIN_PASSWORD || 'TestAdmin123!';
   const testEmail = `test-${Date.now()}@example.com`;
   const testPassword = 'TestPassword123!';
-  let authToken = '';
 
   test('POST /api/v1/auth/register - should register new user', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/register`, {
+    const response = await apiRequest('/api/v1/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Test User',
         email: testEmail,
@@ -28,9 +24,8 @@ describe('Auth API Integration Tests', () => {
   });
 
   test('POST /api/v1/auth/register - should reject duplicate email', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/register`, {
+    const response = await apiRequest('/api/v1/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Test User',
         email: testEmail,
@@ -43,25 +38,13 @@ describe('Auth API Integration Tests', () => {
   });
 
   test('POST /api/v1/auth/login - should login with valid credentials', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword
-      })
-    });
-
-    const cookie = response.headers.get('set-cookie');
-    const match = cookie && cookie.match(/jwt=([^;]+)/);
-    assert.ok(match && match[1], 'Should return JWT token cookie');
-    authToken = match ? match[1] : '';
+    const adminToken = await getAdminToken();
+    assert.ok(adminToken, 'Should return JWT token for valid credentials');
   });
 
   test('POST /api/v1/auth/login - should reject invalid credentials', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/login`, {
+    const response = await apiRequest('/api/v1/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'wrong@example.com',
         password: 'wrongpassword'
@@ -72,22 +55,10 @@ describe('Auth API Integration Tests', () => {
   });
 
   test('GET /api/v1/auth/me - should return current user with valid token', async () => {
-    // Login first
-    const loginRes = await fetch(`${baseURL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword
-      })
-    });
-    const cookie = loginRes.headers.get('set-cookie');
-    const match = cookie && cookie.match(/jwt=([^;]+)/);
-    const token = match ? match[1] : '';
+    const adminToken = await getAdminToken();
 
-    // Get current user
-    const response = await fetch(`${baseURL}/api/v1/auth/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+    const response = await apiRequest('/api/v1/auth/me', {
+      token: adminToken
     });
 
     const data = await response.json();
@@ -97,14 +68,13 @@ describe('Auth API Integration Tests', () => {
   });
 
   test('GET /api/v1/auth/me - should reject without token', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/me`);
+    const response = await fetch('http://localhost:3002/api/v1/auth/me');
     assert.strictEqual(response.status, 401, 'Should return 401 Unauthorized');
   });
 
   test('POST /api/v1/auth/forgot-password - should accept valid email', async () => {
-    const response = await fetch(`${baseURL}/api/v1/auth/forgot-password`, {
+    const response = await apiRequest('/api/v1/auth/forgot-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: adminEmail
       })
@@ -116,23 +86,11 @@ describe('Auth API Integration Tests', () => {
   });
 
   test('POST /api/v1/auth/logout - should logout user', async () => {
-    // Login first
-    const loginRes = await fetch(`${baseURL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword
-      })
-    });
-    const cookie = loginRes.headers.get('set-cookie');
-    const match = cookie && cookie.match(/jwt=([^;]+)/);
-    const token = match ? match[1] : '';
+    const adminToken = await getAdminToken();
 
-    // Logout
-    const response = await fetch(`${baseURL}/api/v1/auth/logout`, {
+    const response = await apiRequest('/api/v1/auth/logout', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
+      token: adminToken
     });
 
     assert.ok([200, 204].includes(response.status), 'Should return 200 or 204');

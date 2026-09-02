@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import crypto from 'crypto';
+
 import { connection } from '../config/redis.js';
 
 const emailQueueConnection = {

@@ -76,9 +76,12 @@ export function calculateVariantInventory(product) {
 export function syncProduct(product) {
   if (!product) return;
   
+  const hasStock = Array.isArray(product.stock) && product.stock.length > 0;
+  const hasSizesNumeric = Array.isArray(product.sizes) && product.sizes.some(s => s && s.quantity !== null && s.quantity !== undefined && !Number.isNaN(Number(s.quantity)));
+  const hasVariantsNumeric = Array.isArray(product.variants) && product.variants.some(v => v && v.inventory !== null && v.inventory !== undefined && !Number.isNaN(Number(v.inventory)));
   const USE_STOCK_AS_SOURCE_OF_TRUTH = String(process.env.USE_STOCK_AS_SOURCE_OF_TRUTH || '').toLowerCase() === 'true';
   
-  if (USE_STOCK_AS_SOURCE_OF_TRUTH) {
+  if (hasStock || hasSizesNumeric || hasVariantsNumeric || USE_STOCK_AS_SOURCE_OF_TRUTH) {
     product.inventory = calculateInventory(product);
     calculateSizeQuantities(product);
     calculateVariantInventory(product);

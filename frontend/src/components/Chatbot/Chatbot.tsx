@@ -442,7 +442,7 @@ Simply type your query or use the quick buttons below! 🛍️`,
       '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">' +
       '<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#111827"/><stop offset="1" stop-color="#4b5563"/></linearGradient></defs>' +
       '<rect width="100%" height="100%" rx="40" fill="url(%23g)"/>' +
-      '<text x="50%" y="54%" font-family="\"Plus Jakarta Sans\", Arial, sans-serif" font-weight="700" font-size="56" fill="#fff" text-anchor="middle" alignment-baseline="middle">DENFiT</text>' +
+      '<text x="50%" y="54%" font-family="\'Plus Jakarta Sans\', Arial, sans-serif" font-weight="700" font-size="56" fill="#fff" text-anchor="middle" alignment-baseline="middle">DENFiT</text>' +
       '</svg>'
     );
 
@@ -597,7 +597,7 @@ Simply type your query or use the quick buttons below! 🛍️`,
     const lower = userText.toLowerCase().trim();
 
     // Enforce English-only responses: if user sends non-ASCII text heavily, gently ask for English.
-    if (/[\u0400-\u04FF\u0600-\u06FF\u0900-\u097F]/.test(userText) && userText.split(/\s+/).length > 1) {
+    if (/[\u0400-\u04FF\u0600-\u06FF\u0900-\u097F]/u.test(userText) && userText.split(/\s+/).length > 1) {
       return `Please write your question in English so I can assist you best. If you prefer, contact our support on WhatsApp.`;
     }
 

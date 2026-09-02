@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { createClient } from 'redis';
+
 import { redisUrl } from '../config/redis.js';
 
 export const checkHealth = async (req, res) => {

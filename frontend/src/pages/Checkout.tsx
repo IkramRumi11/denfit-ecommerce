@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -10,7 +10,10 @@ import {
   Banknote, 
   ShieldCheck,
   Minus,
-  Plus
+  Plus,
+  Package,
+  ArrowRight,
+  ShoppingBag
 } from 'lucide-react';
 
 import { useCart } from '../context/CartContext';
@@ -20,13 +23,16 @@ import { useAuth } from '../context/AuthContext';
 import { ordersAPI, productsAPI } from '../api';
 import { formatCurrency } from '../utils/formatCurrency';
 import { getColorName } from '../utils/colorNames';
+import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { useToast } from '../context/ToastContext';
+import { useNotifications } from '../context/NotificationContext';
 
 type PaymentMethod = 'cod';
 
 export const Checkout: React.FC = () => {
   const { items, subtotal, shipping, tax, total, clearCart, updateQuantity, removeItem } = useCart();
   const { showToast } = useToast();
+  const { addNotification } = useNotifications();
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -36,6 +42,7 @@ export const Checkout: React.FC = () => {
   // Temporarily default to COD and restrict selection to COD only.
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cod');
   const [createdOrder, setCreatedOrder] = useState<any | null>(null);
+  const [stockIssuesList, setStockIssuesList] = useState<Array<{ item: any; availableStock: number }>>([]);
 
   // Safe array access with fallbacks
   const safeItems = Array.isArray(items) ? items : [];
@@ -60,6 +67,74 @@ export const Checkout: React.FC = () => {
     };
   });
   const itemsCount = safeItems.length;
+
+  // Scroll to top when order is complete or component renders complete
+  useEffect(() => {
+    if (isComplete) {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+    }
+  }, [isComplete]);
+
+  // Validate live inventory on initial render / cart change
+  useEffect(() => {
+    let mounted = true;
+    const validateLiveInventory = async () => {
+      if (!safeItems.length) return;
+      try {
+        const uniqueProductIds = Array.from(new Set(safeItems.map(it => it.productId).filter(Boolean)));
+        const results = await Promise.all(
+          uniqueProductIds.map(id => productsAPI.getById(id).catch(() => null))
+        );
+        const latestStocks: Record<string, any> = {};
+        results.forEach((res: any) => {
+          const prod = res && (res.product || res.data?.product || res);
+          if (prod) {
+            latestStocks[String(prod._id || prod.id)] = prod;
+            if (prod._id) latestStocks[String(prod._id)] = prod;
+            if (prod.id) latestStocks[String(prod.id)] = prod;
+          }
+        });
+
+        const issues: Array<{ item: any; availableStock: number }> = [];
+        for (const it of safeItems) {
+          const prod = latestStocks[it.productId];
+          if (!prod) continue;
+          const availableStock = getAvailableStockForItem(prod, {
+            size: it.size,
+            color: it.color,
+            colorName: it.colorName,
+            variantId: it.variantId,
+            variantName: it.variantName,
+            variantHex: it.variantHex
+          });
+          if (it.quantity > availableStock) {
+            issues.push({ item: it, availableStock });
+          }
+        }
+        if (mounted) {
+          setStockIssuesList(issues);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    validateLiveInventory();
+    return () => { mounted = false; };
+  }, [safeItems.map(i => `${i.productId}-${i.size}-${i.color}-${i.quantity}`).join(',')]);
+
+  const handleAutoAdjustQuantities = () => {
+    stockIssuesList.forEach(({ item, availableStock }) => {
+      if (availableStock <= 0) {
+        removeItem(item.productId, item.size, item.color);
+      } else {
+        updateQuantity(item.productId, item.size, availableStock, item.color, availableStock);
+      }
+    });
+    setStockIssuesList([]);
+    setServerErrors([]);
+    showToast('Cart quantities synchronized with current available stock', 'success');
+  };
 
   // --- FORM STATE ---
   const [shippingInfo, setShippingInfo] = useState({
@@ -210,43 +285,31 @@ export const Checkout: React.FC = () => {
       });
       
       const stockIssues: string[] = [];
+      const structuredIssues: Array<{ item: any; availableStock: number }> = [];
       for (const it of safeItems) {
         const prod = latestStocks[it.productId];
         if (!prod) continue;
         
-        let availableStock = 0;
-        if (Array.isArray(prod.stock) && prod.stock.length) {
-          const match = prod.stock.find((s: any) => {
-            if (!s) return false;
-            const matchesColor = it.variantId
-              ? String(s.colorTempId) === String(it.variantId)
-              : (it.color ? String(s.colorTempId).toLowerCase().trim() === String(it.color).toLowerCase().trim() : true);
-            
-            let displaySize = s.sizeId;
-            if (Array.isArray(prod.sizes) && prod.sizes.length) {
-              const found = prod.sizes.find((sz: any) => sz.id === s.sizeId || sz.value === s.sizeId);
-              if (found) displaySize = found.value || found.id;
-            }
-            const matchesSize = String(displaySize).toLowerCase().trim() === String(it.size).toLowerCase().trim();
-            return matchesColor && matchesSize;
-          });
-          if (match && typeof match.quantity === 'number') availableStock = match.quantity;
-        } else if (it.variantId && Array.isArray(prod.variants)) {
-          const matchedVar = prod.variants.find((v: any) => String(v._id || v.id) === String(it.variantId));
-          if (matchedVar && typeof matchedVar.inventory === 'number') availableStock = matchedVar.inventory;
-        } else if (typeof prod.inventory === 'number') {
-          availableStock = prod.inventory;
-        }
+        const availableStock = getAvailableStockForItem(prod, {
+          size: it.size,
+          color: it.color,
+          colorName: it.colorName,
+          variantId: it.variantId,
+          variantName: it.variantName,
+          variantHex: it.variantHex
+        });
         
         if (it.quantity > availableStock) {
           const colorName = it.colorName || (it.color ? getColorName(it.color) : 'Default');
           stockIssues.push(`${it.name} - Color: ${colorName}, Size: ${it.size} (Requested: ${it.quantity}, Available: ${availableStock})`);
+          structuredIssues.push({ item: it, availableStock });
         }
       }
       
       if (stockIssues.length > 0) {
+        setStockIssuesList(structuredIssues);
         setServerErrors([
-          'Some items in your cart are no longer available in the requested quantity. Please update your cart before checkout.',
+          'Some items in your cart have limited stock. Click the button below to adjust your cart to available stock:',
           ...stockIssues
         ]);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -293,17 +356,31 @@ export const Checkout: React.FC = () => {
       const res: any = await ordersAPI.create(payload as any);
       if (res && res.success && res.data && res.data.order) {
         const created = res.data.order;
+        const ordId = created.orderNumber || created._id || created.id;
+        
         clearCart();
         setCreatedOrder(created);
         setIsComplete(true);
-        // show confirmation and allow user to view order or continue shopping
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+
+        // Trigger Success Toast
+        showToast(`Order #${ordId} placed successfully!`, 'success', 6000);
+
+        // Add in-app notification
         try {
-          // small toast with order id
-          // @ts-ignore
+          addNotification({
+            title: 'Order Confirmed',
+            message: `Your order #${ordId} for Rs ${Number(created.total || total).toLocaleString()} has been placed successfully.`,
+            type: 'order',
+            orderId: created._id || created.id
+          });
+        } catch (e) {}
+
+        try {
+          // @ts-expect-error custom event is not typed on window object
           window?.dispatchEvent?.(new CustomEvent('app:orderCreated', { detail: { orderId: created._id || created.id } }));
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
         return;
       } else {
         throw new Error(res?.message || 'Order creation failed');
@@ -335,18 +412,21 @@ export const Checkout: React.FC = () => {
     }
   };
 
-  // --- ORIGINAL EMPTY CART DESIGN ---
+  // --- EMPTY CART VIEW ---
   if (itemsCount === 0 && !isComplete) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center bg-white rounded-2xl shadow-sm p-12">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
-          <p className="text-gray-600 mb-8">
-            Add some items to your cart before proceeding to checkout.
+      <div className="min-h-screen bg-gray-50/50 flex items-start justify-center pt-20 px-4">
+        <div className="max-w-md w-full text-center bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShoppingBag className="h-8 w-8 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
+          <p className="text-gray-500 mb-8 text-sm">
+            Add items to your cart before proceeding to checkout.
           </p>
           <Link
             to="/shop"
-            className="btn-primary inline-block"
+            className="w-full btn-primary inline-block py-3"
           >
             Continue Shopping
           </Link>
@@ -355,43 +435,95 @@ export const Checkout: React.FC = () => {
     );
   }
 
-  // --- ORIGINAL SUCCESS STATE DESIGN ---
+  // --- ORDER CONFIRMATION VIEW (TOP-ALIGNED & RESPONSIVE) ---
   if (isComplete) {
+    const orderNum = createdOrder ? (createdOrder.orderNumber || createdOrder._id || createdOrder.id) : `DENFIT-${Date.now()}`;
+    const orderTotal = createdOrder?.total || total;
+    const shippingTarget = createdOrder?.shippingAddress || shippingInfo;
+
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center bg-white rounded-2xl shadow-sm p-12">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="h-8 w-8 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Order Confirmed!</h1>
-          <p className="text-gray-600 mb-2">
-            Thank you for your purchase. Your order has been confirmed.
-          </p>
-          <p className="text-gray-600 mb-8">
-            Order #: <span className="font-mono">{createdOrder ? (createdOrder.orderNumber || createdOrder._id || createdOrder.id) : `DENFIT-${Date.now()}`}</span>
-          </p>
-          <div className="space-y-3">
-            <Link
-              to="/shop"
-              className="w-full btn-primary block"
-            >
-              Continue Shopping
-            </Link>
-            {createdOrder ? (
-              <Link
-                to={`/orders/${createdOrder._id || createdOrder.id}`}
-                className="w-full btn-secondary block"
-              >
-                View Order
-              </Link>
-            ) : (
-              <Link
-                to="/orders"
-                className="w-full btn-secondary block"
-              >
-                View Orders
-              </Link>
-            )}
+      <div className="min-h-screen bg-gray-50/40 pt-8 md:pt-14 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Main Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Top Banner */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-8 text-center text-white">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Check className="h-9 w-9 text-white stroke-[2.5]" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Order Confirmed!</h1>
+              <p className="text-green-100 text-sm mt-1.5 max-w-sm mx-auto">
+                Thank you for your purchase. We have received your order and are preparing it for delivery.
+              </p>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 md:p-8 space-y-6">
+              {/* Order Number & Status Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <div>
+                  <span className="text-xs text-gray-500 font-medium uppercase tracking-wider block">Order Reference</span>
+                  <span className="font-mono font-bold text-gray-900 text-base md:text-lg">#{orderNum}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5 animate-pulse" />
+                    Confirmed (COD)
+                  </span>
+                </div>
+              </div>
+
+              {/* Order Summary Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="p-4 rounded-xl border border-gray-100 space-y-1">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">Delivery Address</span>
+                  <p className="font-medium text-gray-900">{shippingTarget?.fullName || user?.name || 'Customer'}</p>
+                  <p className="text-gray-600">{shippingTarget?.address}</p>
+                  <p className="text-gray-600">{shippingTarget?.city}{shippingTarget?.state ? `, ${shippingTarget.state}` : ''}</p>
+                  <p className="text-gray-500 text-xs mt-1">📞 {shippingTarget?.phone}</p>
+                </div>
+
+                <div className="p-4 rounded-xl border border-gray-100 space-y-1">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">Payment & Total</span>
+                  <p className="text-gray-600">Method: <span className="font-medium text-gray-900">Cash on Delivery</span></p>
+                  <p className="text-gray-600">Estimated Delivery: <span className="font-medium text-gray-900">3–5 Business Days</span></p>
+                  <div className="pt-2 border-t border-gray-100 mt-2">
+                    <span className="text-xs text-gray-500">Total Payable Amount:</span>
+                    <p className="text-lg font-bold text-gray-900">{formatCurrency(orderTotal)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notice */}
+              <div className="text-xs text-gray-500 text-center bg-blue-50/60 border border-blue-100 rounded-lg p-3">
+                ✉️ A confirmation message has been recorded. You can track your order status anytime from your profile.
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                {createdOrder ? (
+                  <Link
+                    to={`/orders/${createdOrder._id || createdOrder.id}`}
+                    className="flex-1 py-3 px-4 rounded-lg bg-gray-900 text-white font-medium text-center hover:bg-black transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Package className="h-4 w-4" /> View Order Details
+                  </Link>
+                ) : (
+                  <Link
+                    to="/orders"
+                    className="flex-1 py-3 px-4 rounded-lg bg-gray-900 text-white font-medium text-center hover:bg-black transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Package className="h-4 w-4" /> View My Orders
+                  </Link>
+                )}
+                <Link
+                  to="/shop"
+                  className="flex-1 py-3 px-4 rounded-lg border border-gray-300 text-gray-700 font-medium text-center hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  Continue Shopping <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -418,11 +550,20 @@ export const Checkout: React.FC = () => {
           <div className="lg:col-span-8 space-y-6">
             {serverErrors.length > 0 && (
               <div className="rounded-2xl bg-red-50 border border-red-200 p-4">
-                <ul className="list-disc pl-5">
+                <ul className="list-disc pl-5 mb-3">
                   {serverErrors.map((err, i) => (
                     <li key={i} className="text-sm text-red-700 font-medium">{err}</li>
                   ))}
                 </ul>
+                {stockIssuesList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleAutoAdjustQuantities}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    Adjust Cart to Available Stock
+                  </button>
+                )}
               </div>
             )}
             
@@ -763,29 +904,14 @@ export const Checkout: React.FC = () => {
                                 const res = await productsAPI.getById(item.productId);
                                 const prod = res && (res.product || (res as any).data?.product || res);
                                 if (prod) {
-                                  let availableStock = 999;
-                                  if (Array.isArray(prod.stock) && prod.stock.length) {
-                                    const match = prod.stock.find((s: any) => {
-                                      if (!s) return false;
-                                      const matchesColor = item.variantId
-                                        ? String(s.colorTempId) === String(item.variantId)
-                                        : (item.color ? String(s.colorTempId).toLowerCase().trim() === String(item.color).toLowerCase().trim() : true);
-                                      
-                                      let displaySize = s.sizeId;
-                                      if (Array.isArray(prod.sizes) && prod.sizes.length) {
-                                        const found = prod.sizes.find((sz: any) => sz.id === s.sizeId || sz.value === s.sizeId);
-                                        if (found) displaySize = found.value || found.id;
-                                      }
-                                      const matchesSize = String(displaySize).toLowerCase().trim() === String(item.size).toLowerCase().trim();
-                                      return matchesColor && matchesSize;
-                                    });
-                                    if (match && typeof match.quantity === 'number') availableStock = match.quantity;
-                                  } else if (item.variantId && Array.isArray(prod.variants)) {
-                                    const matchedVar = prod.variants.find((v: any) => String(v._id || v.id) === String(item.variantId));
-                                    if (matchedVar && typeof matchedVar.inventory === 'number') availableStock = matchedVar.inventory;
-                                  } else if (typeof prod.inventory === 'number') {
-                                    availableStock = prod.inventory;
-                                  }
+                                  const availableStock = getAvailableStockForItem(prod, {
+                                    size: item.size,
+                                    color: item.color,
+                                    colorName: item.colorName,
+                                    variantId: item.variantId,
+                                    variantName: item.variantName,
+                                    variantHex: item.variantHex
+                                  });
                                   
                                   if (item.quantity >= availableStock) {
                                     showToast(`Only ${availableStock} items are available for this variant.`, 'error');
