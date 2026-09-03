@@ -65,7 +65,7 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
-    command: npm run dev
+    command: npm start
     depends_on:
       mongo:
         condition: service_healthy
