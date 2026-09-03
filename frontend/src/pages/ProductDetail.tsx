@@ -894,7 +894,8 @@ export const ProductDetail: React.FC = () => {
 
               <div
                 ref={thumbsRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-2 scroll-smooth touch-pan-x"
+                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-2 scroll-smooth touch-pan-y touch-manipulation"
+                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
               >
                 {galleryImages.map((image: any, index: number) => {
                   const imageSrc = typeof image === 'string' ? image : (image as any).url;
@@ -941,38 +942,54 @@ export const ProductDetail: React.FC = () => {
           {/* Product Info */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{String(product.name ?? '')}</h1>
+              {/* Category Eyebrow */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] tracking-[0.24em] uppercase text-neutral-400">
+                  {product.category ? `Denfit • ${product.category}` : 'Denfit Maison • Edition 2026'}
+                </p>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${
+                  isOutOfStock(product) ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${isOutOfStock(product) ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                  {isOutOfStock(product) ? 'Sold Out' : 'In Stock'}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-900 tracking-[0.14em] uppercase mb-3 leading-tight">
+                {String(product.name ?? '')}
+              </h1>
               
               {/* Clickable Review Stars - Smooth scrolls to review section */}
               <button 
                 onClick={scrollToReviews}
-                className="flex items-center gap-4 mb-4 group cursor-pointer hover:opacity-80 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg p-1 -ml-1"
+                className="flex items-center gap-3 mb-4 group cursor-pointer hover:opacity-80 transition-all focus:outline-none focus:ring-1 focus:ring-neutral-900 rounded-lg p-1 -ml-1"
                 title="Read reviews"
               >
-                <div className="flex items-center gap-1">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-0.5">
                     {(() => {
-                      if (displayRating === null) return Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-5 w-5 text-gray-300" />);
+                      if (displayRating === null) return Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-4 w-4 text-neutral-300" />);
                       const full = Math.floor(displayRating);
                       const hasHalf = (displayRating - full) >= 0.5;
                       return Array.from({ length: 5 }).map((_, i) => {
-                        if (i < full) return <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />;
+                        if (i < full) return <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />;
                         if (i === full && hasHalf) {
                           return (
-                            <span key={i} className="relative inline-block h-5 w-5">
-                              <Star className="absolute left-0 top-0 h-5 w-5 text-gray-300" />
-                              <span className="absolute left-0 top-0 h-5 overflow-hidden" style={{ width: '50%' }}>
-                                <Star className="h-5 w-5 text-yellow-400 fill-current" />
+                            <span key={i} className="relative inline-block h-4 w-4">
+                              <Star className="absolute left-0 top-0 h-4 w-4 text-neutral-300" />
+                              <span className="absolute left-0 top-0 h-4 overflow-hidden" style={{ width: '50%' }}>
+                                <Star className="h-4 w-4 text-yellow-400 fill-current" />
                               </span>
                             </span>
                           );
                         }
-                        return <Star key={i} className="h-5 w-5 text-gray-300" />;
+                        return <Star key={i} className="h-4 w-4 text-neutral-300" />;
                       });
                     })()}
                   </div>
-                  <span className="font-medium text-gray-900 group-hover:text-blue-600">{displayRating !== null ? String(displayRating.toFixed(1)) : 'No rating'}</span>
-                  <span className="ml-3 group-hover:text-blue-600">
+                  <span className="text-sm font-medium text-neutral-900">{displayRating !== null ? String(displayRating.toFixed(1)) : '5.0'}</span>
+                  <span className="ml-2 text-xs text-neutral-500 underline underline-offset-4 group-hover:text-neutral-900 transition-colors">
                     {/* Safely render ReviewSummary */}
                     {(() => {
                       try {
@@ -983,17 +1000,50 @@ export const ProductDetail: React.FC = () => {
                     })()}
                   </span>
                 </div>
-                <span className="text-gray-300">•</span>
-                <span className={`text-sm font-medium ${
-                  isOutOfStock(product) ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {isOutOfStock(product) ? 'Out of Stock' : 'In Stock'}
-                </span>
               </button>
 
-              <p className="text-2xl font-bold text-blue-600">
-                Rs {typeof product.price === 'number' ? product.price.toLocaleString() : String(product.price ?? '')}
-              </p>
+              {/* Pricing Section with Sale Strikethrough & Free Shipping Text */}
+              {(() => {
+                const rawOriginalPrice = (product as any)?.originalPrice || (product as any)?.compareAtPrice;
+                const originalPriceNumber = typeof rawOriginalPrice === 'number' && Number.isFinite(rawOriginalPrice) 
+                  ? rawOriginalPrice 
+                  : (rawOriginalPrice ? Number(rawOriginalPrice) : undefined);
+                const currentPrice = typeof product.price === 'number' ? product.price : Number(product.price || 0);
+                const hasSaleDiscount = Boolean(originalPriceNumber && originalPriceNumber > currentPrice);
+                const discountPercent = hasSaleDiscount && originalPriceNumber
+                  ? Math.round(((originalPriceNumber - currentPrice) / originalPriceNumber) * 100)
+                  : 0;
+
+                return (
+                  <div className="py-4 px-5 rounded-2xl bg-neutral-50 border border-neutral-100 my-4">
+                    <div className="flex items-baseline gap-3.5 flex-wrap">
+                      <span className={`text-3xl md:text-4xl font-light tracking-wide ${
+                        hasSaleDiscount ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'
+                      }`}>
+                        Rs. {currentPrice.toLocaleString()}
+                      </span>
+                      {hasSaleDiscount && originalPriceNumber && (
+                        <span className="text-lg md:text-xl text-neutral-400 line-through decoration-neutral-400 font-normal">
+                          Rs. {originalPriceNumber.toLocaleString()}
+                        </span>
+                      )}
+                      {hasSaleDiscount && discountPercent > 0 && (
+                        <span className="inline-flex items-center justify-center rounded-full bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-sm">
+                          -{discountPercent}% OFF
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500 font-normal">
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Free
+                      </span>
+                      <span>shipping on orders over ₨5,000 • 14-day complimentary returns</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Tags */}
               {(() => {
                 const normalizeTags = (input: any): string[] => {
@@ -1012,14 +1062,14 @@ export const ProductDetail: React.FC = () => {
                 return (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {tags.map((t, i) => (
-                      <span key={i} className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-md">{t}</span>
+                      <span key={i} className="text-[11px] uppercase tracking-wider bg-neutral-100 text-neutral-700 px-3 py-1 rounded-full">{t}</span>
                     ))}
                   </div>
                 );
               })()}
             </div>
 
-            <p className="text-gray-600 leading-relaxed">{String(product.description ?? '')}</p>
+            <p className="text-neutral-600 leading-relaxed font-light text-sm md:text-base">{String(product.description ?? '')}</p>
 
             {/* Color Selection */}
             {product.colors && Array.isArray(product.colors) && product.colors.length > 0 && (
@@ -1213,7 +1263,7 @@ export const ProductDetail: React.FC = () => {
                 onClick={handleAddToCart}
                 disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || isAllInCart}
                 aria-busy={isAdding}
-                className="flex-1 bg-black text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-black text-white py-4 px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
                 {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : null}
                 {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Add to Cart'}
@@ -1221,30 +1271,34 @@ export const ProductDetail: React.FC = () => {
               <button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || (isAllInCart && inCartQty === 0)}
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-neutral-900 text-white py-4 px-6 rounded-full font-medium hover:bg-black disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all text-xs uppercase tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
                 {isAdding ? 'Adding...' : 'Buy Now'}
               </button>
               <button
                 onClick={handleWishlistToggle}
-                className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className={`p-3.5 border rounded-full transition-colors flex items-center justify-center ${
+                  isWishlisted
+                    ? 'border-red-500 bg-red-50 text-red-600'
+                    : 'border-neutral-200 text-neutral-400 hover:border-neutral-500 hover:text-neutral-700'
+                }`}
                 title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <Heart
-                  className={`h-6 w-6 ${
-                    isWishlisted ? 'text-red-500 fill-current' : 'text-gray-400'
+                  className={`h-5 w-5 ${
+                    isWishlisted ? 'text-red-500 fill-current' : 'text-neutral-400'
                   }`}
                 />
               </button>
               <button
                 onClick={() => setShareOpen(true)}
-                className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="p-3.5 border border-neutral-200 rounded-full hover:border-neutral-500 hover:text-neutral-700 transition-colors"
                 title="Share product"
                 aria-label="Share product"
                 aria-haspopup="dialog"
                 aria-expanded={shareOpen}
               >
-                <Share2 className="h-6 w-6 text-gray-400" />
+                <Share2 className="h-5 w-5 text-neutral-500" />
               </button>
 
               {/* Share popover */}

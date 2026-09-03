@@ -8,6 +8,8 @@
     "dev:frontend": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build",
     "start": "cd backend && npm start",
+    "test:unit": "npm run --prefix frontend test:unit",
+    "lint": "npm run --prefix frontend lint",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

@@ -396,16 +396,21 @@ const LuxuryHomePage = () => {
       <motion.div
         whileHover={{ y: -6 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="group cursor-pointer rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 p-4 backdrop-blur-sm"
+        className="group cursor-pointer rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 p-4 backdrop-blur-sm touch-manipulation"
+        style={{ touchAction: 'pan-y' }}
       >
-        <div className="relative overflow-hidden mb-4 aspect-[3/4] rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900">
+        <div 
+          className="relative overflow-hidden mb-4 aspect-[3/4] rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900"
+          style={{ touchAction: 'pan-y' }}
+        >
           <img
             src={imageSrc}
             alt={product.name}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-auto"
+            style={{ touchAction: 'pan-y' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity pointer-events-none" />
 
             {/* Mobile: use the main Add button to open quick-add overlay; no separate plus button */}
 
@@ -511,7 +516,7 @@ const LuxuryHomePage = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-black via-neutral-950 to-black text-black overflow-hidden">
+    <div className="bg-gradient-to-b from-black via-neutral-950 to-black text-black overflow-x-clip">
       {/* Hero Section */}
       <section className="relative h-[75vh] sm:h-[85vh] md:h-screen overflow-hidden">
         <AnimatePresence mode="wait">
@@ -709,22 +714,24 @@ const LuxuryHomePage = () => {
               ref={collectionsRef}
               onMouseEnter={() => setCollectionsHover(true)}
               onMouseLeave={() => setCollectionsHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {collectionsState.map((c, i) => (
-                <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
+                <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2" style={{ touchAction: 'pan-y' }}>
                   <a
                       href={typeof window !== 'undefined' ? `http://${window.location.host}${(['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}` : (['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}
-                      className="relative group overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5"
+                      className="relative group block overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 touch-manipulation"
+                      style={{ touchAction: 'pan-y' }}
                     >
-                    <div className="relative overflow-hidden aspect-[3/4]">
+                    <div className="relative overflow-hidden aspect-[3/4]" style={{ touchAction: 'pan-y' }}>
                       <img
                         src={c.image}
                         alt={c.title}
-                        className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-110 pointer-events-auto"
+                        style={{ touchAction: 'pan-y' }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/85 group-hover:via-black/60 transition-colors" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/85 group-hover:via-black/60 transition-colors pointer-events-none" />
                       <div className="absolute top-5 left-5">
                         <span className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-[10px] uppercase tracking-[0.26em] text-neutral-100">
                           <span className="h-1 w-1 rounded-full bg-emerald-300" />
@@ -805,8 +812,8 @@ const LuxuryHomePage = () => {
               ref={featuredRef}
               onMouseEnter={() => setFeaturedHover(true)}
               onMouseLeave={() => setFeaturedHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {loading
                 ? [...Array(4)].map((_, i) => (
@@ -877,8 +884,8 @@ const LuxuryHomePage = () => {
               ref={trendingRef}
               onMouseEnter={() => setTrendingHover(true)}
               onMouseLeave={() => setTrendingHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x"
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
             >
               {loading
                 ? [...Array(4)].map((_, i) => (
