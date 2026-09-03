@@ -12,16 +12,17 @@ const resolveBackendUrl = () => {
     const env = import.meta && import.meta.env ? import.meta.env : {};
     const envUrl = env.VITE_API_URL || null;
     if (envUrl && String(envUrl).trim()) {
-      // If developer provided a URL that includes the API path (e.g. /api or /api/v1),
-      // strip that path so socket.io connects to the server root.
       return String(envUrl).replace(/\/$/, '').replace(/\/api(\/v1)?$/i, '');
+    }
+
+    if (env.PROD) {
+      return '/';
     }
 
     const backendPort = env.VITE_API_PORT || '3002';
     const proto = window.location.protocol; // e.g. 'http:'
     const host = window.location.hostname;
     const url = `${proto}//${host}:${backendPort}`;
-    console.debug('[socket] resolved backend url ->', url);
     return url;
   } catch (e) {
     console.warn('[socket] resolveBackendUrl failed', e);

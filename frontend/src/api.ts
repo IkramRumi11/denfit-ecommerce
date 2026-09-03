@@ -2,10 +2,10 @@
 import { Product, User, CartItem, Order, ApiResponse } from "./types";
 
 const env = (import.meta as any).env;
-// Prefer an explicit VITE_API_URL when present; otherwise fall back to the backend on localhost:3002.
-const rawApiUrl = (env?.VITE_API_URL || 'http://localhost:3002').toString().trim();
-const baseApiUrl = rawApiUrl.replace(/\/$/, '');
-export const API_BASE_URL = /\/api\/v1$/i.test(baseApiUrl) ? baseApiUrl : `${baseApiUrl}/api/v1`;
+const defaultApiUrl = env?.PROD ? '' : 'http://localhost:3002';
+const rawApiUrl = (env?.VITE_API_URL !== undefined && env?.VITE_API_URL !== '' ? env.VITE_API_URL : defaultApiUrl).toString().trim();
+const baseApiUrl = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '';
+export const API_BASE_URL = baseApiUrl ? (/\/api\/v1$/i.test(baseApiUrl) ? baseApiUrl : `${baseApiUrl}/api/v1`) : '/api/v1';
 const DEFAULT_FETCH_OPTIONS: RequestInit = {
   credentials: 'include',
 };
