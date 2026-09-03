@@ -15,6 +15,7 @@ import ReviewList from '../components/reviews/ReviewList';
 import ReviewForm from '../components/reviews/ReviewForm';
 import trackEvent from '../utils/analytics';
 import { productsAPI } from '../api';
+import FallbackImage from '../components/ui/FallbackImage';
 import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
