@@ -1,112 +1,98 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { contentAPI } from '../api';
 
-const MESSAGE = '📢 Free shipping on orders over ₨5,000';
+const DEFAULT_MESSAGES = ['📢 Free shipping on orders over ₨5,000'];
 
-export default function PromoMarquee(): JSX.Element {
-  const textRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>();
+type PromoMarqueeProps = {
+  text?: string;
+};
+
+export default function PromoMarquee({ text }: PromoMarqueeProps): JSX.Element | null {
+  const [messages, setMessages] = useState<string[]>(() => (text ? [text] : DEFAULT_MESSAGES));
+  const [enabled, setEnabled] = useState<boolean>(true);
+  const [intervalSeconds, setIntervalSeconds] = useState<number>(4);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
 
   useEffect(() => {
-    const textElement = textRef.current;
-    if (!textElement) return;
+    let isMounted = true;
 
-    let startTime: number | null = null;
-    
-    // Dynamic duration based on screen size
-    const getDuration = () => {
-      // Slower for larger screens (20 seconds), faster for mobile (12 seconds)
-      return window.innerWidth >= 1024 ? 20000 : 12000;
-    };
-    
-    let duration = getDuration();
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const elapsed = timestamp - startTime;
-      const progress = (elapsed % duration) / duration;
-
-      // Map progress to position:
-      // 0-0.28: center to right (increased movement)
-      // 0.28-0.32: disappear at right (quick fade)
-      // 0.32-0.40: hidden (REDUCED from 0.45 to 0.40)
-      // 0.40-0.44: emerge from left (quick appear)
-      // 0.44-0.72: left to center (increased movement)
-      // 0.72-1: hold at center
-      
-      let left;
-      let opacity = 1;
-
-      if (progress < 0.28) {
-        // Center to right (0-28%)
-        left = 50 + (progress * 178.57); // 50% to 100%+
-      } else if (progress < 0.32) {
-        // Disappear at right (28-32%)
-        left = 100 + ((progress - 0.28) * 250);
-        opacity = 1 - ((progress - 0.28) * 25);
-      } else if (progress < 0.40) {
-        // Hidden (32-40%) - REDUCED from 45% to 40%
-        left = -50;
-        opacity = 0;
-      } else if (progress < 0.44) {
-        // Emerge from left (40-44%)
-        left = -50 + ((progress - 0.40) * 250);
-        opacity = (progress - 0.40) * 25;
-      } else if (progress < 0.72) {
-        // Left to center (44-72%)
-        left = 0 + ((progress - 0.44) * 178.57);
-        opacity = 1;
-      } else {
-        // Hold at center (72-100%)
-        left = 50;
-        opacity = 1;
+    (async () => {
+      try {
+        const res = await contentAPI.getPublicContent();
+        const data = (res as any)?.data?.announcements || (res as any)?.announcements;
+        if (data && isMounted) {
+          if (data.enabled === false) {
+            setEnabled(false);
+            return;
+          }
+          if (Array.isArray(data.messages) && data.messages.length > 0) {
+            const valid = data.messages.map((m: any) => String(m || '').trim()).filter(Boolean);
+            if (valid.length > 0) {
+              setMessages(valid);
+            }
+          }
+          if (typeof data.intervalSeconds === 'number' && data.intervalSeconds >= 2) {
+            setIntervalSeconds(data.intervalSeconds);
+          }
+        }
+      } catch (err) {
+        // Fallback silently to default messages
       }
-
-      textElement.style.left = `${left}%`;
-      textElement.style.opacity = opacity.toString();
-      textElement.style.transform = 'translateX(-50%)';
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    // Update duration on resize
-    const handleResize = () => {
-      duration = getDuration();
-    };
-
-    window.addEventListener('resize', handleResize);
+    })();
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      window.removeEventListener('resize', handleResize);
+      isMounted = false;
     };
   }, []);
 
-  return (
-    <div className="bg-slate-500 text-white w-full overflow-hidden">
-      <div 
-        className="relative w-full"
-        style={{
-          paddingTop: '6px',
-          paddingBottom: '6px',
-          height: '28px',
-        }}
-      >
-        <div
-          ref={textRef}
-          className="absolute whitespace-nowrap text-xs sm:text-sm font-medium text-white"
-          style={{
-            left: '50%',
-            transform: 'translateX(-50%)',
-            willChange: 'left, opacity',
-          }}
-        >
-          {MESSAGE}
+  // Timer for rotating multiple messages
+  useEffect(() => {
+    if (!enabled || messages.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % messages.length);
+    }, intervalSeconds * 1000);
+
+    return () => clearInterval(timer);
+  }, [enabled, messages, intervalSeconds]);
+
+  if (!enabled || messages.length === 0) {
+    return null;
+  }
+
+  // Single message display (no unnecessary rotation)
+  if (messages.length === 1) {
+    return (
+      <aside aria-label="Announcement" className="bg-slate-500 text-white w-full overflow-hidden select-none border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 h-8 flex items-center justify-center text-center">
+          <p className="text-xs sm:text-sm font-medium tracking-wide text-white truncate">
+            {messages[0]}
+          </p>
         </div>
+      </aside>
+    );
+  }
+
+  // Multiple messages with smooth 1-by-1 centered transition
+  const currentMsg = messages[currentIndex % messages.length] || messages[0];
+
+  return (
+    <aside aria-label="Announcement" className="bg-slate-500 text-white w-full overflow-hidden select-none border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 h-8 flex items-center justify-center text-center relative">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={currentIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="text-xs sm:text-sm font-medium tracking-wide text-white truncate max-w-[90vw]"
+          >
+            {currentMsg}
+          </motion.p>
+        </AnimatePresence>
       </div>
-    </div>
+    </aside>
   );
 }

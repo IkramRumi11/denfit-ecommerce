@@ -8,6 +8,7 @@ import { productId } from '../utils/productHelpers';
 import { FilterEngine } from '../components/FilterEngine';
 import { productsAPI } from '../api';
 import { getColorName, resolveColorHex } from '../utils/colorNames';
+import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
 type AnyFilters = Record<string, any>;
@@ -393,11 +394,19 @@ export default function Men(): JSX.Element {
 }
 
 function HeroSection() {
+  const { banner } = usePageBanner('men_hero');
+
+  const imageUrl = banner?.imageUrl || 'https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?q=80&w=1800&auto=format&fit=crop';
+  const title = banner?.title || "MEN'S COLLECTION";
+  const subtitle = banner?.subtitle || "Discover premium style and comfort";
+  const buttonLink = banner?.link || "/shop?gender=men";
+  const buttonText = banner?.buttonText || "Shop Now";
+
   return (
     <section className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] mb-8 md:mb-12">
       <img
-        src="https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?q=80&w=1800&auto=format&fit=crop"
-        alt="Men's Collection"
+        src={imageUrl}
+        alt={title}
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
@@ -405,17 +414,17 @@ function HeroSection() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="max-w-xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4 tracking-[0.2em] uppercase">
-              MEN&apos;S COLLECTION
+              {title}
             </h1>
             <p className="text-lg md:text-xl text-white/90 mb-6 md:mb-8">
-              Discover premium style and comfort
+              {subtitle}
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
-                to="/shop?gender=men"
+                to={buttonLink}
                 className="inline-block bg-white text-black px-6 md:px-8 py-3 md:py-4 font-semibold uppercase text-sm tracking-wider hover:bg-gray-100 transition-colors"
               >
-                Shop Now
+                {buttonText}
               </Link>
               <Link
                 to="/shop?gender=men&sort=newest"

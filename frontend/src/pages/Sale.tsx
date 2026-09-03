@@ -4,6 +4,7 @@ import { ProductCard } from '../components/ProductCard';
 import { productId } from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import { SlidersHorizontal, X } from 'lucide-react';
+import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
 
@@ -297,22 +298,28 @@ export default function Sale(): JSX.Element {
     setPriceMax(priceBounds.max);
   };
 
+  const { banner: saleBanner } = usePageBanner('sale_hero');
+
+  const heroImageUrl = saleBanner?.imageUrl || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1800&auto=format&fit=crop';
+  const heroTitle = saleBanner?.title || "SALE";
+  const heroSubtitle = saleBanner?.subtitle || "FLAT 50% OFF";
+
   return (
     <div className="w-full">
       <section className="relative w-full h-[250px] md:h-[350px] mb-6 md:mb-8">
         <img
-          src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1800&auto=format&fit=crop"
-          alt="Sale"
+          src={heroImageUrl}
+          alt={heroTitle}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-red-900/70 to-black/60" />
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-5xl md:text-7xl font-light text-white mb-3 tracking-[0.2em] uppercase">
-              SALE
+              {heroTitle}
             </h1>
             <p className="text-xl md:text-2xl text-white font-semibold">
-              FLAT 50% OFF
+              {heroSubtitle}
             </p>
           </div>
         </div>

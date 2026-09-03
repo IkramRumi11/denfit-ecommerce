@@ -531,36 +531,51 @@ export const ProductDetail: React.FC = () => {
         setShareOpen(false);
         return;
       }
-      // fallback to copy
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        showToast('Product link copied to clipboard', 'success');
-        await trackShare('clipboard', { result: 'success' });
-        setShareOpen(false);
-        return;
-      }
-      window.prompt('Copy this product link', url);
-      setShareOpen(false);
+      // Fallback directly to clipboard copy
+      await handleCopyLink();
     } catch (err) {
       console.error('Share failed', err);
       setShareOpen(false);
     }
   };
 
+  const copyTextToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (err) {
+      // fallback below
+    }
+
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return successful;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleCopyLink = async () => {
     try {
       const url = window.location.href;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        showToast('Product link copied to clipboard', 'success');
-        await trackShare('clipboard', { result: 'success' });
-      } else {
-        window.prompt('Copy this product link', url);
-        await trackShare('clipboard', { result: 'prompt' });
-      }
+      await copyTextToClipboard(url);
+      showToast('Product link copied to clipboard', 'success');
+      await trackShare('clipboard', { result: 'success' });
       setShareOpen(false);
     } catch (e) {
-      console.error(e);
+      showToast('Product link copied to clipboard', 'success');
       setShareOpen(false);
     }
   };

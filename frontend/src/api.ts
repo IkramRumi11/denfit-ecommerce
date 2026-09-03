@@ -767,6 +767,24 @@ export const systemAPI = {
   getFeatures: () => handleRequest<{ flags: { raptorMini: boolean } }>("/features"),
 };
 
+// ======================
+// CONTENT CONTROLLER API
+// ======================
+export const contentAPI = {
+  getPublicContent: () => handleRequest<{ announcements: { messages: string[]; enabled: boolean; intervalSeconds: number }; banners: Record<string, any> }>("/content/public"),
+  getAdminContent: () => handleRequest<{ announcements: { messages: string[]; enabled: boolean; intervalSeconds: number }; banners: Record<string, any> }>("/content/admin"),
+  updateAnnouncements: (payload: { messages: string[]; enabled?: boolean; intervalSeconds?: number }) =>
+    handleRequest<{ announcements: { messages: string[]; enabled: boolean; intervalSeconds: number } }>("/content/admin/announcements", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  updateBanners: (payload: { banners: Record<string, any> }) =>
+    handleRequest<{ banners: Record<string, any> }>("/content/admin/banners", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+};
+
 // Root export
 export const api = {
   auth: authAPI,
@@ -777,6 +795,7 @@ export const api = {
   admin: adminAPI,
   collections: collectionsAPI,
   system: systemAPI,
+  content: contentAPI,
   healthCheck: () => handleRequest("/health"),
 };
 

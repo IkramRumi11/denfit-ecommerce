@@ -26,6 +26,7 @@ import {
 } from "../utils/sizeRules";
 import { getAvailableStockForItem, isOutOfStock, isLowStock, getAvailableQuantity } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
+import { usePageBanner } from '../hooks/usePageBanner';
 
 const LuxuryHomePage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -35,6 +36,7 @@ const LuxuryHomePage = () => {
 
   const { addItem, getItemQuantity, items } = useCart();
   const { showToast } = useToast();
+  const { banner: homeTopBanner } = usePageBanner('home_top');
   const navigate = useNavigate();
 
   // Quick-add overlay state
@@ -517,6 +519,34 @@ const LuxuryHomePage = () => {
 
   return (
     <div className="bg-gradient-to-b from-black via-neutral-950 to-black text-black overflow-x-clip">
+      {/* Top Promotional Banner (Admin Controlled) */}
+      {homeTopBanner && homeTopBanner.imageUrl && (
+        <aside className="w-full bg-neutral-900 border-b border-white/10 relative overflow-hidden">
+          <Link to={homeTopBanner.link || '/sale'} className="block relative aspect-[21/6] sm:aspect-[21/4] md:aspect-[21/3] max-h-[220px] w-full group">
+            <img
+              src={homeTopBanner.imageUrl}
+              alt={homeTopBanner.title || 'Special Promotion'}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent flex items-center px-6 md:px-12">
+              <div className="text-white max-w-xl">
+                <span className="text-[10px] md:text-xs uppercase tracking-[0.24em] text-emerald-400 font-bold block mb-1">
+                  Exclusive Promotion
+                </span>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-light tracking-[0.16em] uppercase">
+                  {homeTopBanner.title || 'Special Offer'}
+                </h3>
+                {homeTopBanner.subtitle && (
+                  <p className="text-xs md:text-sm text-neutral-300 mt-1 line-clamp-1">
+                    {homeTopBanner.subtitle}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Link>
+        </aside>
+      )}
+
       {/* Hero Section */}
       <section className="relative h-[75vh] sm:h-[85vh] md:h-screen overflow-hidden">
         <AnimatePresence mode="wait">

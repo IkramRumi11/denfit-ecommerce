@@ -56,6 +56,7 @@ import EmailMarketingSubscribers from './pages/admin/EmailMarketingSubscribers';
 import EmailMarketingCreate from './pages/admin/EmailMarketingCreate';
 import EmailMarketingHistory from './pages/admin/EmailMarketingHistory';
 import AdminFilters from './pages/admin/AdminFilters';
+import AdminContentController from './pages/admin/AdminContentController';
 
 // Context Providers
 // NOTE: AuthProvider and SearchProvider are in main.tsx — do not re-import here
@@ -185,6 +186,7 @@ function AppContent() {
             <Route path="audits" element={<AdminAudits />} />
             <Route path="filters" element={/* Filters management */ <AdminFilters />} />
             <Route path="features" element={<AdminFeatures />} />
+            <Route path="content-controller" element={<AdminContentController />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="style-by-you" element={<AdminStyleByYou />} />
             <Route path="detail-templates" element={/* lazy admin detail templates */ <React.Suspense fallback={<div>Loading...</div>}><AdminDetailTemplates /></React.Suspense>} />

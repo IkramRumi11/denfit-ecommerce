@@ -3,6 +3,7 @@ import { ProductCard } from '../components/ProductCard';
 import { productId, slugify } from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import megaMenuData from '../data/megaMenuData';
+import { usePageBanner } from '../hooks/usePageBanner';
 
 export default function Accessories(): JSX.Element {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -161,13 +162,19 @@ export default function Accessories(): JSX.Element {
     setSelectedSubCategory('all');
   }, [selectedCategory]);
 
+  const { banner: accBanner } = usePageBanner('accessories_hero');
+
+  const heroImageUrl = accBanner?.imageUrl || 'https://images.unsplash.com/photo-1556306535-0f09a537f0a3?q=80&w=1800&auto=format&fit=crop';
+  const heroTitle = accBanner?.title || "ACCESSORIES";
+  const heroSubtitle = accBanner?.subtitle || "Complete your look with our premium collection";
+
   return (
     <div className="w-full">
       {/* Hero Banner Section */}
       <section className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] mb-8 md:mb-12">
         <img
-          src="https://images.unsplash.com/photo-1556306535-0f09a537f0a3?q=80&w=1800&auto=format&fit=crop"
-          alt="Accessories Collection"
+          src={heroImageUrl}
+          alt={heroTitle}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
@@ -175,10 +182,10 @@ export default function Accessories(): JSX.Element {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="max-w-xl">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4 tracking-[0.2em] uppercase">
-                ACCESSORIES
+                {heroTitle}
               </h1>
               <p className="text-lg md:text-xl text-white/90 mb-6 md:mb-8">
-                Complete your look with our premium collection
+                {heroSubtitle}
               </p>
             </div>
           </div>

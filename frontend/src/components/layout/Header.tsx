@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, Search, User, Heart, Bell, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -153,24 +153,19 @@ export default function Header(): JSX.Element {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       {/* Promo bar */}
-      {/* Replaced static promo with continuous marquee */}
-      <div>
-        {/* lazy import would be fine, keeping simple inline to avoid extra bundling complexity */}
-        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-        {/* @ts-ignore */}
-        <PromoMarquee text={"Free shipping on orders over ₨5,000"} />
-      </div>
+      {/* Replaced static promo with dynamic multi-message marquee */}
+      <PromoMarquee />
 
       {/* Main header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
           {/* Mobile left */}
-          <div className="flex items-center gap-2 md:hidden">
-            <button onClick={() => setMobileOpen(true)} className="p-2">
-              <Menu className="h-6 w-6 text-gray-700" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:hidden">
+            <button onClick={() => setMobileOpen(true)} className="p-1.5 sm:p-2 text-gray-700 hover:text-black">
+              <Menu className="h-6 w-6" />
             </button>
-            <button onClick={() => setSearchOpen(true)} className="p-2">
-              <Search className="h-5 w-5 text-gray-700" />
+            <button onClick={() => setSearchOpen(true)} className="p-1.5 sm:p-2 text-gray-700 hover:text-black">
+              <Search className="h-5 w-5" />
             </button>
           </div>
 
@@ -193,9 +188,9 @@ export default function Header(): JSX.Element {
           
 
           {/* Mobile right */}
-          <div className="flex items-center gap-3 md:hidden ml-auto">
-            <Link to="/wishlist" className="relative p-2">
-              <Heart className="h-5 w-5 text-gray-700" />
+          <div className="flex items-center gap-1.5 sm:gap-2 md:hidden ml-auto">
+            <Link to="/wishlist" className="relative p-1.5 sm:p-2 text-gray-700 hover:text-black">
+              <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
                   {wishlistCount}
@@ -205,10 +200,10 @@ export default function Header(): JSX.Element {
 
             <Link
               to={user ? "/profile" : "/auth?mode=login"}
-              className="p-2"
+              className="p-1.5 sm:p-2 text-gray-700 hover:text-black"
               title={user ? "My Account" : "Login / Signup"}
             >
-              <User className="h-5 w-5 text-gray-700" />
+              <User className="h-5 w-5" />
             </Link>
 
             <CartSidebar />
@@ -242,11 +237,11 @@ export default function Header(): JSX.Element {
           <MegaMenu activeCategory={megaIndex} onClose={() => setMegaIndex(null)} />
 
           {/* Desktop right */}
-          <div className="hidden md:flex items-center gap-4 ml-auto">
+          <div className="hidden md:flex items-center gap-1.5 sm:gap-2 md:gap-2.5 ml-auto">
             {/* Notifications */}
             <div ref={notifRef} className="relative">
-              <button className="p-2" onClick={() => setNotifOpen((s) => !s)}>
-                <Bell className="h-5 w-5 text-gray-700" />
+              <button className="p-2 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors" onClick={() => setNotifOpen((s) => !s)}>
+                <Bell className="h-5 w-5" />
                 {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
                     {notifications.length}
