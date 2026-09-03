@@ -649,11 +649,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                   <div className="space-y-5 flex flex-col justify-between">
                     <div>
                       {/* Top Brand / Category tag */}
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[11px] tracking-[0.24em] uppercase text-neutral-400">
-                          {product.category ? `Denfit • ${product.category}` : 'Denfit Maison • Edition 2026'}
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400">
+                          {product.category ? `Denfit • ${product.category}` : 'Denfit Maison'}
                         </p>
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] ${
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${
                           isOutOfStock(product) ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                         }`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${isOutOfStock(product) ? 'bg-red-500' : 'bg-emerald-500'}`} />
@@ -661,13 +661,13 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         </span>
                       </div>
 
-                      {/* Title */}
-                      <h3 className="text-xl md:text-2xl font-light text-neutral-900 tracking-[0.12em] uppercase leading-tight mb-3">
+                      {/* Title with lesser visual spacing */}
+                      <h3 className="text-lg md:text-xl font-medium text-neutral-900 tracking-tight uppercase leading-snug mb-1.5">
                         {product.name}
                       </h3>
 
                       {/* Ratings */}
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2 mb-3">
                         <div className="flex items-center gap-1">
                           {(() => {
                             if (displayRating === null) return Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 text-neutral-300" />);
@@ -695,7 +695,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         )}
                       </div>
 
-                      {/* Pricing Section with Sale Strikethrough & Free Shipping Text */}
+                      {/* Pricing Section with Sale Strikethrough & Multi-line Free Shipping Text */}
                       {(() => {
                         const rawOriginalPrice = (product as any)?.originalPrice || (product as any)?.compareAtPrice;
                         const originalPriceNumber = typeof rawOriginalPrice === 'number' && Number.isFinite(rawOriginalPrice) 
@@ -708,7 +708,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                           : 0;
 
                         return (
-                          <div className="py-3 px-4 rounded-2xl bg-neutral-50 border border-neutral-100 mb-5">
+                          <div className="py-3 px-4 rounded-2xl bg-neutral-50 border border-neutral-100 mb-4">
                             <div className="flex items-baseline gap-3 flex-wrap">
                               <span className={`text-2xl md:text-3xl font-light tracking-wide ${
                                 hasSaleDiscount ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'
@@ -726,12 +726,14 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-1.5 text-xs text-neutral-500 font-normal">
-                              <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                            <div className="mt-2 pt-2 border-t border-neutral-200/60 flex flex-col gap-0.5">
+                              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 Free
-                              </span>
-                              <span>shipping over ₨5,000 • 14-day complimentary returns</span>
+                              </div>
+                              <p className="text-[11px] text-neutral-500 font-normal leading-normal">
+                                shipping on orders over ₨5,000 • 14-day complimentary returns
+                              </p>
                             </div>
                           </div>
                         );

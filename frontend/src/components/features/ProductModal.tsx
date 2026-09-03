@@ -84,15 +84,15 @@ export default function ProductModal({
 
             <div className="p-6 md:p-8 flex flex-col justify-between">
               <div>
-                <p className="text-[11px] tracking-[0.24em] uppercase text-neutral-400 mb-1">
+                <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400 mb-1">
                   {product.category ? `Denfit • ${product.category}` : 'Denfit Maison'}
                 </p>
-                <Dialog.Title className="text-xl md:text-2xl font-light text-neutral-900 tracking-[0.12em] uppercase leading-tight mb-3">
+                <Dialog.Title className="text-lg md:text-xl font-medium text-neutral-900 tracking-tight uppercase leading-snug mb-2">
                   {product.name}
                 </Dialog.Title>
 
-                {/* Pricing with Sale Strikethrough & Free Shipping Text */}
-                <div className="py-3 px-4 rounded-2xl bg-neutral-50 border border-neutral-100 my-3">
+                {/* Pricing with Sale Strikethrough & Multi-line Free Shipping Text */}
+                <div className="py-3 px-4 rounded-2xl bg-neutral-50 border border-neutral-100 my-2.5">
                   <div className="flex items-baseline gap-3 flex-wrap">
                     <span className={`text-2xl md:text-3xl font-light tracking-wide ${
                       hasSaleDiscount ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'
@@ -110,17 +110,19 @@ export default function ProductModal({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-neutral-500 font-normal">
-                    <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                  <div className="mt-2 pt-2 border-t border-neutral-200/60 flex flex-col gap-0.5">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       Free
-                    </span>
-                    <span>shipping over ₨5,000 • 14-day returns</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 font-normal leading-normal">
+                      shipping on orders over ₨5,000 • 14-day complimentary returns
+                    </p>
                   </div>
                 </div>
 
                 {product.description && (
-                  <p className="text-neutral-600 font-light text-xs md:text-sm leading-relaxed my-3">
+                  <p className="text-neutral-600 font-light text-xs md:text-sm leading-relaxed my-2">
                     {product.description}
                   </p>
                 )}

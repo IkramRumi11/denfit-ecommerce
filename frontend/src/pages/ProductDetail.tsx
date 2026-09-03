@@ -940,14 +940,14 @@ export const ProductDetail: React.FC = () => {
           </div>
 
           {/* Product Info */}
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div>
               {/* Category Eyebrow */}
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] tracking-[0.24em] uppercase text-neutral-400">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400">
                   {product.category ? `Denfit • ${product.category}` : 'Denfit Maison • Edition 2026'}
                 </p>
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] ${
                   isOutOfStock(product) ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                 }`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${isOutOfStock(product) ? 'bg-red-500' : 'bg-emerald-500'}`} />
@@ -955,15 +955,15 @@ export const ProductDetail: React.FC = () => {
                 </span>
               </div>
 
-              {/* Title */}
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-900 tracking-[0.14em] uppercase mb-3 leading-tight">
+              {/* Title with lesser visual spacing */}
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-900 tracking-[0.08em] uppercase mb-2 leading-tight">
                 {String(product.name ?? '')}
               </h1>
               
               {/* Clickable Review Stars - Smooth scrolls to review section */}
               <button 
                 onClick={scrollToReviews}
-                className="flex items-center gap-3 mb-4 group cursor-pointer hover:opacity-80 transition-all focus:outline-none focus:ring-1 focus:ring-neutral-900 rounded-lg p-1 -ml-1"
+                className="flex items-center gap-3 mb-3 group cursor-pointer hover:opacity-80 transition-all focus:outline-none focus:ring-1 focus:ring-neutral-900 rounded-lg p-1 -ml-1"
                 title="Read reviews"
               >
                 <div className="flex items-center gap-1.5">
@@ -1002,7 +1002,7 @@ export const ProductDetail: React.FC = () => {
                 </div>
               </button>
 
-              {/* Pricing Section with Sale Strikethrough & Free Shipping Text */}
+              {/* Pricing Section with Sale Strikethrough & Multi-line Free Shipping Text */}
               {(() => {
                 const rawOriginalPrice = (product as any)?.originalPrice || (product as any)?.compareAtPrice;
                 const originalPriceNumber = typeof rawOriginalPrice === 'number' && Number.isFinite(rawOriginalPrice) 
@@ -1015,7 +1015,7 @@ export const ProductDetail: React.FC = () => {
                   : 0;
 
                 return (
-                  <div className="py-4 px-5 rounded-2xl bg-neutral-50 border border-neutral-100 my-4">
+                  <div className="py-4 px-5 rounded-2xl bg-neutral-50 border border-neutral-100 my-3">
                     <div className="flex items-baseline gap-3.5 flex-wrap">
                       <span className={`text-3xl md:text-4xl font-light tracking-wide ${
                         hasSaleDiscount ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'
@@ -1033,12 +1033,14 @@ export const ProductDetail: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-neutral-500 font-normal">
-                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                    <div className="mt-2.5 pt-2.5 border-t border-neutral-200/60 flex flex-col gap-0.5">
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                         Free
-                      </span>
-                      <span>shipping on orders over ₨5,000 • 14-day complimentary returns</span>
+                      </div>
+                      <p className="text-xs text-neutral-500 font-normal leading-relaxed">
+                        shipping on orders over ₨5,000 • 14-day complimentary returns
+                      </p>
                     </div>
                   </div>
                 );
