@@ -160,11 +160,11 @@ export default function Header(): JSX.Element {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
           {/* Mobile left */}
-          <div className="flex items-center gap-1.5 sm:gap-2 md:hidden">
-            <button onClick={() => setMobileOpen(true)} className="p-1.5 sm:p-2 text-gray-700 hover:text-black">
+          <div className="flex items-center gap-1 md:hidden">
+            <button onClick={() => setMobileOpen(true)} className="p-1.5 text-gray-700 hover:text-black">
               <Menu className="h-6 w-6" />
             </button>
-            <button onClick={() => setSearchOpen(true)} className="p-1.5 sm:p-2 text-gray-700 hover:text-black">
+            <button onClick={() => setSearchOpen(true)} className="p-1.5 text-gray-700 hover:text-black">
               <Search className="h-5 w-5" />
             </button>
           </div>
@@ -188,8 +188,8 @@ export default function Header(): JSX.Element {
           
 
           {/* Mobile right */}
-          <div className="flex items-center gap-1.5 sm:gap-2 md:hidden ml-auto">
-            <Link to="/wishlist" className="relative p-1.5 sm:p-2 text-gray-700 hover:text-black">
+          <div className="flex items-center gap-1 md:hidden ml-auto">
+            <Link to="/wishlist" className="relative p-1.5 text-gray-700 hover:text-black">
               <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
@@ -200,7 +200,7 @@ export default function Header(): JSX.Element {
 
             <Link
               to={user ? "/profile" : "/auth?mode=login"}
-              className="p-1.5 sm:p-2 text-gray-700 hover:text-black"
+              className="p-1.5 text-gray-700 hover:text-black"
               title={user ? "My Account" : "Login / Signup"}
             >
               <User className="h-5 w-5" />
@@ -237,10 +237,10 @@ export default function Header(): JSX.Element {
           <MegaMenu activeCategory={megaIndex} onClose={() => setMegaIndex(null)} />
 
           {/* Desktop right */}
-          <div className="hidden md:flex items-center gap-1.5 sm:gap-2 md:gap-2.5 ml-auto">
+          <div className="hidden md:flex items-center gap-1 md:gap-1.5 ml-auto">
             {/* Notifications */}
             <div ref={notifRef} className="relative">
-              <button className="p-2 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors" onClick={() => setNotifOpen((s) => !s)}>
+              <button className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors" onClick={() => setNotifOpen((s) => !s)}>
                 <Bell className="h-5 w-5" />
                 {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
@@ -303,12 +303,12 @@ export default function Header(): JSX.Element {
               </AnimatePresence>
             </div>
 
-            <button className="p-2" onClick={() => setSearchOpen(true)}>
-              <Search className="h-5 w-5 text-gray-700" />
+            <button className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors" onClick={() => setSearchOpen(true)}>
+              <Search className="h-5 w-5" />
             </button>
 
-            <Link to="/wishlist" className="relative p-2">
-              <Heart className="h-5 w-5 text-gray-700" />
+            <Link to="/wishlist" className="relative p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors">
+              <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
                   {wishlistCount}
@@ -318,7 +318,7 @@ export default function Header(): JSX.Element {
 
             <Link
               to={user ? "/profile" : "/auth?mode=login"}
-              className="p-2 text-gray-700"
+              className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"
               title={user ? "My Account" : "Login / Signup"}
             >
               <User className="h-5 w-5" />

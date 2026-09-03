@@ -274,13 +274,13 @@ export default function AdminContentController(): JSX.Element {
 
             <div className="rounded-2xl overflow-hidden shadow-inner border border-neutral-300/40">
               {announcements.enabled ? (
-                <div className="bg-slate-500 text-white w-full h-10 flex items-center justify-center px-4 text-center transition-all">
-                  <p className="text-xs sm:text-sm font-medium tracking-wide">
+                <div className="bg-slate-500 text-white w-full h-7 flex items-center justify-center px-4 text-center transition-all">
+                  <p className="text-[11px] sm:text-xs font-medium tracking-wide">
                     {announcements.messages[previewIndex % announcements.messages.length] || 'No message configured'}
                   </p>
                 </div>
               ) : (
-                <div className="bg-neutral-100 text-neutral-400 w-full h-10 flex items-center justify-center px-4 text-xs italic">
+                <div className="bg-neutral-100 text-neutral-400 w-full h-7 flex items-center justify-center px-4 text-xs italic">
                   Strip is currently disabled and hidden from customers
                 </div>
               )}
