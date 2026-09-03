@@ -57,6 +57,8 @@ dist/
 build/
 /.parcel-cache/
 /.vite/
+.vite/
+**/node_modules/.vite
 test-results/
 playwright-report/
 e2e-tests/test-report/

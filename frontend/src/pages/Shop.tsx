@@ -13,7 +13,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 // mockProducts intentionally not used in production search — rely on backend
 import { useLocation, useNavigate } from 'react-router-dom';
-import { slugify, primaryImage } from '../utils/productHelpers';
+import { slugify, primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { isOutOfStock, getAvailableStockForItem } from '../utils/stockHelpers';
 import megaMenuData from '../data/megaMenuData';
 import { productsAPI } from '../api';
@@ -50,33 +50,28 @@ export const Shop: React.FC = () => {
 
   const performAddToCart = (product: any, size: string, color?: string) => {
     try {
-      const variantSnapshot = (() => {
-        if (!product?.variants) return undefined;
-        const find = (x: any) => String(x._id || x.id) === String(color) || String(x.hex || x.normalizedHex || x.value || '').toLowerCase() === String(color || '').toLowerCase() || String(x.name || '').toLowerCase() === String(color || '').toLowerCase();
-        const v = product.variants.find((x: any) => color ? find(x) : false);
-        if (v) return { id: String(v._id || v.id), name: v.name, hex: v.hex || v.normalizedHex || v.value, image: Array.isArray(v.images) && v.images[0] ? (typeof v.images[0] === 'string' ? v.images[0] : v.images[0].url) : undefined };
-        return undefined;
-      })();
-
-      const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || undefined);
+      const selection = resolveProductSelection(product, { size, color });
       const availableStock = getAvailableStockForItem(product, {
-        size,
-        color: colorNormalized,
-        variantId: variantSnapshot?.id
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex
       });
 
       const res = addItem({
-        productId: product.id,
+        productId: canonicalProductId(product),
         name: product.name,
         price: product.price,
-        image: primaryImage({ ...product, selectedVariantId: variantSnapshot?.id } as any),
-        size: size,
-        color: colorNormalized,
-        colorName: variantSnapshot?.name ?? undefined,
-        variantId: variantSnapshot?.id,
-        variantName: variantSnapshot?.name,
-        variantHex: variantSnapshot?.hex,
-        variantImage: variantSnapshot?.image,
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
         quantity: 1,
         maxStock: availableStock
       }, availableStock);

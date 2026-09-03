@@ -18,7 +18,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useWishlist } from "../context/WishlistContext";
 import { api } from "../api";
-import { primaryImage, productId, priceNumber } from "../utils/productHelpers";
+import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection } from "../utils/productHelpers";
 import {
   getCategoryGroup,
   getDisplaySizesForProduct,
@@ -238,29 +238,25 @@ const LuxuryHomePage = () => {
 
     const imageSrc = primaryImage(product) || "https://via.placeholder.com/300";
     const price = priceNumber(product);
-
-    // Resolve variant if qaSelectedVariantId or qaSelectedColor provided
-    let variantSnapshot: any = undefined;
-    if ((product as any).variants) {
-      variantSnapshot = (product as any).variants.find((v: any) => {
-        const key = String(qaSelectedVariantId || qaSelectedColor || '').toLowerCase();
-        return key && (String(v._id || v.id).toLowerCase() === key || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === key || String(v.name || '').toLowerCase() === key);
-      });
-    }
-
-    const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (qaSelectedColorName || qaSelectedColor || undefined);
+    const selection = resolveProductSelection(product, {
+      size: qaSelectedSize,
+      color: qaSelectedColor,
+      colorName: qaSelectedColorName,
+      variantId: qaSelectedVariantId
+    });
 
     const res = addItem({
-      productId: product._id ?? product.id ?? "",
+      productId: canonicalProductId(product),
       name: String(product.name),
       price,
-      image: imageSrc,
-      size: qaSelectedSize,
-      color: colorNormalized,
-      colorName: variantSnapshot?.name || qaSelectedColorName || undefined,
-      variantId: variantSnapshot?.id || qaSelectedVariantId || undefined,
-      variantName: variantSnapshot?.name || undefined,
-      variantHex: variantSnapshot?.hex || undefined,
+      image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any) || imageSrc,
+      size: selection.size,
+      color: selection.color,
+      colorName: selection.colorName,
+      variantId: selection.variantId,
+      variantName: selection.variantName,
+      variantHex: selection.variantHex,
+      variantImage: selection.variantImage,
       quantity: 1,
       maxStock: currentStock
     }, currentStock);

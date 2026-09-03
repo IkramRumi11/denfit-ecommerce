@@ -1,12 +1,136 @@
 // src/utils/productHelpers.ts
 import type { Product } from "../types";
+import { getColorName, resolveColorHex } from "./colorNames";
+
+export const canonicalProductId = (p: Product | any): string => {
+  if (!p) return '';
+  if (typeof p === 'string') return p.trim();
+  if (p._id) return String(p._id);
+  if (p.id && typeof p.id === 'string' && p.id.length === 24 && !p.id.includes('-')) return String(p.id);
+  if (p.id) return String(p.id);
+  if (p.slug) return String(p.slug);
+  if (p.seo?.slug) return String(p.seo.slug);
+  return '';
+};
+
+export const canonicalProductSlug = (p: Product | any): string => {
+  if (!p) return '';
+  if (p.slug) return String(p.slug);
+  if (p.seo?.slug) return String(p.seo.slug);
+  if (p.id) return String(p.id);
+  if (p._id) return String(p._id);
+  return '';
+};
+
+export const resolveProductSelection = (
+  product: any,
+  requested?: {
+    size?: string;
+    color?: string;
+    colorName?: string;
+    variantId?: string;
+  }
+) => {
+  const reqSize = requested?.size || (Array.isArray(product?.sizes) && product.sizes[0]) || 'One Size';
+
+  if (!product) {
+    return {
+      size: reqSize,
+      color: requested?.color || undefined,
+      colorName: requested?.colorName || undefined,
+      variantId: requested?.variantId || undefined,
+      variantHex: undefined,
+      variantName: undefined,
+      variantImage: undefined,
+    };
+  }
+
+  // 1. Check variants
+  if (Array.isArray(product.variants) && product.variants.length > 0) {
+    let variant = product.variants.find((v: any) => {
+      if (requested?.variantId && String(v._id || v.id).toLowerCase() === String(requested.variantId).toLowerCase()) return true;
+      if (requested?.color) {
+        const k = String(requested.color).trim().toLowerCase();
+        if (String(v._id || v.id).toLowerCase() === k) return true;
+        if (String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === k) return true;
+        if (String(v.name || '').toLowerCase() === k) return true;
+      }
+      if (requested?.colorName && String(v.name || '').toLowerCase() === String(requested.colorName).toLowerCase()) return true;
+      return false;
+    });
+
+    if (!variant && product.variants.length === 1) {
+      variant = product.variants[0];
+    }
+
+    if (variant) {
+      const vId = String(variant._id || variant.id || '');
+      const vName = variant.name || getColorName(variant.hex || vId);
+      const vHex = variant.hex || variant.normalizedHex || variant.value || resolveColorHex(vName) || undefined;
+      const vImage = Array.isArray(variant.images) && variant.images[0] 
+        ? (typeof variant.images[0] === 'string' ? variant.images[0] : variant.images[0].url) 
+        : undefined;
+
+      return {
+        size: reqSize,
+        color: vHex || vName,
+        colorName: vName,
+        variantId: vId,
+        variantName: vName,
+        variantHex: vHex,
+        variantImage: vImage,
+      };
+    }
+  }
+
+  // 2. Check colors
+  if (Array.isArray(product.colors) && product.colors.length > 0) {
+    let col = product.colors.find((c: any) => {
+      const k = String(requested?.color || requested?.colorName || '').trim().toLowerCase();
+      if (!k) return false;
+      if (String(c._id || c.id || '').toLowerCase() === k) return true;
+      if (String(c.hex || c.normalizedHex || c.value || '').toLowerCase() === k) return true;
+      if (String(c.name || c.displayName || '').toLowerCase() === k) return true;
+      return false;
+    });
+
+    if (!col && product.colors.length === 1) {
+      col = product.colors[0];
+    }
+
+    if (col) {
+      const colName = col.name || col.displayName || getColorName(col.hex || '');
+      const colHex = col.hex || col.normalizedHex || col.value || resolveColorHex(colName) || undefined;
+      return {
+        size: reqSize,
+        color: colHex || colName,
+        colorName: colName,
+        variantId: requested?.variantId || undefined,
+        variantName: colName,
+        variantHex: colHex,
+        variantImage: undefined,
+      };
+    }
+  }
+
+  // 3. Fallback from requested color
+  const reqColor = requested?.color || requested?.colorName;
+  const colName = requested?.colorName || (reqColor ? getColorName(reqColor) : undefined);
+  const colHex = requested?.color?.startsWith('#') ? requested.color : (colName ? resolveColorHex(colName) : undefined);
+
+  return {
+    size: reqSize,
+    color: colHex || reqColor || undefined,
+    colorName: colName,
+    variantId: requested?.variantId || undefined,
+    variantName: colName,
+    variantHex: colHex,
+    variantImage: undefined,
+  };
+};
 
 export const productId = (p: Product | any): string => {
-  if (!p) return '';
-  // Prefer SEO slug when available, then id/_id
-  if (p.slug) return String(p.slug);
-  if (p.id || p._id) return String(p.id ?? p._id);
-  return '';
+  return canonicalProductId(p);
 };
 
 export const primaryImage = (p: Product | any): string => {
@@ -43,6 +167,9 @@ export const priceNumber = (p: Product | any): number => {
 
 export default {
   productId,
+  canonicalProductId,
+  canonicalProductSlug,
+  resolveProductSelection,
   primaryImage,
   priceNumber,
 };
@@ -56,3 +183,4 @@ export const slugify = (input: string | undefined | null): string => {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-');
 };
+

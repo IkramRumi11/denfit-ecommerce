@@ -1,6 +1,7 @@
 // frontend/src/context/CartContext.tsx
 import React, { createContext, useContext, useReducer, useEffect } from "react";
 import { TAX_FEATURE } from "../config/taxFeatureFlag";
+import { getColorName, resolveColorHex } from "../utils/colorNames";
 
 export interface CartItem {
   productId: string;
@@ -65,16 +66,98 @@ type CartAction =
   | { type: "CLEAR_CART" }
   | { type: "LOAD_CART"; payload: CartItem[] };
 
-const colorMatches = (item: CartItem, key: string) => {
-  if (!key) return !(item.color || item.variantHex || item.variantName || item.colorName || item.variantId);
-  const k = key.trim().toLowerCase();
-  return (
-    (item.color && String(item.color).trim().toLowerCase() === k) ||
-    (item.variantHex && String(item.variantHex).trim().toLowerCase() === k) ||
-    (item.variantName && String(item.variantName).trim().toLowerCase() === k) ||
-    (item.colorName && String(item.colorName).trim().toLowerCase() === k) ||
-    (item.variantId && String(item.variantId).trim().toLowerCase() === k)
-  );
+const normalizeStr = (v?: string | null) => String(v || '').trim().toLowerCase();
+
+export const areProductIdsMatching = (idA?: string | null, idB?: string | null): boolean => {
+  const a = normalizeStr(idA);
+  const b = normalizeStr(idB);
+  if (!a || !b) return false;
+  return a === b;
+};
+
+export const areSizesMatching = (sizeA?: string | null, sizeB?: string | null): boolean => {
+  const a = normalizeStr(sizeA).replace(/[\s-_]+/g, '');
+  const b = normalizeStr(sizeB).replace(/[\s-_]+/g, '');
+  if (!a && !b) return true;
+  return a === b;
+};
+
+export const areColorsMatching = (itemA: Partial<CartItem>, itemB: Partial<CartItem> | any): boolean => {
+  // If both have variantId and they match
+  if (itemA?.variantId && itemB?.variantId) {
+    if (normalizeStr(itemA.variantId) === normalizeStr(itemB.variantId)) return true;
+  }
+
+  // Collect color tokens for item A
+  const tokensA = new Set<string>();
+  [itemA.variantId, itemA.variantHex, itemA.color, itemA.colorName, itemA.variantName]
+    .filter(Boolean)
+    .forEach((val) => {
+      const norm = normalizeStr(val);
+      if (!norm) return;
+      tokensA.add(norm);
+      const hex = resolveColorHex(val);
+      if (hex) tokensA.add(normalizeStr(hex));
+      const name = getColorName(val);
+      if (name) tokensA.add(normalizeStr(name));
+    });
+
+  // Collect color tokens for item B
+  const tokensB = new Set<string>();
+  const bObj = typeof itemB === 'string' ? { color: itemB } : (itemB || {});
+  [bObj.variantId, bObj.variantHex, bObj.color, bObj.colorName, bObj.variantName]
+    .filter(Boolean)
+    .forEach((val) => {
+      const norm = normalizeStr(val);
+      if (!norm) return;
+      tokensB.add(norm);
+      const hex = resolveColorHex(val);
+      if (hex) tokensB.add(normalizeStr(hex));
+      const name = getColorName(val);
+      if (name) tokensB.add(normalizeStr(name));
+    });
+
+  // If neither has any color tokens, treat as matching default
+  if (tokensA.size === 0 && tokensB.size === 0) return true;
+  // If one item has no color specified (e.g. added via a size-only click), match default
+  if (tokensA.size === 0 || tokensB.size === 0) return true;
+
+  // Check token intersection
+  for (const t of tokensA) {
+    if (tokensB.has(t)) return true;
+  }
+
+  return false;
+};
+
+export const areCartItemsEqual = (a: CartItem, b: CartItem | any): boolean => {
+  if (!areProductIdsMatching(a.productId, b.productId)) return false;
+  if (!areSizesMatching(a.size, b.size)) return false;
+  return areColorsMatching(a, b);
+};
+
+export const colorMatches = (item: CartItem, key: string) => {
+  if (!key) return true;
+  return areColorsMatching(item, { color: key });
+};
+
+// Merge two matching cart items into one complete item
+const mergeCartItemDetails = (target: CartItem, source: CartItem): CartItem => {
+  const resolvedColorName = target.colorName || source.colorName || (target.color ? getColorName(target.color) : (source.color ? getColorName(source.color) : undefined));
+  const resolvedHex = target.variantHex || source.variantHex || (resolvedColorName ? resolveColorHex(resolvedColorName) : undefined) || (target.color?.startsWith('#') ? target.color : (source.color?.startsWith('#') ? source.color : undefined));
+  const resolvedColor = resolvedHex || target.color || source.color || resolvedColorName;
+
+  return {
+    ...target,
+    color: resolvedColor,
+    colorName: resolvedColorName,
+    variantHex: resolvedHex,
+    variantName: target.variantName || source.variantName || resolvedColorName,
+    variantId: target.variantId || source.variantId,
+    variantImage: target.variantImage || source.variantImage,
+    image: target.image || source.image,
+    maxStock: target.maxStock ?? source.maxStock,
+  };
 };
 
 const cartReducer = (state: CartState, action: CartAction): CartState => {
@@ -82,11 +165,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case "ADD_ITEM": {
       const incomingItem = action.payload.item;
       const maxStock = action.payload.maxStock;
-      const payloadColorKey = String(incomingItem.variantId ?? incomingItem.color ?? incomingItem.variantHex ?? incomingItem.variantName ?? incomingItem.colorName ?? '');
 
-      const existingItemIndex = state.items.findIndex(
-        (item) => item.productId === incomingItem.productId && item.size === incomingItem.size && colorMatches(item, payloadColorKey)
-      );
+      const existingItemIndex = state.items.findIndex((item) => areCartItemsEqual(item, incomingItem));
 
       let newItems: CartItem[];
       if (existingItemIndex >= 0) {
@@ -98,11 +178,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         if (targetQty <= 0) {
           newItems = state.items.filter((_, idx) => idx !== existingItemIndex);
         } else {
-          newItems = state.items.map((item, index) =>
-            index === existingItemIndex
-              ? { ...item, quantity: targetQty, maxStock: maxStock ?? item.maxStock }
-              : item
-          );
+          newItems = state.items.map((item, index) => {
+            if (index === existingItemIndex) {
+              const merged = mergeCartItemDetails(item, incomingItem);
+              return { ...merged, quantity: targetQty, maxStock: maxStock ?? merged.maxStock };
+            }
+            return item;
+          });
         }
       } else {
         let initialQty = incomingItem.quantity;
@@ -120,14 +202,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
 
     case "REMOVE_ITEM": {
-      const matchesRemove = (item: CartItem, payload: { productId: string; size: string; color?: string }) => {
-        if (item.productId !== payload.productId) return false;
-        if (item.size !== payload.size) return false;
-        if (!payload.color) return true;
-        return colorMatches(item, payload.color);
-      };
-
-      const newItems = state.items.filter((item) => !matchesRemove(item, action.payload));
+      const newItems = state.items.filter((item) => !areCartItemsEqual(item, action.payload));
       const totals = calculateTotals(newItems);
       return { ...state, ...totals, items: newItems };
     }
@@ -136,9 +211,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       const maxStock = action.payload.maxStock;
       const newItems = state.items
         .map((item) => {
-          const sameProduct = item.productId === action.payload.productId && item.size === action.payload.size;
-          const matchColor = !action.payload.color || colorMatches(item, action.payload.color);
-          if (sameProduct && matchColor) {
+          if (areCartItemsEqual(item, action.payload)) {
             let finalQty = action.payload.quantity;
             if (typeof maxStock === 'number' && maxStock >= 0) {
               finalQty = Math.min(finalQty, maxStock);
@@ -156,8 +229,23 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       return { items: [], subtotal: 0, shipping: 0, tax: 0, total: 0 };
 
     case "LOAD_CART": {
-      const totals = calculateTotals(action.payload);
-      return { ...state, ...totals, items: action.payload };
+      // Deduplicate and merge any existing duplicates
+      const merged: CartItem[] = [];
+      for (const raw of action.payload) {
+        const item = sanitizeCartItem(raw);
+        const existingIdx = merged.findIndex((m) => areCartItemsEqual(m, item));
+        if (existingIdx >= 0) {
+          const combined = mergeCartItemDetails(merged[existingIdx], item);
+          merged[existingIdx] = {
+            ...combined,
+            quantity: combined.quantity + item.quantity,
+          };
+        } else {
+          merged.push(item);
+        }
+      }
+      const totals = calculateTotals(merged);
+      return { ...state, ...totals, items: merged };
     }
 
     default:
@@ -165,10 +253,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   }
 };
 
-// Normalize an incoming cart item to safe primitives
+// Normalize an incoming cart item to safe primitives with full color enrichment
 function sanitizeCartItem(input: any): CartItem {
   const safe: any = {};
-  safe.productId = String(input?.productId ?? input?.id ?? '');
+  safe.productId = String(input?.productId ?? input?.id ?? input?._id ?? '');
   safe.name = String(input?.name ?? '');
   safe.price = Number(input?.price) || 0;
   if (typeof input?.image === 'string') safe.image = input.image;
@@ -181,11 +269,21 @@ function sanitizeCartItem(input: any): CartItem {
   else if (typeof input.size === 'object') {
     safe.size = String(input.size.value ?? input.size.size ?? input.size.label ?? input.size.name ?? JSON.stringify(input.size));
   } else safe.size = String(input.size);
-  safe.color = input?.color == null ? undefined : String(input.color);
-  safe.colorName = input?.colorName == null ? undefined : String(input.colorName);
+
+  const rawColor = input?.color == null ? undefined : String(input.color);
+  const rawColorName = input?.colorName == null ? undefined : String(input.colorName);
+  const rawVariantName = input?.variantName ? String(input.variantName) : undefined;
+  const rawVariantHex = input?.variantHex ? String(input.variantHex) : undefined;
+
+  const colorName = rawColorName || rawVariantName || (rawColor ? getColorName(rawColor) : undefined);
+  const variantHex = rawVariantHex || (colorName ? resolveColorHex(colorName) : undefined) || (rawColor?.startsWith('#') ? rawColor : undefined);
+  const color = variantHex || rawColor || colorName;
+
+  safe.color = color;
+  safe.colorName = colorName;
   safe.variantId = input?.variantId ? String(input.variantId) : undefined;
-  safe.variantName = input?.variantName ? String(input.variantName) : undefined;
-  safe.variantHex = input?.variantHex ? String(input.variantHex) : undefined;
+  safe.variantName = rawVariantName || colorName;
+  safe.variantHex = variantHex;
   safe.variantImage = input?.variantImage ? String(input.variantImage) : undefined;
   safe.quantity = Math.max(1, Number(input?.quantity) || 1);
   if (typeof input?.maxStock === 'number') safe.maxStock = input.maxStock;
@@ -228,14 +326,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const getItemQuantity = (productId: string, size?: string, color?: string, variantId?: string): number => {
     const targetPid = String(productId || '');
     if (!targetPid) return 0;
+    const queryItem: any = { productId: targetPid, size, color, variantId };
 
     return state.items
       .filter((item) => {
-        if (item.productId !== targetPid) return false;
-        if (size && item.size !== size) return false;
+        if (!areProductIdsMatching(item.productId, targetPid)) return false;
+        if (size && !areSizesMatching(item.size, size)) return false;
         if (color || variantId) {
-          const colorKey = String(variantId || color || '');
-          if (!colorMatches(item, colorKey)) return false;
+          if (!areColorsMatching(item, queryItem)) return false;
         }
         return true;
       })

@@ -7,7 +7,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatCurrency';
-import { primaryImage } from '../utils/productHelpers';
+import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { productsAPI } from '../api';
@@ -28,10 +28,8 @@ export const Wishlist: React.FC = () => {
         // fallback to the lightweight object from wishlist
         p = product;
       }
-      // Normalize common id field
-      const canonicalId = p?.id || p?._id || product?.id || product?._id || '';
-      setQuickAddProduct({ ...(p || {}), id: canonicalId });
-    } catch (e) {
+      setQuickAddProduct(p);
+    } catch (err) {
       setQuickAddProduct(product);
     }
   };
@@ -40,32 +38,28 @@ export const Wishlist: React.FC = () => {
 
   const performAddToCart = (product: any, size: string, color?: string) => {
     try {
-      if (product?.outOfStock) {
-        showToast('Product is out of stock', 'error');
-        return;
-      }
-      // resolve variant if color param may be variant id/hex/name
-      let variantSnapshot: any = undefined;
-      if (Array.isArray(product.variants) && color) {
-        variantSnapshot = product.variants.find((v: any) => String(v._id || v.id) === String(color) || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === String(color).toLowerCase() || String(v.name || '').toLowerCase() === String(color).toLowerCase());
-      }
-      const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || product.colorName || product.color || undefined);
+      const selection = resolveProductSelection(product, { size, color });
       const availableStock = getAvailableStockForItem(product, {
-        size,
-        color: colorNormalized,
-        variantId: variantSnapshot?.id
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex
       });
 
       const res = addItem({
-        productId: product.id,
+        productId: canonicalProductId(product),
         name: product.name,
         price: product.price,
-        image: (typeof product.image === 'string' && product.image) ? product.image : primaryImage(product),
-        size,
-        color: colorNormalized,
-        colorName: variantSnapshot?.name || product.colorName || undefined,
-        variantId: variantSnapshot?.id,
-        variantHex: variantSnapshot?.hex,
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any) || ((typeof product.image === 'string' && product.image) ? product.image : ''),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
         quantity: 1,
         maxStock: availableStock
       }, availableStock);

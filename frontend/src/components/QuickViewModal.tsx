@@ -8,7 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
-import { primaryImage, productId } from '../utils/productHelpers';
+import { primaryImage, productId, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
@@ -190,18 +190,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
         return;
       }
 
-      const result = addItem({
-        productId: _pid || product.id,
-        name: product.name,
-        price: product.price,
-        image: primaryImage({ ...product, selectedVariantId } as any),
+      const selection = resolveProductSelection(product, {
         size: selectedSize,
         color: selectedColor,
-        colorName: variantSnapshot?.name ?? (selectedColorName || undefined),
-        variantId: variantSnapshot?.id,
-        variantName: variantSnapshot?.name,
-        variantHex: variantSnapshot?.hex,
-        variantImage: variantSnapshot?.image,
+        colorName: selectedColorName,
+        variantId: selectedVariantId
+      });
+
+      const result = addItem({
+        productId: canonicalProductId(product),
+        name: product.name,
+        price: product.price,
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
         quantity: 1,
         maxStock: selectedStock
       }, selectedStock);

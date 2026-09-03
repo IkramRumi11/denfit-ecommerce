@@ -15,8 +15,7 @@ import ReviewList from '../components/reviews/ReviewList';
 import ReviewForm from '../components/reviews/ReviewForm';
 import trackEvent from '../utils/analytics';
 import { productsAPI } from '../api';
-import FallbackImage from '../components/ui/FallbackImage';
-import { primaryImage } from '../utils/productHelpers';
+import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
 import useReducedMotion from '../hooks/useReducedMotion';
@@ -718,26 +717,25 @@ export const ProductDetail: React.FC = () => {
 
     setIsAdding(true);
     try {
-      const variantSnapshot = (() => {
-        if ((product as any).variants && selectedVariantId) {
-          const v = (product as any).variants.find((x: any) => String(x._id || x.id) === String(selectedVariantId));
-          if (v) return { id: String(v._id || v.id), name: v.name, hex: v.hex, image: Array.isArray(v.images) && v.images[0] ? (typeof v.images[0] === 'string' ? v.images[0] : v.images[0].url) : undefined };
-        }
-        return undefined;
-      })();
-
-      const result = addItem({
-        productId: canonicalPid,
-        name: product.name,
-        price: product.price,
-        image: primaryImage({ ...product, selectedVariantId } as any),
+      const selection = resolveProductSelection(product, {
         size: selectedSize,
         color: selectedColor,
-        colorName: variantSnapshot?.name ?? (selectedColorName || undefined),
-        variantId: variantSnapshot?.id,
-        variantName: variantSnapshot?.name,
-        variantHex: variantSnapshot?.hex,
-        variantImage: variantSnapshot?.image,
+        colorName: selectedColorName,
+        variantId: selectedVariantId
+      });
+
+      const result = addItem({
+        productId: canonicalProductId(product),
+        name: product.name,
+        price: product.price,
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
         quantity: quantity,
         maxStock: displayAvailableQuantity
       }, displayAvailableQuantity);

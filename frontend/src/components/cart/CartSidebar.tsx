@@ -4,7 +4,7 @@ import { useCart } from "../../context/CartContext";
 import { Link } from "react-router-dom";
 import { productsAPI } from "../../api";
 import { getAvailableStockForItem } from "../../utils/stockHelpers";
-import { getColorName } from "../../utils/colorNames";
+import { getColorName, resolveColorHex } from "../../utils/colorNames";
 
 export default function CartSidebar() {
   const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, getItemCount } = useCart();
@@ -155,10 +155,11 @@ export default function CartSidebar() {
                               const label = variantLabel || colorValue;
                               if (!label) return null;
                               const friendlyName = getColorName(label);
+                              const swatchHex = resolveColorHex(colorValue) || resolveColorHex(variantLabel) || (colorValue.startsWith('#') || colorValue.startsWith('rgb') ? colorValue : undefined);
                               return (
                                 <div className="mt-1 flex items-center gap-2">
-                                  {colorValue ? (
-                                    <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
+                                  {swatchHex ? (
+                                    <span className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0" style={{ backgroundColor: swatchHex }} />
                                   ) : null}
                                   <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
                                 </div>

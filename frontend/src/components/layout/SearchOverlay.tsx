@@ -8,7 +8,7 @@ import { useToast } from "../../context/ToastContext";
 import { productsAPI } from '../../api';
 import type { Product } from "../../types";
 import { formatCurrency } from "../../utils/formatCurrency";
-import { productId, primaryImage, priceNumber } from '../../utils/productHelpers';
+import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection } from '../../utils/productHelpers';
 import { isOutOfStock, getAvailableStockForItem } from '../../utils/stockHelpers';
 import FallbackImage from "../ui/FallbackImage";
 import { QuickViewModal } from '../QuickViewModal';
@@ -32,39 +32,42 @@ export default function SearchOverlay({
   handleToggleWishlist: parentToggleWishlist,
 }: Props) {
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { addItem } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { addItem } = useCart();
   const { showToast } = useToast();
-  const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
-  const [query, setQuery] = useState('');
+  const [quickAddProduct, setQuickAddProduct] = useState<any | null>(null);
   const [results, setResults] = useState<Product[]>([]);
 
-  const openQuickAdd = (product: Product) => {
-    if (!product || isOutOfStock(product)) {
-      showToast?.('Product is out of stock', 'error');
-      return;
-    }
-    setQuickAddProduct(product);
-  };
-
+  const openQuickAdd = (product: any) => setQuickAddProduct(product);
   const closeQuickAdd = () => setQuickAddProduct(null);
 
   const performAddToCart = (product: any, size: string, color?: string) => {
     try {
+      const selection = resolveProductSelection(product, { size, color });
       const availableStock = getAvailableStockForItem(product, {
-        size,
-        color
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex
       });
 
       const res = addItem({
-        productId: productId(product),
+        productId: canonicalProductId(product),
         name: product.name,
         price: priceNumber(product),
-        image: primaryImage(product),
-        size,
-        color,
-        colorName: (product as any).colorName || (product as any).color || undefined,
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
         quantity: 1,
         maxStock: availableStock
       }, availableStock);

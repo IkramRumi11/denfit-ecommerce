@@ -7,8 +7,8 @@ import { QuickViewModal } from './QuickViewModal';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
 import { productsAPI } from '../api';
-import { primaryImage, productId } from '../utils/productHelpers';
-import { isOutOfStock } from '../utils/stockHelpers';
+import { primaryImage, productId, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
+import { isOutOfStock, getAvailableStockForItem } from '../utils/stockHelpers';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -31,30 +31,47 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
     setQuickAddProduct(product);
   };
 
-  const closeQuickAdd = () => setQuickAddProduct(null);
+  const closeQuickAdd = () => {
+    setQuickAddProduct(null);
+  };
 
   const performAddToCart = (product: any, size: string, color?: string) => {
     try {
-      const image = primaryImage(product);
-      // resolve variant if color may be a variant id/name/hex
-      let variantSnapshot: any = undefined;
-      if (Array.isArray(product.variants) && color) {
-        variantSnapshot = product.variants.find((v: any) => String(v._id || v.id) === String(color) || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === String(color).toLowerCase() || String(v.name || '').toLowerCase() === String(color).toLowerCase());
-      }
-      const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || (product as any).colorName || (product as any).color || undefined);
+      const selection = resolveProductSelection(product, { size, color });
+      const availableStock = getAvailableStockForItem(product, {
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex
+      });
 
-      addItem({
-        productId: product.id,
+      const res = addItem({
+        productId: canonicalProductId(product),
         name: product.name,
         price: product.price,
-        image,
-        size,
-        color: colorNormalized,
-        colorName: variantSnapshot?.name || (product as any).colorName || undefined,
-        variantId: variantSnapshot?.id,
-        variantHex: variantSnapshot?.hex,
-        quantity: 1
-      });
+        image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
+        size: selection.size,
+        color: selection.color,
+        colorName: selection.colorName,
+        variantId: selection.variantId,
+        variantName: selection.variantName,
+        variantHex: selection.variantHex,
+        variantImage: selection.variantImage,
+        quantity: 1,
+        maxStock: availableStock
+      }, availableStock);
+
+      if (!res.success) {
+        if (res.reason === 'MAX_REACHED') {
+          showToast(`You already have all ${availableStock} available units in your cart`, 'warning');
+        } else {
+          showToast('Product is out of stock', 'error');
+        }
+        return;
+      }
+
       showToast(`${product.name} added to the cart`, 'success');
       closeQuickAdd();
     } catch (error) {

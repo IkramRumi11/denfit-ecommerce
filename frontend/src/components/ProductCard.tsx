@@ -11,7 +11,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { QuickViewModal } from './QuickViewModal';
 import type { Product } from '../types';
-import { productId, primaryImage, priceNumber } from '../utils/productHelpers';
+import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
@@ -186,25 +186,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
       // Internal add path
       try {
-        const imageSrc = primaryImage(product) || '';
-        const price = priceNumber(product);
-        // Resolve variant snapshot (allow color argument to be hex/name or variant id)
-        let variantSnapshot: any = undefined;
-        if (product?.variants) {
-          variantSnapshot = (product as any).variants.find((v: any) => {
-            if (!color && !variantId) return false;
-            const key = String(color || variantId || '').toLowerCase();
-            return String(v._id || v.id || '').toLowerCase() === key || String(v.hex || v.normalizedHex || v.value || '').toLowerCase() === key || String(v.name || '').toLowerCase() === key;
-          });
-        }
+        const selection = resolveProductSelection(product, {
+          size,
+          color,
+          colorName: selectedColorName,
+          variantId
+        });
 
-        const colorNormalized = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name) : (color || undefined);
+        const imageSrc = primaryImage({ ...product, selectedVariantId: selection.variantId } as any) || '';
+        const price = priceNumber(product);
 
         const availableStock = getAvailableStockForItem(product, {
-          size,
-          color: colorNormalized,
-          colorName: variantSnapshot?.name || selectedColorName,
-          variantId: variantSnapshot?.id || variantId
+          size: selection.size,
+          color: selection.color,
+          colorName: selection.colorName,
+          variantId: selection.variantId,
+          variantName: selection.variantName,
+          variantHex: selection.variantHex
         });
 
         if (availableStock <= 0) {
@@ -213,16 +211,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         }
 
         const result = addItem({
-          productId: product._id ?? product.id ?? '',
+          productId: canonicalProductId(product),
           name: String(product.name),
           price,
           image: imageSrc,
-          size,
-          color: colorNormalized,
-          colorName: variantSnapshot?.name || selectedColorName || undefined,
-          variantId: variantSnapshot?.id || variantId || undefined,
-          variantName: variantSnapshot?.name || undefined,
-          variantHex: variantSnapshot?.hex || undefined,
+          size: selection.size,
+          color: selection.color,
+          colorName: selection.colorName,
+          variantId: selection.variantId,
+          variantName: selection.variantName,
+          variantHex: selection.variantHex,
+          variantImage: selection.variantImage,
           quantity: 1,
           maxStock: availableStock
         }, availableStock);
