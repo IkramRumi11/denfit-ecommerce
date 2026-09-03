@@ -31,11 +31,9 @@ const createSendToken = (user, statusCode, req, res) => {
   const backendOrigin = `${req.protocol}://${req.headers.host}`;
   const isCrossOrigin = requestOrigin && requestOrigin !== backendOrigin;
 
-  // Decide secure flag: respect production and explicit SSL, but in development
-  // avoid forcing `secure=true` when the frontend is plain HTTP.
-  const inferredSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true' || Boolean(process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) || req.secure || req.headers['x-forwarded-proto'] === 'https';
-  const isLocalhostRequest = /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(requestOrigin) || /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?$/i.test(backendOrigin);
-  const secureFlag = process.env.NODE_ENV === 'production' ? inferredSecure : false;
+  // Decide secure flag: respect HTTPS detection (including X-Forwarded-Proto from reverse proxy)
+  const isHttps = Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https' || (process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH) || process.env.FORCE_HTTPS === 'true');
+  const secureFlag = isHttps;
 
   // Determine SameSite behavior:
   // - Production: respect configured value or default to 'lax'
