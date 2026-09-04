@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useCart } from "../../context/CartContext";
 import { Link } from "react-router-dom";
+import { ShoppingBag, ArrowRight } from "lucide-react";
 import { productsAPI } from "../../api";
 import { getAvailableStockForItem } from "../../utils/stockHelpers";
 import { getColorName, resolveColorHex } from "../../utils/colorNames";
@@ -120,8 +121,58 @@ export default function CartSidebar() {
 
             <div className="flex-1 overflow-y-auto p-6">
               {items.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Your cart is empty</p>
+                <div className="py-10 px-2 text-center flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 text-gray-400">
+                    <ShoppingBag className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1 tracking-tight">Your Cart is Empty</h3>
+                  <p className="text-xs text-gray-500 max-w-[240px] mb-6 leading-relaxed">
+                    Discover our newest drops, everyday essentials, and contemporary urban fashion.
+                  </p>
+                  <Link
+                    to="/shop"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full inline-flex items-center justify-center px-5 py-3.5 bg-black text-white text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-neutral-800 transition-colors shadow-sm mb-6 group"
+                  >
+                    <span>Explore Collection / Shop Now</span>
+                    <ArrowRight className="ml-2 w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+
+                  <div className="w-full pt-6 border-t border-gray-100">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-gray-400 mb-3">
+                      Quick Categories
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 w-full text-xs">
+                      <Link
+                        to="/men"
+                        onClick={() => setIsOpen(false)}
+                        className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
+                      >
+                        Men
+                      </Link>
+                      <Link
+                        to="/women"
+                        onClick={() => setIsOpen(false)}
+                        className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
+                      >
+                        Women
+                      </Link>
+                      <Link
+                        to="/kids"
+                        onClick={() => setIsOpen(false)}
+                        className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
+                      >
+                        Kids
+                      </Link>
+                      <Link
+                        to="/sale"
+                        onClick={() => setIsOpen(false)}
+                        className="py-2.5 px-3 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 text-center font-semibold transition-colors"
+                      >
+                        Sale Collection
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">

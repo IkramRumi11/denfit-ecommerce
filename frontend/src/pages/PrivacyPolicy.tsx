@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   Lock,
@@ -11,11 +11,42 @@ import {
   MapPin,
   Truck,
   CreditCard,
-  ScrollText
+  ScrollText,
+  ChevronDown,
+  HelpCircle,
+  AlertCircle
 } from 'lucide-react';
 
 export const PrivacyPolicy = () => {
-  const lastUpdated = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const lastUpdated = "September 2026";
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const privacyFaqs = [
+    {
+      q: "Does DENFIT store my credit/debit card numbers or bank credentials?",
+      a: "No. DENFIT never stores your credit card number, debit card PIN, CVV/CVC, or net-banking passwords on our local servers. All digital transactions are securely routed through PCI-DSS Level 1 certified payment gateways that use end-to-end 256-bit SSL/TLS encryption."
+    },
+    {
+      q: "Who receives my delivery address and telephone number?",
+      a: "Your delivery address, recipient name, and contact telephone number are strictly shared with our authorized logistics courier partners (e.g., TCS, Leopards Courier, Trax) solely for the purpose of dispatching, delivering, and confirming your parcel. They are legally prohibited from utilizing your information for promotional marketing."
+    },
+    {
+      q: "Will I receive spam SMS or unsolicited telephone calls?",
+      a: "Never. We only send SMS or place calls to verify Cash on Delivery (COD) order authenticity, provide real-time parcel dispatch tracking updates, or address urgent customer service queries. Promotional emails are only sent if you explicitly opt-in to our VIP newsletter, and you can unsubscribe at any time with a single click."
+    },
+    {
+      q: "How can I request a copy of my data or request account deletion?",
+      a: "You have the right to request a complete export of your personal information or request permanent deletion of your account and customer history under our Right to be Forgotten policy. Simply send an email from your registered address to denfitcustomerservice@gmail.com with the subject line 'Data Deletion Request'."
+    },
+    {
+      q: "How do cookies enhance my shopping experience on DENFIT?",
+      a: "Cookies allow our web store to remember items stored in your shopping bag, preserve your active login session, remember your regional currency preferences, and load pages faster on subsequent visits. You can disable non-essential cookies via your browser settings at any time without restricting core checkout functionality."
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
@@ -25,15 +56,15 @@ export const PrivacyPolicy = () => {
         <div className="container mx-auto max-w-5xl text-center">
           <div className="inline-flex items-center justify-center p-3 bg-gray-800 rounded-full mb-6">
             <Shield className="text-amber-500 mr-2" size={24} />
-            <span className="text-gray-300 text-sm tracking-[0.26em] uppercase">Trust & Transparency</span>
+            <span className="text-gray-300 text-sm tracking-[0.26em] uppercase">Trust &amp; Transparency</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-light tracking-[0.2em] mb-6 uppercase">
             Your Privacy, <span className="font-bold text-white">Protected.</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
-            At DENFIT, we respect your style and your data. This policy outlines exactly how we collect, use, and guard your personal information.
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
+            At DENFIT, protecting your personal data is as fundamental to us as the quality of our craftsmanship. This policy explains clearly and ethically how your information is safeguarded.
           </p>
-          <div className="mt-8 text-sm text-gray-500 font-mono">
+          <div className="mt-8 text-sm text-gray-400 font-mono">
             Last Updated: <span className="text-amber-500">{lastUpdated}</span>
           </div>
         </div>
@@ -44,30 +75,30 @@ export const PrivacyPolicy = () => {
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <Lock size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">100% Secure</h3>
-                <p className="text-sm text-gray-600">Your payments are processed via encrypted gateways (SSL). We never store your credit card details on our local servers.</p>
+                <h3 className="font-bold text-lg mb-1">100% Secure Processing</h3>
+                <p className="text-sm text-gray-600">All data transmissions are encrypted with enterprise-grade SSL certificates. We never store credit or debit card numbers on our servers.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <Eye size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">No Data Selling</h3>
-                <p className="text-sm text-gray-600">We do not sell, trade, or rent your personal identification information to third parties.</p>
+                <h3 className="font-bold text-lg mb-1">Zero Data Brokerage</h3>
+                <p className="text-sm text-gray-600">We do not sell, rent, monetize, or disclose your personal details to third-party marketing brokers under any circumstances.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <Check size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">You Are In Control</h3>
-                <p className="text-sm text-gray-600">You can unsubscribe from marketing, request data deletion, or update your personal information at any time.</p>
+                <h3 className="font-bold text-lg mb-1">Customer Autonomy</h3>
+                <p className="text-sm text-gray-600">You maintain complete authority over your information: request copies, update profile details, or delete your account at any time.</p>
               </div>
             </div>
           </div>
@@ -80,9 +111,14 @@ export const PrivacyPolicy = () => {
 
           {/* 1. Introduction */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">1. Introduction</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">1.</span> Introduction &amp; Corporate Identity
+            </h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              Welcome to <strong>DENFIT</strong> (referred to herein as "we", "us", or "our"). Registered and operating from <strong>Defence Raya Golf &amp; Country Club, Phase 6, DHA Lahore, Pakistan</strong>, DENFIT is committed to maintaining the trust of our visitors, customers, and community.
+            </p>
             <p className="text-gray-600 leading-relaxed">
-              Welcome to DENFIT. Operating from <strong>Defence Raya Golf & Country Club, Phase 6, DHA Lahore, Pakistan</strong>, we are committed to protecting your personal information and your right to privacy. This Privacy Policy strictly governs how we handle the data you provide when you visit our website, use our services, or make a purchase.
+              This Privacy Policy explains the nature of personal information gathered when you navigate our website, register an account, interact with our customer care representatives, or place an order for delivery across Pakistan.
             </p>
           </div>
 
@@ -90,26 +126,33 @@ export const PrivacyPolicy = () => {
 
           {/* 2. Information We Collect */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">2. Information We Collect</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">2.</span> Categories of Data Collected
+            </h2>
 
             <div className="space-y-6">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                <h3 className="font-bold text-lg mb-2">A. Personal Information You Disclose</h3>
-                <p className="text-gray-600 text-sm mb-3">We collect personal data that you voluntarily provide to us when registering an account, placing an order, or contacting customer service.</p>
-                <ul className="list-disc list-inside text-gray-600 text-sm space-y-1 ml-2">
-                  <li><strong>Identity Data:</strong> First and last name.</li>
-                  <li><strong>Contact Data:</strong> Email address, billing address, delivery address, and phone number.</li>
-                  <li><strong>Profile Data:</strong> Account username, password, order history, and manual size/preference management data stored securely to personalize your future visits.</li>
-                  <li><strong>Financial Data:</strong> Payment details (securely processed and encrypted by our third-party payment gateways; we do not retain full card numbers).</li>
+                <h3 className="font-bold text-lg mb-2 text-gray-900">A. Personal Data You Provide to Us</h3>
+                <p className="text-gray-600 text-sm mb-3">
+                  When you create an account, purchase products, or reach out to our support channels, we collect information necessary to fulfill your order safely:
+                </p>
+                <ul className="list-disc list-inside text-gray-600 text-sm space-y-1.5 ml-2">
+                  <li><strong>Identity &amp; Profile Data:</strong> Full legal name, preferred username, hashed password, and gender preference.</li>
+                  <li><strong>Contact Details:</strong> Verified email address, direct telephone number, primary delivery address, city, and province.</li>
+                  <li><strong>Transaction Records:</strong> Specific garments purchased, sizes chosen, billing invoices, promo codes applied, and order status histories.</li>
+                  <li><strong>Support Communications:</strong> Inquiries, feedback, size exchange notes, and correspondence submitted via email or contact forms.</li>
                 </ul>
               </div>
 
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                <h3 className="font-bold text-lg mb-2">B. Information Automatically Collected</h3>
-                <p className="text-gray-600 text-sm mb-3">When you navigate our website, we automatically collect certain technical information.</p>
-                <ul className="list-disc list-inside text-gray-600 text-sm space-y-1 ml-2">
-                  <li><strong>Device &amp; Usage Data:</strong> IP address, browser type, operating system, and device type (mobile or desktop).</li>
-                  <li><strong>Interaction Data:</strong> Pages viewed, time spent on pages, and referring website addresses.</li>
+                <h3 className="font-bold text-lg mb-2 text-gray-900">B. Technical &amp; Device Information Collected Automatically</h3>
+                <p className="text-gray-600 text-sm mb-3">
+                  When you browse our storefront, our systems automatically log essential diagnostic and browsing metrics to optimize performance:
+                </p>
+                <ul className="list-disc list-inside text-gray-600 text-sm space-y-1.5 ml-2">
+                  <li><strong>Device Metrics:</strong> Internet Protocol (IP) address, browser version, operating system, device screen resolution, and time zone.</li>
+                  <li><strong>Navigation Patterns:</strong> Pages visited, product detail impressions, session duration, and referral URLs.</li>
+                  <li><strong>Cart Continuity:</strong> Temporary session cookies that preserve items added to your cart between browser page reloads.</li>
                 </ul>
               </div>
             </div>
@@ -119,35 +162,56 @@ export const PrivacyPolicy = () => {
 
           {/* 3. How We Use Your Information */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">3. How We Use Your Information</h2>
-            <ul className="list-disc list-inside text-gray-600 space-y-2 ml-2">
-              <li><strong>To Fulfill Orders:</strong> Processing transactions, arranging shipping through our courier partners, and sending order confirmations.</li>
-              <li><strong>To Improve UI/UX:</strong> Analyzing site traffic and interaction data to optimize our website's layout and functionality.</li>
-              <li><strong>Customer Support:</strong> Responding to your inquiries, handling returns, and resolving disputes.</li>
-              <li><strong>Marketing &amp; Promotions:</strong> Sending you newsletters, exclusive offers, and updates (only if you have opted in). You may opt out at any time.</li>
-              <li><strong>Fraud Prevention:</strong> Screening transactions to protect against fraudulent, unauthorized, or illegal activity.</li>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">3.</span> Purposes for Processing Your Data
+            </h2>
+            <p className="text-gray-600 mb-4">
+              We process your personal information strictly for legitimate commercial and operational purposes:
+            </p>
+            <ul className="list-disc list-inside text-gray-600 space-y-2.5 ml-2">
+              <li><strong>Order Fulfillment &amp; Dispatch:</strong> Verifying order details, arranging courier parcel pickup, generating shipping airway bills, and issuing digital VAT/tax receipts.</li>
+              <li><strong>Cash on Delivery (COD) Confirmation:</strong> Contacting buyers via SMS or brief phone calls when required to prevent fraudulent or fictitious bookings.</li>
+              <li><strong>Exchange &amp; Customer Support:</strong> Processing requests under our 14-day exchange policy, handling size alterations, and resolving courier inquiries.</li>
+              <li><strong>Security &amp; Fraud Prevention:</strong> Protecting our site against automated bot scraping, unauthorized account intrusions, and fraudulent checkout activity.</li>
+              <li><strong>Opt-In Marketing:</strong> Keeping subscribed members informed about upcoming seasonal collection releases and limited-edition promotions (opt out anytime).</li>
             </ul>
           </div>
 
           <hr className="border-gray-100 my-8" />
 
-          {/* 4. How We Share Your Information */}
+          {/* 4. Third-Party Disclosures */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">4. How We Share Your Information</h2>
-            <p className="text-gray-600 mb-4">We only share your information with trusted third parties essential to our business operations:</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">4.</span> Authorized Third-Party Disclosures
+            </h2>
+            <p className="text-gray-600 mb-4">
+              We never sell or rent customer data. We only disclose minimal necessary information to vetted operational partners bound by strict confidentiality:
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border p-4 rounded-lg">
-                <h4 className="font-bold text-gray-900 flex items-center"><Truck size={16} className="mr-2"/> Logistics Partners</h4>
-                <p className="text-xs text-gray-500 mt-1">Couriers (e.g., Leopard, TCS, Trax) require your name, phone number, and address to deliver your order.</p>
+              <div className="border border-gray-200 p-5 rounded-xl bg-white shadow-sm">
+                <h4 className="font-bold text-gray-900 flex items-center mb-2">
+                  <Truck size={18} className="mr-2 text-amber-600"/> Courier Logistics
+                </h4>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Nationwide couriers (Leopards, TCS, Trax) receive recipient name, delivery address, and phone number to coordinate parcel drop-off and cash collection.
+                </p>
               </div>
-              <div className="border p-4 rounded-lg">
-                <h4 className="font-bold text-gray-900 flex items-center"><CreditCard size={16} className="mr-2"/> Payment Processors</h4>
-                <p className="text-xs text-gray-500 mt-1">Secure gateways require your billing details to authorize transactions.</p>
+              <div className="border border-gray-200 p-5 rounded-xl bg-white shadow-sm">
+                <h4 className="font-bold text-gray-900 flex items-center mb-2">
+                  <CreditCard size={18} className="mr-2 text-amber-600"/> Payment Gateways
+                </h4>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Authorized digital banking gateways process card payments over secure tokenized API connections. DENFIT never stores your CVV or PIN credentials.
+                </p>
               </div>
-              <div className="border p-4 rounded-lg">
-                <h4 className="font-bold text-gray-900 flex items-center"><Eye size={16} className="mr-2"/> Analytics &amp; Advertising</h4>
-                <p className="text-xs text-gray-500 mt-1">We use tools (such as Google Analytics or Meta Pixel) to understand customer behavior and deliver relevant advertising. These tools use anonymized tracking data.</p>
+              <div className="border border-gray-200 p-5 rounded-xl bg-white shadow-sm">
+                <h4 className="font-bold text-gray-900 flex items-center mb-2">
+                  <Server size={18} className="mr-2 text-amber-600"/> Cloud Infrastructure
+                </h4>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Encrypted cloud servers protect website uptime, user authentication tokens, and order database integrity in compliance with global security protocols.
+                </p>
               </div>
             </div>
           </div>
@@ -156,72 +220,126 @@ export const PrivacyPolicy = () => {
 
           {/* 5. Cookies & Tracking */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">5. Cookies &amp; Tracking Technologies</h2>
-            <p className="text-gray-600 leading-relaxed">We use cookies to enhance your shopping experience, such as keeping items in your cart between visits and remembering your login details. You can instruct your browser to refuse all cookies, but this may limit your ability to use certain features of our website.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">5.</span> Cookies &amp; Browser Tracking
+            </h2>
+            <p className="text-gray-600 leading-relaxed mb-3">
+              Cookies are miniature text files stored by your browser. We utilize essential cookies to retain cart contents, remember your authentication session, and analyze aggregated site traffic patterns.
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              You can configure your browser preferences to alert you when cookies are placed or reject them entirely. Please note that disabling essential cookies may impact checkout functionality.
+            </p>
           </div>
 
           <hr className="border-gray-100 my-8" />
 
-          {/* 6. Data Security */}
+          {/* 6. Data Security & Storage */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">6. Data Security</h2>
-            <p className="text-gray-600 leading-relaxed">We implement robust, industry-standard security measures to protect your personal information. All sensitive data exchanged between your browser and our website happens over an SSL-secured communication channel, encrypted and protected with digital signatures.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">6.</span> Security Safeguards &amp; Retention
+            </h2>
+            <p className="text-gray-600 leading-relaxed mb-4">
+              We employ administrative, technical, and physical safeguards designed to protect personal data from accidental loss, misuse, or unauthorized modification. All user credentials and passwords are encrypted using modern one-way cryptographic hashing (bcrypt).
+            </p>
+            <p className="text-gray-600 leading-relaxed">
+              We retain transaction records only for the period necessary to comply with legal, taxation, and statutory audit obligations under Pakistani law, after which data is securely anonymized or permanently purged.
+            </p>
           </div>
 
           <hr className="border-gray-100 my-8" />
 
-          {/* 7. Data Retention */}
+          {/* 7. Your Legal Rights */}
           <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">7. Data Retention</h2>
-            <p className="text-gray-600 leading-relaxed">We retain your personal information only for as long as necessary to fulfill the purposes outlined in this Privacy Policy, including satisfying any legal, accounting, or tax reporting requirements.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center text-gray-900">
+              <span className="text-amber-600 mr-3">7.</span> Your Individual Rights
+            </h2>
+            <p className="text-gray-600 mb-4">As a DENFIT customer, you maintain clear and actionable privacy rights:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <strong className="text-gray-900 block mb-1">Right of Access:</strong>
+                Request a digital summary of all personal information linked to your profile.
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <strong className="text-gray-900 block mb-1">Right of Rectification:</strong>
+                Update or rectify inaccurate shipping addresses, contact numbers, or names.
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <strong className="text-gray-900 block mb-1">Right to Erasure:</strong>
+                Request complete account deletion and anonymization of customer records.
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <strong className="text-gray-900 block mb-1">Right to Opt Out:</strong>
+                Unsubscribe from all future promotional communications with a single click.
+              </div>
+            </div>
           </div>
 
           <hr className="border-gray-100 my-8" />
 
-          {/* 8. Children’s Privacy */}
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">8. Children’s Privacy</h2>
-            <p className="text-gray-600 leading-relaxed">DENFIT does not knowingly collect personal information from children under the age of 13. If we become aware that we have inadvertently received personal data from a visitor under the age of 13, we will delete the information from our records immediately.</p>
+          {/* 8. Interactive Privacy FAQs */}
+          <div className="mb-16">
+            <div className="text-center mb-8">
+              <span className="text-amber-600 font-semibold text-xs tracking-widest uppercase mb-2 block">
+                Common Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Privacy &amp; Data Security FAQs
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {privacyFaqs.map((faq, index) => {
+                const isOpen = openFaq === index;
+                return (
+                  <div 
+                    key={index}
+                    className="border border-neutral-200 rounded-xl overflow-hidden transition-colors bg-white shadow-sm"
+                  >
+                    <button
+                      onClick={() => toggleFaq(index)}
+                      className="w-full text-left px-6 py-4 flex items-center justify-between bg-neutral-50/60 hover:bg-neutral-50 transition-colors"
+                    >
+                      <span className="font-medium text-gray-900 text-sm sm:text-base pr-4">{faq.q}</span>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-amber-600' : ''}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="px-6 py-4 bg-white border-t border-neutral-100 text-sm text-gray-600 leading-relaxed">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <hr className="border-gray-100 my-8" />
-
-          {/* 9. Your Privacy Rights */}
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">9. Your Privacy Rights</h2>
-            <p className="text-gray-600 mb-4">Depending on your location, you have the right to:</p>
-            <ul className="list-disc list-inside text-gray-600 space-y-2 ml-2">
-              <li><strong>Access:</strong> Request a copy of the personal data we hold about you.</li>
-              <li><strong>Correction:</strong> Request that we correct any inaccurate or incomplete data.</li>
-              <li><strong>Erasure:</strong> Request that we delete your personal data ("Right to be Forgotten").</li>
-              <li><strong>Opt-Out:</strong> Unsubscribe from our marketing communications at any time by clicking the "unsubscribe" link at the bottom of our emails.</li>
-            </ul>
-          </div>
-
-          <hr className="border-gray-100 my-8" />
-
-          {/* 10. Contact Us */}
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold mb-4">10. Contact Us</h2>
-            <p className="text-gray-600 mb-4">If you have questions about how we handle your data, or if you wish to exercise your privacy rights, please contact our Data Protection Team:</p>
-
-            <div className="bg-gray-900 text-white p-8 rounded-2xl relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="flex items-center mb-4">
-                  <Mail className="text-amber-500 mr-3" size={18} />
-                  <a href="mailto:denfitcustomerservice@gmail.com" className="hover:text-amber-300 transition-colors">denfitcustomerservice@gmail.com</a>
+          {/* 9. Contact Section */}
+          <div className="bg-gray-900 text-white p-8 sm:p-10 rounded-2xl relative overflow-hidden">
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold mb-3">Privacy &amp; Data Protection Officer</h2>
+              <p className="text-gray-300 mb-6 max-w-xl text-sm leading-relaxed">
+                If you have questions about our privacy practices, wish to file a data inquiry, or want to exercise your legal rights, please contact our data compliance team:
+              </p>
+              
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center">
+                  <Mail className="text-amber-500 mr-3 shrink-0" size={18} />
+                  <a href="mailto:denfitcustomerservice@gmail.com" className="hover:text-amber-300 transition-colors font-medium">
+                    denfitcustomerservice@gmail.com
+                  </a>
                 </div>
                 <div className="flex items-start">
-                  <MapPin className="text-amber-500 mr-3 mt-1" size={18} />
+                  <MapPin className="text-amber-500 mr-3 mt-1 shrink-0" size={18} />
                   <div>
+                    DENFIT Data Protection Office<br />
                     Defence Raya Golf &amp; Country Club,<br />
                     Phase 6, DHA Lahore, Pakistan
                   </div>
                 </div>
               </div>
-              <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
-                <Shield size={300} />
-              </div>
+            </div>
+            <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
+              <Shield size={300} />
             </div>
           </div>
 

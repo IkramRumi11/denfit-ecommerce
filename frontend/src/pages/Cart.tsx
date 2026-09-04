@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, Sparkles, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { TAX_FEATURE } from '../config/taxFeatureFlag';
 import { useToast } from '../context/ToastContext';
@@ -102,20 +102,78 @@ export const Cart: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-white py-12">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-6" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
-          <p className="text-gray-600 mb-8">
-            Looks like you haven't added any items to your cart yet.
+      <div className="min-h-[75vh] bg-neutral-50/50 py-16 px-4 flex items-center justify-center">
+        <div className="max-w-xl w-full mx-auto text-center bg-white border border-neutral-200/80 rounded-2xl p-8 sm:p-12 shadow-sm">
+          <div className="w-20 h-20 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-6 text-neutral-400">
+            <ShoppingBag className="h-10 w-10" />
+          </div>
+          <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
+            Cart Is Empty
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-light tracking-tight text-neutral-900 mb-3">
+            Your Shopping Bag is Empty
+          </h1>
+          <p className="text-neutral-500 text-sm sm:text-base mb-8 max-w-md mx-auto leading-relaxed">
+            Looks like you haven't added anything yet. Explore our latest arrivals, wardrobe essentials, and exclusive seasonal releases.
           </p>
-          <Link
-            to="/shop"
-            className="inline-flex items-center px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            Continue Shopping
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+            <Link
+              to="/shop"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 bg-black text-white text-xs font-semibold uppercase tracking-wider rounded-xl hover:bg-neutral-800 transition-all shadow-sm group"
+            >
+              <span>Explore Collection / Shop Now</span>
+              <ArrowRight className="ml-2.5 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+
+          <div className="pt-8 border-t border-neutral-100">
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-4">
+              Explore Popular Categories
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link
+                to="/men"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Men's Collection
+              </Link>
+              <Link
+                to="/women"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Women's Collection
+              </Link>
+              <Link
+                to="/kids"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Kids
+              </Link>
+              <Link
+                to="/sale"
+                className="px-4 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold transition-colors"
+              >
+                Sale &amp; Offers %
+              </Link>
+              <Link
+                to="/accessories"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Accessories
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4 text-left">
+            <div className="flex items-center text-xs text-neutral-500">
+              <Truck className="h-4 w-4 mr-2 text-amber-600 shrink-0" />
+              <span>Free delivery over Rs 5,000</span>
+            </div>
+            <div className="flex items-center text-xs text-neutral-500">
+              <ShieldCheck className="h-4 w-4 mr-2 text-amber-600 shrink-0" />
+              <span>14-day hassle-free exchange</span>
+            </div>
+          </div>
         </div>
       </div>
     );

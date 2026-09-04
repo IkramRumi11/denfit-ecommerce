@@ -11,12 +11,19 @@ import {
   CheckCircle2,
   Instagram,
   Facebook,
-  Twitter
+  Twitter,
+  ChevronDown,
+  HelpCircle
 } from 'lucide-react';
 
 export const Contact = () => {
   // --- STATE MANAGEMENT ---
   const [formState, setFormState] = useState('idle'); // idle, submitting, success
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
   
   const [formData, setFormData] = useState({
     name: '',
@@ -341,6 +348,69 @@ ${formData.message}
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CUSTOMER SERVICE FAQS */}
+      <section className="py-20 px-4 bg-gray-50 border-t border-gray-200/80">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-14">
+            <span className="text-amber-600 font-semibold text-xs tracking-widest uppercase mb-2 block">
+              Quick Answers
+            </span>
+            <h2 className="text-3xl md:text-4xl font-light text-gray-900 tracking-tight uppercase">
+              Customer Support <span className="text-amber-600 font-normal">FAQs</span>
+            </h2>
+            <p className="text-gray-500 text-sm mt-3 max-w-lg mx-auto">
+              Find fast solutions to common questions regarding delivery schedules, address modifications, and order support.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "How can I track my active order shipment?",
+                a: "Once your parcel is dispatched from our Lahore studio, you will receive an automated email and SMS notification containing your courier tracking number (TCS, Leopards, or Trax). You can also click 'Track Order' in our website header to view live dispatch milestones."
+              },
+              {
+                q: "Can I change my delivery address or phone number after placing an order?",
+                a: "Yes, provided the order has not yet entered dispatch. Please email denfitcustomerservice@gmail.com or message our phone helpline (+92 332 333 1346) immediately with your Order ID and the updated delivery details."
+              },
+              {
+                q: "What should I do if I am unavailable during courier delivery?",
+                a: "Our logistics courier partner will make up to two delivery attempts. You can coordinate directly with the delivery agent using the contact details provided in the courier SMS, or contact our support team to reschedule the delivery window."
+              },
+              {
+                q: "Do you offer Cash on Delivery (COD) across Pakistan?",
+                a: "Yes. Cash on Delivery is available across all major cities and regional towns covered by our courier network. For higher-value orders or bespoke sizing, our team may make a quick verbal confirmation call before dispatch."
+              },
+              {
+                q: "How quickly does customer support respond to inquiries?",
+                a: "Our dedicated team responds to all email inquiries within 24 hours (Monday through Saturday). For urgent order matters during business hours (10:00 AM - 7:00 PM PKT), phone and WhatsApp support provide same-day assistance."
+              }
+            ].map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div 
+                  key={index}
+                  className="border border-neutral-200 rounded-xl overflow-hidden transition-colors bg-white shadow-sm"
+                >
+                  <button
+                    onClick={() => toggleFaq(index)}
+                    className="w-full text-left px-6 py-4 flex items-center justify-between bg-neutral-50/50 hover:bg-neutral-50 transition-colors"
+                  >
+                    <span className="font-medium text-gray-900 text-sm sm:text-base pr-4">{faq.q}</span>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-amber-600' : ''}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 py-4 bg-white border-t border-neutral-100 text-sm text-gray-600 leading-relaxed">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

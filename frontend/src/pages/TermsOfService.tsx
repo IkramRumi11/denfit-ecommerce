@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ScrollText, 
   Scale, 
@@ -8,13 +8,45 @@ import {
   Gavel, 
   Mail, 
   MapPin, 
-  CheckCircle,
-  FileWarning,
-  UserX
+  CheckCircle, 
+  FileWarning, 
+  UserX,
+  ChevronDown,
+  ShieldAlert,
+  Truck,
+  HelpCircle
 } from 'lucide-react';
 
 export const TermsOfService = () => {
-  const lastUpdated = "June 12, 2026";
+  const lastUpdated = "September 2026";
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const termsFaqs = [
+    {
+      q: "Can I cancel or alter my order after checkout?",
+      a: "Yes, you can request order cancellation or address adjustments at any point before your parcel is processed and dispatched by our fulfillment center. Once an airway bill is generated and the package is handed over to the courier, the order cannot be halted, and our standard 14-day Exchange Policy applies upon receipt."
+    },
+    {
+      q: "What happens if a product is listed with an incorrect price or description?",
+      a: "While we strive for meticulous catalog accuracy, occasional typographic or system errors may occur. In the event an item is mistakenly displayed at an incorrect price, DENFIT reserves the right to decline or cancel orders placed at the erroneous price. If your card was already charged, a full refund will be processed immediately."
+    },
+    {
+      q: "Can promotional discount codes be combined or applied to sale items?",
+      a: "Promotional voucher codes are limited to one per transaction and cannot be combined or stacked with other offers unless explicitly stated. Promotional codes generally apply exclusively to regular-priced merchandise and exclude already-discounted clearance or flash sale items."
+    },
+    {
+      q: "What are the rules regarding Cash on Delivery (COD) orders?",
+      a: "For Cash on Delivery orders, customers are required to provide a valid, accessible Pakistani mobile phone number. DENFIT reserves the right to place a verbal confirmation call before dispatch. Parcels will only be handed over by the courier upon complete cash payment; couriers are not authorized to allow opening or inspecting the package prior to payment collection."
+    },
+    {
+      q: "What delivery timeline should I expect for my order?",
+      a: "Standard delivery across Pakistan is 5–7 business days (7–9 business days during peak promotional campaigns). Please note that deliveries may occasionally be affected by adverse weather conditions, natural occurrences, local regulatory restrictions, courier hub constraints, or unforeseen circumstances beyond our reasonable control."
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
@@ -29,44 +61,44 @@ export const TermsOfService = () => {
           <h1 className="text-4xl md:text-6xl font-light tracking-[0.2em] mb-6 uppercase">
             Terms of <span className="font-bold text-white">Service.</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
-            Please read these Terms of Service carefully before accessing or using our website. By using our platform, you agree to be bound by these fair and transparent terms.
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
+            Please review these Terms of Service carefully. By visiting our store or placing an order, you agree to be bound by these transparent and ethical commercial terms.
           </p>
-          <div className="mt-8 text-sm text-gray-500 font-mono">
+          <div className="mt-8 text-sm text-gray-400 font-mono">
             Last Updated: <span className="text-amber-500">{lastUpdated}</span>
           </div>
         </div>
       </section>
 
-      {/* 2. KEY HIGHLIGHTS (Quick Read) */}
+      {/* 2. KEY HIGHLIGHTS */}
       <section className="py-12 px-4 border-b border-gray-100 bg-gray-50">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <Scale size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">Fair & Transparent</h3>
-                <p className="text-sm text-gray-600">Clear rules regarding purchases, pricing, and your rights as a consumer.</p>
+                <h3 className="font-bold text-lg mb-1">Fair &amp; Ethical Trading</h3>
+                <p className="text-sm text-gray-600">Clear guidelines governing order fulfillment, accurate pricing, and consumer protections across Pakistan.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <CheckCircle size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">Quality Commitment</h3>
-                <p className="text-sm text-gray-600">We strive for 100% accuracy in our product descriptions and imagery.</p>
+                <h3 className="font-bold text-lg mb-1">Authentic Quality</h3>
+                <p className="text-sm text-gray-600">All garments are inspected for fabric integrity, sizing precision, and double-stitched durability before dispatch.</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600">
+              <div className="bg-white p-3 rounded-lg shadow-sm mr-4 text-amber-600 shrink-0">
                 <Gavel size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">Local Jurisdiction</h3>
-                <p className="text-sm text-gray-600">Operated strictly under the laws of Pakistan, ensuring local compliance.</p>
+                <h3 className="font-bold text-lg mb-1">Pakistani Jurisdiction</h3>
+                <p className="text-sm text-gray-600">Operated strictly under the statutory laws of the Islamic Republic of Pakistan, with dispute resolution in Lahore.</p>
               </div>
             </div>
           </div>
@@ -77,151 +109,192 @@ export const TermsOfService = () => {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-4xl">
           
-          {/* Overview */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <ScrollText className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">1. Overview</h2>
+          {/* 1. Overview */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <ScrollText className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">1. Overview &amp; Acceptance</h2>
             </div>
             <p className="text-gray-600 leading-relaxed mb-4">
-              This website is operated by <strong>DENFIT</strong>. Throughout the site, the terms "we", "us" and "our" refer to DENFIT. We offer this website, including all information, tools, and services available from this site to you, the user, conditioned upon your acceptance of all terms, conditions, policies, and notices stated here.
+              This website is operated by <strong>DENFIT</strong>. Throughout the site, the terms "we", "us", and "our" refer to DENFIT. We provide this online storefront, including all product listings, tools, and fulfillment services, conditioned upon your acceptance of all terms, conditions, and notices stated here.
             </p>
             <p className="text-gray-600 leading-relaxed">
-              By visiting our site and/or purchasing something from us, you engage in our "Service" and agree to be bound by the following terms and conditions. These Terms of Service apply to all users of the site, including without limitation users who are browsers, vendors, customers, merchants, and/or contributors of content.
+              By accessing our site, browsing merchandise, or completing a purchase, you engage in our "Service" and agree to comply with these Terms of Service. These terms apply equally to all site visitors, registered account holders, shoppers, and content contributors.
             </p>
           </div>
 
-          <hr className="border-gray-100 my-12" />
+          <hr className="border-gray-100 my-10" />
 
-          {/* Product Information & Accuracy */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <MonitorSmartphone className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">2. Products, Pricing & Accuracy</h2>
+          {/* 2. Product Information & Pricing */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <MonitorSmartphone className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">2. Products, Pricing &amp; Color Accuracy</h2>
             </div>
-            <div className="space-y-6 text-gray-600 text-sm leading-relaxed">
+            <div className="space-y-5 text-gray-600 text-sm leading-relaxed">
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                <h4 className="font-bold text-gray-900 text-lg mb-2">Display & Color Discrepancies</h4>
+                <h4 className="font-bold text-gray-900 text-base mb-2">Display Calibration &amp; Color Fidelity</h4>
                 <p>
-                  We have made every effort to display as accurately as possible the colors and images of our products that appear at the store. However, we cannot guarantee that your computer monitor's or mobile device's display of any color will be entirely accurate. Slight color variations are normal and do not constitute a defect.
+                  We present our apparel through professional studio photography to reflect genuine colors, cuts, and textures. However, because device displays, contrast settings, and lighting environments vary, minor color shifts may be perceptible between your monitor and the physical fabric. Such variations do not constitute product defects.
                 </p>
               </div>
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                <h4 className="font-bold text-gray-900 text-lg mb-2">Pricing Changes</h4>
+                <h4 className="font-bold text-gray-900 text-base mb-2">Dynamic Pricing &amp; Modifications</h4>
                 <p>
-                  Prices for our products are subject to change without notice. We reserve the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time. We shall not be liable to you or to any third-party for any modification, price change, suspension, or discontinuance of the Service.
+                  Prices for our items are quoted in Pakistani Rupees (PKR) and are subject to adjustment without prior notice. We reserve the right to alter or discontinue products, colorways, or seasonal collections at our discretion without liability.
                 </p>
               </div>
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-                <h4 className="font-bold text-gray-900 text-lg mb-2">Typographical Errors</h4>
+                <h4 className="font-bold text-gray-900 text-base mb-2">Typographical Corrections</h4>
                 <p>
-                  In the event a product is listed at an incorrect price or with incorrect information due to a typographical error, DENFIT shall have the right to refuse or cancel any order placed for such products, whether or not the order has been confirmed and payment has been processed.
+                  In the event an item is inadvertently listed with an incorrect price or specifications due to system error, DENFIT reserves the right to reject or cancel any order placed at the erroneous amount, even if an initial automated order confirmation email was issued.
                 </p>
               </div>
             </div>
           </div>
 
-          <hr className="border-gray-100 my-12" />
+          <hr className="border-gray-100 my-10" />
 
-          {/* Orders & Right to Refuse */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <CreditCard className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">3. Orders & Billing</h2>
+          {/* 3. Orders, Verification & Delivery */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <CreditCard className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">3. Orders, COD Verification &amp; Shipping</h2>
             </div>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              We reserve the right to refuse any order you place with us. We may, in our sole discretion, limit or cancel quantities purchased per person, per household, or per order. These restrictions may include orders placed by or under the same customer account, the same credit card, and/or orders that use the same billing and/or shipping address.
+            <p className="text-gray-600 leading-relaxed mb-4 text-sm sm:text-base">
+              To safeguard our customers and operations against fraudulent checkouts, we reserve the right to verify, limit, or refuse orders placed with us.
             </p>
-            <p className="text-gray-600 leading-relaxed bg-amber-50 p-4 rounded-lg border border-amber-100">
-              In the event that we make a change to or cancel an order, we will attempt to notify you by contacting the email and/or billing address/phone number provided at the time the order was made.
+            <div className="space-y-4 text-sm text-gray-600">
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200/70">
+                <h4 className="font-semibold text-amber-950 mb-1">Cash on Delivery (COD) Phone Verification</h4>
+                <p>
+                  Our team may initiate an automated SMS confirmation or a prompt phone call to confirm delivery address details prior to dispatch. If a customer cannot be reached after multiple reasonable attempts, DENFIT reserves the right to pause or cancel the order.
+                </p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/80">
+                <h4 className="font-semibold text-gray-900 mb-1">Standard &amp; Sale Delivery Timelines</h4>
+                <p>
+                  Standard deliveries across Pakistan are fulfilled within <strong>5–7 business days</strong> (and <strong>7–9 business days</strong> for high-volume sale events). Deliveries may be subject to delays caused by adverse weather conditions, natural disasters, courier logistical restrictions, civil disruptions, or circumstances beyond our control.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-gray-100 my-10" />
+
+          {/* 4. Intellectual Property */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <FileWarning className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">4. Intellectual Property &amp; Brand Rights</h2>
+            </div>
+            <p className="text-gray-600 leading-relaxed text-sm sm:text-base">
+              All proprietary brand assets—including but not limited to the DENFIT name, registered logo, lookbook photography, video campaigns, garment patterns, website design, UI code, and written copy—are the exclusive intellectual property of <strong>DENFIT</strong> and protected under Pakistani and international copyright and trademark legislation. Reproduction, distribution, or commercial exploitation without prior written consent is strictly prohibited.
             </p>
           </div>
 
-          <hr className="border-gray-100 my-12" />
+          <hr className="border-gray-100 my-10" />
 
-          {/* Intellectual Property */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <FileWarning className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">4. Intellectual Property</h2>
+          {/* 5. User Conduct & Prohibited Uses */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <UserX className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">5. Prohibited Conduct</h2>
             </div>
-            <p className="text-gray-600 leading-relaxed">
-              All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the exclusive property of <strong>DENFIT</strong> and protected by Pakistani and international copyright and trademark laws. You may not reproduce, duplicate, copy, sell, resell or exploit any portion of the Service, use of the Service, or access to the Service without express written permission by us.
-            </p>
-          </div>
-
-          <hr className="border-gray-100 my-12" />
-
-          {/* Prohibited Uses */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <UserX className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">5. Prohibited Uses</h2>
-            </div>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              In addition to other prohibitions as set forth in the Terms of Service, you are prohibited from using the site or its content:
+            <p className="text-gray-600 leading-relaxed mb-4 text-sm">
+              You are explicitly prohibited from using our site, infrastructure, or services:
             </p>
             <ul className="list-disc list-inside text-gray-600 text-sm space-y-2 ml-2">
-              <li>For any unlawful purpose or to solicit others to perform unlawful acts.</li>
-              <li>To violate any international, federal, provincial, or local regulations, rules, or laws.</li>
-              <li>To infringe upon or violate our intellectual property rights or the intellectual property rights of others.</li>
-              <li>To harass, abuse, insult, harm, defame, slander, disparage, intimidate, or discriminate based on gender, sexual orientation, religion, ethnicity, race, age, national origin, or disability.</li>
-              <li>To submit false or misleading information.</li>
-              <li>To upload or transmit viruses or any other type of malicious code.</li>
+              <li>To submit fabricated customer information, invalid telephone numbers, or unverified shipping addresses.</li>
+              <li>To attempt automated scraping, database crawling, or malicious denial-of-service disruptions.</li>
+              <li>To abuse promotional coupons, initiate unauthorized chargebacks, or engage in counterfeit re-selling.</li>
+              <li>To harass, defame, or abuse customer service personnel via phone, email, or social media channels.</li>
             </ul>
           </div>
 
-          <hr className="border-gray-100 my-12" />
+          <hr className="border-gray-100 my-10" />
 
-          {/* Limitation of Liability & Law */}
-          <div className="mb-16">
-            <div className="flex items-center mb-6">
-              <AlertOctagon className="text-gray-900 mr-3" size={28} />
-              <h2 className="text-3xl font-bold">6. Limitation of Liability & Governing Law</h2>
+          {/* 6. Limitation of Liability & Law */}
+          <div className="mb-14">
+            <div className="flex items-center mb-4">
+              <AlertOctagon className="text-amber-600 mr-3 shrink-0" size={26} />
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">6. Limitation of Liability &amp; Governing Law</h2>
             </div>
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-bold text-gray-900 text-lg mb-2">Disclaimer of Warranties</h4>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  We do not guarantee, represent or warrant that your use of our service will be uninterrupted, timely, secure, or error-free. You expressly agree that your use of, or inability to use, the service is at your sole risk.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-900 text-lg mb-2">Governing Law</h4>
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of the Islamic Republic of Pakistan. Any disputes arising under these terms shall be subject to the exclusive jurisdiction of the courts located in Lahore, Pakistan.
-                </p>
+            <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+              <p>
+                In no event shall DENFIT, its directors, officers, employees, affiliates, or logistics agents be liable for any indirect, incidental, punitive, or consequential damages arising from the use of our services or the purchase of our products beyond the total monetary value paid for the specific order in question.
+              </p>
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <strong className="text-gray-900 block mb-1">Governing Jurisdiction:</strong>
+                These Terms of Service and any separate transactional agreements shall be governed by and construed in accordance with the laws of the Islamic Republic of Pakistan. Any legal dispute shall be subject to the exclusive jurisdiction of the competent courts of Lahore, Pakistan.
               </div>
             </div>
           </div>
 
-          {/* Contact Section */}
-          <div className="bg-gray-900 text-white p-10 rounded-2xl relative overflow-hidden mt-12">
+          <hr className="border-gray-100 my-10" />
+
+          {/* 7. Terms of Service FAQs */}
+          <div className="mb-16">
+            <div className="text-center mb-8">
+              <span className="text-amber-600 font-semibold text-xs tracking-widest uppercase mb-2 block">
+                Clarity &amp; Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Terms of Service FAQs
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {termsFaqs.map((faq, index) => {
+                const isOpen = openFaq === index;
+                return (
+                  <div 
+                    key={index}
+                    className="border border-neutral-200 rounded-xl overflow-hidden transition-colors bg-white shadow-sm"
+                  >
+                    <button
+                      onClick={() => toggleFaq(index)}
+                      className="w-full text-left px-6 py-4 flex items-center justify-between bg-neutral-50/60 hover:bg-neutral-50 transition-colors"
+                    >
+                      <span className="font-medium text-gray-900 text-sm sm:text-base pr-4">{faq.q}</span>
+                      <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-amber-600' : ''}`} />
+                    </button>
+                    {isOpen && (
+                      <div className="px-6 py-4 bg-white border-t border-neutral-100 text-sm text-gray-600 leading-relaxed">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 8. Contact Section */}
+          <div className="bg-gray-900 text-white p-8 sm:p-10 rounded-2xl relative overflow-hidden">
             <div className="relative z-10">
-              <h2 className="text-2xl font-bold mb-4">Questions about our Terms?</h2>
-              <p className="text-gray-300 mb-8 max-w-lg">
-                If you need clarification regarding any of the terms outlined above, our legal and support team is ready to assist you.
+              <h2 className="text-2xl font-bold mb-3">Questions Regarding Our Terms?</h2>
+              <p className="text-gray-300 mb-6 max-w-xl text-sm leading-relaxed">
+                If you require clarification on any legal aspect of these terms, order policies, or commercial conditions, please connect with our legal compliance desk:
               </p>
               
-              <div className="space-y-4">
+              <div className="space-y-3 text-sm">
                 <div className="flex items-center">
-                  <Mail className="text-amber-500 mr-4" size={20} />
-                  <a href="mailto:denfitcustomerservice@gmail.com" className="hover:text-amber-500 transition-colors">
+                  <Mail className="text-amber-500 mr-3 shrink-0" size={18} />
+                  <a href="mailto:denfitcustomerservice@gmail.com" className="hover:text-amber-300 transition-colors font-medium">
                     denfitcustomerservice@gmail.com
                   </a>
                 </div>
                 <div className="flex items-start">
-                  <MapPin className="text-amber-500 mr-4 mt-1" size={20} />
-                  <span>
-                    Legal Department<br />
-                    Defence Raya Golf & Country Club,<br />
+                  <MapPin className="text-amber-500 mr-3 mt-1 shrink-0" size={18} />
+                  <div>
+                    DENFIT Legal &amp; Compliance Office<br />
+                    Defence Raya Golf &amp; Country Club,<br />
                     Phase 6, DHA Lahore, Pakistan
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Background decoration */}
             <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-1/4 translate-y-1/4">
               <Gavel size={300} />
             </div>

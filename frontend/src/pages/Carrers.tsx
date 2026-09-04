@@ -13,7 +13,8 @@ import {
   TrendingUp, 
   Coffee,
   X,
-  Send
+  Send,
+  ChevronDown
 } from 'lucide-react';
 
 // --- DATA CONFIGURATION ---
@@ -67,6 +68,11 @@ export const Careers = () => {
   const [applyingFor, setApplyingFor] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);
   const [lastMailto, setLastMailto] = useState('');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
   
   // Form State
   const [formData, setFormData] = useState({
@@ -574,6 +580,69 @@ ${formData.message}
               <span className="tracking-wider">START YOUR APPLICATION</span>
               <ArrowUpRight className="inline ml-3 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" size={20} />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Candidate FAQs Section */}
+      <section className="py-20 px-4 bg-white border-t border-gray-100">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-14">
+            <span className="text-amber-600 font-semibold text-xs tracking-widest uppercase mb-2 block">
+              Application Guidance
+            </span>
+            <h2 className="text-3xl md:text-4xl font-light text-gray-900 tracking-tight uppercase">
+              Frequently Asked <span className="text-amber-600 font-normal">Questions</span>
+            </h2>
+            <p className="text-gray-500 text-sm mt-3 max-w-md mx-auto">
+              Answers to common inquiries regarding hiring cycles, assessments, and working at DENFIT.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "Does DENFIT offer remote or hybrid roles?",
+                a: "Yes. While studio-intensive roles (such as garment sampling, physical tailoring, and retail management) are based at our Lahore headquarters, roles in technology, digital performance marketing, copywriting, and customer support offer hybrid and remote arrangements."
+              },
+              {
+                q: "What does the skill assessment consist of?",
+                a: "Depending on the position, shortlisted applicants may receive a practical case exercise (e.g., fashion moodboarding, tech code challenge, or marketing campaign strategy). We structure all assessments to take 2–3 hours maximum, respecting your valuable time."
+              },
+              {
+                q: "Are internships open for students and fresh graduates?",
+                a: "Yes! We run rolling paid internship and apprenticeship cohorts in textile design, merchandising, photography, and e-commerce operations. High-performing interns frequently transition into full-time associate roles."
+              },
+              {
+                q: "What benefits and growth paths are provided?",
+                a: "We provide competitive market compensation, annual performance bonuses, dedicated health insurance, generous merchandise wardrobe allowances, flexible leave, and paid learning stipends for professional certifications."
+              },
+              {
+                q: "How long does the selection process typically take?",
+                a: "Our talent acquisition team acknowledges applications within 3-5 business days. From first interview to final decision, the complete hiring cycle is typically concluded within 2 to 3 weeks."
+              }
+            ].map((faq, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div 
+                  key={index}
+                  className="border border-neutral-200 rounded-xl overflow-hidden transition-colors"
+                >
+                  <button
+                    onClick={() => toggleFaq(index)}
+                    className="w-full text-left px-6 py-4 flex items-center justify-between bg-neutral-50/50 hover:bg-neutral-50 transition-colors"
+                  >
+                    <span className="font-medium text-gray-900 text-sm sm:text-base pr-4">{faq.q}</span>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-amber-600' : ''}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-6 py-4 bg-white border-t border-neutral-100 text-sm text-gray-600 leading-relaxed">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
