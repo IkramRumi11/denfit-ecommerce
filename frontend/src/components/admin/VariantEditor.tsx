@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, X, Package } from 'lucide-react';
 import { getColorName } from '../../utils/colorNames';
+import { getConsistentColor } from '../../utils/productHelpers';
 import { VariantImageManager } from './VariantImageManager';
 
 interface VariantEditorProps {
@@ -54,19 +55,26 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
           return (
             <div key={tid} className="border rounded-lg p-4 bg-gray-50">
               <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-8 h-8 rounded border"
-                  style={{ backgroundColor: color.hex || color.value || 'transparent' }}
-                />
-                <div className="flex-1">
-                  <div className="font-medium">
-                    {color.name || getColorName(color.hex || color.value) || `Color ${idx + 1}`}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {color.value || color.hex}{' '}
-                    {!color.name ? `• ${getColorName(color.hex || color.value)}` : ''}
-                  </div>
-                </div>
+                {(() => {
+                  const consistent = getConsistentColor(color);
+                  return (
+                    <>
+                      <div
+                        className="w-8 h-8 rounded border shadow-inner"
+                        style={{ backgroundColor: consistent.hex || 'transparent' }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">
+                          {color.name || consistent.name || `Color ${idx + 1}`}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {color.value || color.hex || consistent.hex}{' '}
+                          {color.name !== consistent.name && consistent.name ? `• ${consistent.name}` : ''}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => onRemoveColor(idx)}

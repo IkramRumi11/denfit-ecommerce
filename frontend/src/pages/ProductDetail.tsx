@@ -16,7 +16,7 @@ import ReviewForm from '../components/reviews/ReviewForm';
 import trackEvent from '../utils/analytics';
 import { productsAPI } from '../api';
 import FallbackImage from '../components/ui/FallbackImage';
-import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
+import { primaryImage, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
 import useReducedMotion from '../hooks/useReducedMotion';
@@ -1093,10 +1093,9 @@ export const ProductDetail: React.FC = () => {
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Select Color: <span className="text-gray-500 font-normal">{getColorName(selectedColorName || selectedColor)}</span></h3>
                 <div className="flex items-center gap-3 mb-3">
                   {product.colors.map((c: any, idx: number) => {
-                    const hex = c?.hex || c?.normalizedHex || c?.value || '#000000';
-                    const name = c?.name && !c.name.startsWith('#') ? c.name : getColorName(hex);
+                    const { hex, name } = getConsistentColor(c);
                     const colorId = c?.id || c?._id || hex || `color-${idx}`;
-                    const isSelected = selectedColor === hex || selectedColor === name;
+                    const isSelected = selectedColor === hex || selectedColor === name || (selectedColorName && selectedColorName.toLowerCase() === name.toLowerCase());
                     const colorStock = getAvailableStockForItem(product, { color: hex, colorName: name });
                     const isColorOutOfStock = colorStock <= 0;
 
@@ -1125,12 +1124,12 @@ export const ProductDetail: React.FC = () => {
                             }
                           }}
                           title={isColorOutOfStock ? `${name} (Out of stock)` : name}
-                          className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border transition-all flex items-center justify-center overflow-hidden ${
+                          className={`relative w-9 h-9 md:w-11 md:h-11 rounded-md border transition-all flex items-center justify-center overflow-hidden ${
                             isColorOutOfStock
-                              ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-100'
+                              ? 'border-gray-300/60 opacity-30 grayscale-[60%] cursor-not-allowed filter blur-[0.4px]'
                               : isSelected
-                              ? 'border-black shadow-sm cursor-pointer'
-                              : 'border-gray-300 hover:border-gray-400 cursor-pointer'
+                              ? 'border-black ring-2 ring-black/20 shadow-sm cursor-pointer'
+                              : 'border-gray-300 hover:border-gray-500 cursor-pointer'
                           }`}
                           style={{ backgroundColor: hex }}
                         >
@@ -1141,13 +1140,8 @@ export const ProductDetail: React.FC = () => {
                               </svg>
                             </span>
                           )}
-                          {isColorOutOfStock && (
-                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45 shadow-[0_0_2px_rgba(0,0,0,0.4)]" />
-                            </span>
-                          )}
                         </button>
-                        <div className={`text-xs mt-1 capitalize text-center max-w-[4.5rem] break-words ${isColorOutOfStock ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
+                        <div className={`text-xs mt-1 capitalize text-center max-w-[4.5rem] break-words ${isColorOutOfStock ? 'text-gray-400 opacity-60' : 'text-gray-600 font-normal'}`}>
                           {String(name || '').trim()}
                         </div>
                       </div>
@@ -1191,17 +1185,12 @@ export const ProductDetail: React.FC = () => {
                             ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
                             : isAvailable
                             ? 'border-gray-300 text-gray-700 hover:border-gray-900 bg-white cursor-pointer'
-                            : 'border-gray-200 text-gray-400 opacity-50 bg-gray-50 cursor-not-allowed'
+                            : 'border-gray-200 text-gray-400 opacity-35 bg-gray-100/70 cursor-not-allowed filter blur-[0.3px]'
                         }`}
                       >
-                        <span className={!isAvailable ? 'line-through decoration-gray-400' : ''}>
+                        <span>
                           {sizeStr}
                         </span>
-                        {!isAvailable && (
-                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[140%] h-[1px] bg-gray-400/80 -rotate-45" />
-                          </span>
-                        )}
                       </button>
                     );
                   });

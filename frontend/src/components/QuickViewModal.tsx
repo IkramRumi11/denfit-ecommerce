@@ -8,7 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
-import { primaryImage, productId, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
+import { primaryImage, productId, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
@@ -59,21 +59,21 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     if (Array.isArray((product as any).variants) && (product as any).variants.length > 0) {
       return (product as any).variants.map((v: any, idx: number) => {
         const swatchImage = v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined;
-        const hex = v?.hex || v?.normalizedHex || v?.value || undefined;
-        const rawName = v?.name || hex || `Color ${idx + 1}`;
-        const name = getColorName(rawName);
+        const consistent = getConsistentColor(v);
+        const hex = consistent.hex;
+        const name = consistent.name;
         const id = String(v._id || v.id || `var-${idx}`);
-        return { id, hex, name, rawName, swatchImage, variantId: id };
+        return { id, hex, name, rawName: name, swatchImage, variantId: id };
       });
     }
     if (Array.isArray((product as any).colors) && (product as any).colors.length > 0) {
       return (product as any).colors.map((c: any, idx: number) => {
         const swatchImage = c?.swatchImage ? (typeof c.swatchImage === 'string' ? c.swatchImage : c.swatchImage.url) : undefined;
-        const hex = c?.hex || c?.normalizedHex || c?.value || undefined;
-        const rawName = c?.name || c?.displayName || c?.value || hex || `Color ${idx + 1}`;
-        const name = getColorName(rawName);
+        const consistent = getConsistentColor(c);
+        const hex = consistent.hex;
+        const name = consistent.name;
         const id = String(c._id || c.id || hex || `col-${idx}`);
-        return { id, hex, name, rawName, swatchImage, variantId: undefined };
+        return { id, hex, name, rawName: name, swatchImage, variantId: undefined };
       });
     }
     return [];
@@ -800,7 +800,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                     title={isColorOutOfStock ? `${c.name} (Out of stock)` : c.name}
                                     className={`relative w-9 h-9 md:w-10 md:h-10 rounded-full border overflow-hidden transition-all flex items-center justify-center ${
                                       isColorOutOfStock
-                                        ? 'border-neutral-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-neutral-100'
+                                        ? 'border-neutral-300/60 opacity-30 grayscale-[60%] cursor-not-allowed filter blur-[0.4px]'
                                         : isSelected
                                         ? 'border-neutral-900 ring-2 ring-neutral-900/20 shadow-sm scale-105 cursor-pointer'
                                         : 'border-neutral-300 hover:border-neutral-500 cursor-pointer'
@@ -821,13 +821,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                         </svg>
                                       </span>
                                     )}
-                                    {isColorOutOfStock && (
-                                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45" />
-                                      </span>
-                                    )}
                                   </button>
-                                  <div className={`text-[10px] mt-1 capitalize text-center max-w-[4rem] truncate ${isColorOutOfStock ? 'text-neutral-400 line-through' : 'text-neutral-600'}`}>
+                                  <div className={`text-[10px] mt-1 capitalize text-center max-w-[4rem] truncate ${isColorOutOfStock ? 'text-neutral-400 opacity-60' : 'text-neutral-600'}`}>
                                     {String(c.name || '').trim()}
                                   </div>
                                 </div>
@@ -877,19 +872,14 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                                       ? 'border-neutral-900 bg-neutral-900 text-white shadow-sm'
                                       : isAvailable
                                       ? 'border-neutral-200 text-neutral-800 hover:border-neutral-900 bg-white cursor-pointer'
-                                      : 'border-neutral-100 text-neutral-300 bg-neutral-50 cursor-not-allowed'
+                                      : 'border-neutral-200 text-neutral-400 opacity-35 bg-neutral-100/70 cursor-not-allowed filter blur-[0.3px]'
                                   }`}
                                 >
-                                  <span className={!isAvailable ? 'line-through decoration-neutral-400' : ''}>
+                                  <span>
                                     {size}
                                   </span>
                                   {sizeInCart > 0 && isAvailable && (
                                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-600" />
-                                  )}
-                                  {!isAvailable && (
-                                    <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                      <div className="w-[140%] h-[1px] bg-neutral-300 -rotate-45" />
-                                    </span>
                                   )}
                                 </button>
                               );

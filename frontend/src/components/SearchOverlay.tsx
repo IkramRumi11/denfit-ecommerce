@@ -260,9 +260,9 @@ export const SearchOverlay: React.FC<SearchOverlayProps> = ({ isOpen, onClose })
               </div>
             ) : query.trim() ? (
               <div className="p-8 text-center">
-                <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No products found for "{query}"</p>
-                <p className="text-gray-400 text-sm mt-1">Try different keywords</p>
+                <Search className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-800">No related products available for "{query}"</p>
+                <p className="text-xs text-gray-500 mt-1">Try a different search or check the spelling.</p>
               </div>
             ) : (
               <div className="p-8 text-center">

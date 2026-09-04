@@ -355,15 +355,15 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
                   ))}
                 </motion.div>
               ) : (
-                <div className="py-20 text-center">
-                  <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <h2 className="text-xl font-medium text-gray-900 mb-2">No products found</h2>
-                  <p className="text-sm text-gray-500 mb-6">
+                <div className="py-12 sm:py-20 text-center px-4">
+                  <Search className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
+                  <h2 className="text-base sm:text-lg md:text-xl font-medium text-gray-900 mb-1.5">No products found</h2>
+                  <p className="text-xs sm:text-sm text-gray-500 mb-5 max-w-sm mx-auto">
                     Try adjusting your filters or browse a different category.
                   </p>
                   <Link
                     to={`/${gender || 'shop'}`}
-                    className="inline-block px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
+                    className="inline-block px-5 py-2.5 bg-gray-900 text-white text-[11px] sm:text-xs font-semibold uppercase tracking-[0.16em] rounded-lg hover:bg-gray-800 transition-colors"
                   >
                     Browse All {slugToTitle(gender || 'Products')}
                   </Link>

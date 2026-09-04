@@ -98,6 +98,21 @@ export const Shop: React.FC = () => {
     setFilteredProducts(prods);
   };
 
+  const handleResetFilters = () => {
+    navigate('/shop', { replace: true });
+    setLoading(true);
+    productsAPI.getAll({}).then((res: any) => {
+      const items = (res && (res.products || res.data?.products)) || [];
+      const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
+      setProducts(normalized);
+      setFilteredProducts(normalized);
+    }).catch((err: any) => {
+      console.error('Failed to reload products', err);
+    }).finally(() => {
+      setLoading(false);
+    });
+  };
+
   // --- LOGIC: URL PARAMS ---
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -663,15 +678,23 @@ export const Shop: React.FC = () => {
               ))}
             </motion.div>
           ) : (
-            <div className="py-20 sm:py-40 text-center">
-              <Search className="w-12 h-12 text-zinc-700 mx-auto mb-6" />
-              <h2 className="text-3xl md:text-4xl font-light tracking-[0.2em] mb-2">NO MATCHES</h2>
-              <p className="text-zinc-500 mb-8">We couldn't find any products matching your filters.</p>
+            <div className="py-12 sm:py-24 text-center px-4">
+              <Search className="w-10 h-10 sm:w-12 sm:h-12 text-zinc-600 mx-auto mb-4" />
+              <h2 className="text-lg sm:text-xl md:text-2xl font-light tracking-[0.16em] mb-2 uppercase">
+                {new URLSearchParams(location.search).get('search') || new URLSearchParams(location.search).get('q')
+                  ? 'No Related Products Available'
+                  : 'No Matches Found'}
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 mb-6 max-w-md mx-auto">
+                {new URLSearchParams(location.search).get('search') || new URLSearchParams(location.search).get('q')
+                  ? 'No related products available. Try a different search.'
+                  : "We couldn't find any products matching your filters. Try adjusting or resetting them."}
+              </p>
               <button 
-                onClick={() => setFilteredProducts(products)}
-                className="px-8 py-3 bg-white text-black text-xs font-bold uppercase tracking-[0.26em] hover:bg-emerald-400 transition-colors"
+                onClick={handleResetFilters}
+                className="px-5 py-2.5 sm:px-6 sm:py-2.5 bg-white text-black text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] hover:bg-emerald-400 transition-colors rounded-lg shadow-sm"
               >
-                Clear All Filters
+                Reset All Filters
               </button>
             </div>
           )}

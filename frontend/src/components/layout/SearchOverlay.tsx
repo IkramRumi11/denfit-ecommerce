@@ -181,7 +181,7 @@ export default function SearchOverlay({
 
         {(
           (Array.isArray(suggestions) && suggestions.length > 0) || (Array.isArray(results) && results.length > 0)
-        ) && (
+        ) ? (
           <div className="mt-3 border rounded bg-white shadow divide-y max-h-80 overflow-y-auto">
             {(Array.isArray(results) && results.length > 0 ? results : suggestions).map((s, i) => (
               <div key={productId(s) || `search-${i}`} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition">
@@ -221,7 +221,13 @@ export default function SearchOverlay({
               </div>
             ))}
           </div>
-        )}
+        ) : query.trim().length >= 2 ? (
+          <div className="mt-3 p-6 text-center border rounded-xl bg-white shadow-sm">
+            <Search className="h-7 w-7 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm font-medium text-gray-800">No related products available</p>
+            <p className="text-xs text-gray-500 mt-1">Try a different search or check the spelling.</p>
+          </div>
+        ) : null}
 
         {quickAddProduct && (
           <QuickViewModal

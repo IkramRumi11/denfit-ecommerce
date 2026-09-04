@@ -18,7 +18,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useWishlist } from "../context/WishlistContext";
 import { api } from "../api";
-import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection } from "../utils/productHelpers";
+import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from "../utils/productHelpers";
 import {
   getCategoryGroup,
   getDisplaySizesForProduct,
@@ -1079,17 +1079,12 @@ const LuxuryHomePage = () => {
                             ? 'bg-black text-white border-black'
                             : isAvailable
                             ? 'bg-white text-gray-800 border-gray-300 hover:border-gray-500'
-                            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                            : 'bg-gray-100/70 text-gray-400 opacity-35 border-gray-200 cursor-not-allowed filter blur-[0.3px]'
                         }`}
                       >
-                        <span className={!isAvailable ? 'line-through' : ''}>{String(s)}</span>
+                        <span>{String(s)}</span>
                         {sizeInCart > 0 && isAvailable && (
                           <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
-                        )}
-                        {!isAvailable && (
-                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-[140%] h-[1px] bg-gray-400/80 -rotate-45" />
-                          </span>
                         )}
                       </button>
                     );
@@ -1101,22 +1096,28 @@ const LuxuryHomePage = () => {
             {/* Color selection */}
             {(() => {
               const colorsList = (quickAddProduct.variants && quickAddProduct.variants.length)
-                ? quickAddProduct.variants.map((v: any, idx: number) => ({
-                    id: String(v._id || v.id || `var-${idx}`),
-                    hex: v?.hex || v?.normalizedHex || v?.value,
-                    name: getColorName(v?.name || v?.hex || `Color ${idx + 1}`),
-                    rawName: v?.name || v?.hex || `Color ${idx + 1}`,
-                    swatchImage: v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined,
-                    variantId: String(v._id || v.id || `var-${idx}`)
-                  }))
-                : (quickAddProduct.colors || []).map((c: any, idx: number) => ({
-                    id: String(c._id || c.id || c.hex || `col-${idx}`),
-                    hex: c?.hex || c?.normalizedHex || c?.value,
-                    name: getColorName(c?.name || c?.displayName || c?.hex || `Color ${idx + 1}`),
-                    rawName: c?.name || c?.displayName || c?.value || c?.hex || `Color ${idx + 1}`,
-                    swatchImage: c?.swatchImage ? (typeof c.swatchImage === 'string' ? c.swatchImage : c.swatchImage.url) : undefined,
-                    variantId: undefined
-                  }));
+                ? quickAddProduct.variants.map((v: any, idx: number) => {
+                    const consistent = getConsistentColor(v);
+                    return {
+                      id: String(v._id || v.id || `var-${idx}`),
+                      hex: consistent.hex,
+                      name: consistent.name,
+                      rawName: consistent.name,
+                      swatchImage: v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined,
+                      variantId: String(v._id || v.id || `var-${idx}`)
+                    };
+                  })
+                : (quickAddProduct.colors || []).map((c: any, idx: number) => {
+                    const consistent = getConsistentColor(c);
+                    return {
+                      id: String(c._id || c.id || c.hex || `col-${idx}`),
+                      hex: consistent.hex,
+                      name: consistent.name,
+                      rawName: consistent.name,
+                      swatchImage: c?.swatchImage ? (typeof c.swatchImage === 'string' ? c.swatchImage : c.swatchImage.url) : undefined,
+                      variantId: undefined
+                    };
+                  });
 
               if (!colorsList || colorsList.length === 0) return null;
 
@@ -1169,7 +1170,7 @@ const LuxuryHomePage = () => {
                             title={isColorOutOfStock ? `${c.name} (Out of stock)` : c.name}
                             className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border overflow-hidden transition-all flex items-center justify-center ${
                               isColorOutOfStock
-                                ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-100'
+                                ? 'border-gray-300/60 opacity-30 grayscale-[60%] cursor-not-allowed filter blur-[0.4px]'
                                 : isSelected
                                 ? 'border-black ring-2 ring-black/20 shadow-sm cursor-pointer'
                                 : 'border-gray-300 hover:border-gray-400 cursor-pointer'
@@ -1191,13 +1192,8 @@ const LuxuryHomePage = () => {
                                 </svg>
                               </span>
                             )}
-                            {isColorOutOfStock && (
-                              <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45 shadow-[0_0_2px_rgba(0,0,0,0.4)]" />
-                              </span>
-                            )}
                           </button>
-                          <span className={`text-[10px] text-center leading-tight px-1 ${isColorOutOfStock ? 'text-gray-400 line-through' : 'text-gray-700 font-normal'}`}>
+                          <span className={`text-[10px] text-center leading-tight px-1 ${isColorOutOfStock ? 'text-gray-400 opacity-60' : 'text-gray-700 font-normal'}`}>
                             {String(c.name)}
                           </span>
                         </div>

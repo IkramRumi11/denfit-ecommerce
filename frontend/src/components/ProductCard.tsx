@@ -11,7 +11,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { QuickViewModal } from './QuickViewModal';
 import type { Product } from '../types';
-import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
+import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
@@ -41,21 +41,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     if (Array.isArray((product as any).variants) && (product as any).variants.length > 0) {
       return (product as any).variants.map((v: any, idx: number) => {
         const swatchImage = v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined;
-        const hex = v?.hex || v?.normalizedHex || v?.value || undefined;
-        const rawName = v?.name || hex || `Color ${idx + 1}`;
-        const name = getColorName(rawName);
+        const consistent = getConsistentColor(v);
+        const hex = consistent.hex;
+        const name = consistent.name;
         const id = String(v._id || v.id || `var-${idx}`);
-        return { id, hex, name, rawName, swatchImage, variantId: id };
+        return { id, hex, name, rawName: name, swatchImage, variantId: id };
       });
     }
     if (Array.isArray((product as any).colors) && (product as any).colors.length > 0) {
       return (product as any).colors.map((c: any, idx: number) => {
         const swatchImage = c?.swatchImage ? (typeof c.swatchImage === 'string' ? c.swatchImage : c.swatchImage.url) : undefined;
-        const hex = c?.hex || c?.normalizedHex || c?.value || undefined;
-        const rawName = c?.name || c?.displayName || c?.value || hex || `Color ${idx + 1}`;
-        const name = getColorName(rawName);
+        const consistent = getConsistentColor(c);
+        const hex = consistent.hex;
+        const name = consistent.name;
         const id = String(c._id || c.id || hex || `col-${idx}`);
-        return { id, hex, name, rawName, swatchImage, variantId: undefined };
+        return { id, hex, name, rawName: name, swatchImage, variantId: undefined };
       });
     }
     return [];
@@ -561,7 +561,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                                   ? 'bg-black text-white border-black'
                                   : isAvailable
                                   ? 'bg-white text-gray-800 border-gray-300 hover:border-gray-500 hover:bg-gray-50'
-                                  : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                  : 'bg-gray-100/70 text-gray-400 opacity-35 border-gray-200 cursor-not-allowed filter blur-[0.3px]'
                               }`}
                           >
                             {String(size)}
@@ -622,7 +622,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                                 }}
                                 className={`relative w-9 h-9 md:w-11 md:h-11 rounded-sm border overflow-hidden transition-all flex items-center justify-center ${
                                   isColorOutOfStock
-                                    ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-100'
+                                    ? 'border-gray-300/60 opacity-30 grayscale-[60%] cursor-not-allowed filter blur-[0.4px]'
                                     : isSelected
                                     ? 'border-black ring-2 ring-black/20 shadow-sm cursor-pointer'
                                     : 'border-gray-300 hover:border-gray-500 cursor-pointer'
@@ -645,13 +645,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                                     </svg>
                                   </span>
                                 )}
-                                {isColorOutOfStock && (
-                                  <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-[140%] h-[1.5px] bg-red-500/80 -rotate-45 shadow-[0_0_2px_rgba(0,0,0,0.4)]" />
-                                  </span>
-                                )}
                               </button>
-                              <span className={`text-[10px] text-center leading-tight px-1 ${isColorOutOfStock ? 'text-gray-400 line-through' : 'text-gray-700 font-normal'}`}>
+                              <span className={`text-[10px] text-center leading-tight px-1 ${isColorOutOfStock ? 'text-gray-400 opacity-60' : 'text-gray-700 font-normal'}`}>
                                 {String(c.name)}
                               </span>
                             </div>
@@ -818,7 +813,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                     title={isOutOfStockColor ? `${c.name} (Out of stock)` : c.name}
                     className={`relative w-4 h-4 rounded-full border transition-all ${
                       isOutOfStockColor
-                        ? 'border-gray-200 opacity-40 grayscale-[40%] cursor-not-allowed bg-gray-200'
+                        ? 'border-gray-300/60 opacity-30 grayscale-[60%] cursor-not-allowed filter blur-[0.4px]'
                         : isSelected
                         ? 'border-black ring-1 ring-black/40 scale-110 shadow-sm cursor-pointer'
                         : 'border-gray-300 hover:scale-110 hover:border-gray-600 cursor-pointer'
@@ -828,11 +823,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                     {c.swatchImage ? (
                       <img src={c.swatchImage} alt={c.name} className="w-full h-full object-cover rounded-full" />
                     ) : null}
-                    {isOutOfStockColor && (
-                      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-[140%] h-[1px] bg-red-500/80 -rotate-45" />
-                      </span>
-                    )}
                   </button>
                 );
               })}
