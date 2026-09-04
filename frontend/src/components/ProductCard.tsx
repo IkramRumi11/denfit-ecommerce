@@ -100,7 +100,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const categoryGroup = getCategoryGroup(product.category, product.subcategory);
   const allSizes = getDisplaySizesForProduct(product as any);
   const selectedVariant = (product as any).variants && Array.isArray((product as any).variants) && (selectedVariantId)
-    ? (product as any).variants.find((v: any) => String(v._id || v.id) === String(selectedVariantId))
+    ? (product as any).variants.find((v: any) => String(v._id || v.id || v.tempId) === String(selectedVariantId))
+    : (product as any).variants && Array.isArray((product as any).variants) && (selectedColor || selectedColorName)
+    ? (product as any).variants.find((v: any) => (selectedColor && (v.hex === selectedColor || v.color === selectedColor)) || (selectedColorName && v.name === selectedColorName))
+    : (product as any).colors && Array.isArray((product as any).colors) && (selectedColor || selectedColorName)
+    ? (product as any).colors.find((c: any) => (selectedColor && (c.hex === selectedColor || c.rawName === selectedColor || c.color === selectedColor)) || (selectedColorName && c.name === selectedColorName))
     : undefined;
   const available = getAvailableSizesForProduct(product as any, selectedVariant);
 
@@ -160,13 +164,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       return;
     }
 
-    if (!available.includes(selectedSize)) {
-      showToast('Selected size is not available', 'error');
+    if (hasColors && !selectedVariantId && !selectedColor) {
+      showToast('Please select a color', 'error');
       return;
     }
 
-    if (hasColors && !selectedVariantId && !selectedColor) {
-      showToast('Please select a color', 'error');
+    const availableStock = getAvailableStockForItem(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+
+    if (availableStock <= 0) {
+      showToast('Selected size is out of stock', 'error');
       return;
     }
 
@@ -548,12 +559,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {allSizes.map((size) => {
-                        const isAvailable = available.includes(size);
+                        const sizeStock = getAvailableStockForItem(product, {
+                          size,
+                          color: selectedColor,
+                          colorName: selectedColorName,
+                          variantId: selectedVariantId
+                        });
+                        const isAvailable = sizeStock > 0;
                         const isSelected = selectedSize === size;
 
                         return (
                           <button
                             key={size}
+                            type="button"
                             onClick={() => isAvailable && setSelectedSize(size)}
                             disabled={!isAvailable}
                             className={`h-9 min-w-[44px] px-3 rounded text-xs font-normal border transition-all duration-200
@@ -561,7 +579,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                                 isSelected
                                   ? 'bg-black text-white border-black'
                                   : isAvailable
-                                  ? 'bg-white text-gray-800 border-gray-300 hover:border-gray-500 hover:bg-gray-50'
+                                  ? 'bg-white text-gray-800 border-gray-300 hover:border-gray-500 hover:bg-gray-50 cursor-pointer'
                                   : 'bg-gray-100/70 text-gray-400 opacity-35 border-gray-200 cursor-not-allowed filter blur-[0.3px]'
                               }`}
                           >

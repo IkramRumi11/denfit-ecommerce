@@ -1,3 +1,5 @@
+import { getAvailableStockForItem } from './stockHelpers';
+
 // Centralized category-based size rules
 export type SizeGroup = 'clothing' | 'footwear' | 'accessories';
 
@@ -43,45 +45,42 @@ export function getDisplaySizesForProduct(product: any): string[] {
 // Determine available sizes taking variant-level overrides into account.
 // If a variant object is provided and it has `availableSizes`, prefer that.
 export function getAvailableSizesForProduct(product: any, variant?: any): string[] {
-  // If variant explicitly provides availableSizes, prefer that
-  if (variant && Array.isArray(variant.availableSizes) && variant.availableSizes.length) return normalizeSizesArray(variant.availableSizes);
+  // If variant explicitly provides non-empty availableSizes, prefer that
+  if (variant && Array.isArray(variant.availableSizes) && variant.availableSizes.length > 0) {
+    return normalizeSizesArray(variant.availableSizes);
+  }
 
   // Base set from product-level availableSizes or display sizes
-  const base = Array.isArray(product?.availableSizes) && product.availableSizes.length ? normalizeSizesArray(product.availableSizes) : getDisplaySizesForProduct(product);
+  const base = Array.isArray(product?.availableSizes) && product.availableSizes.length > 0
+    ? normalizeSizesArray(product.availableSizes)
+    : getDisplaySizesForProduct(product);
 
-  // If product has a stock mapping and a variant (color) is provided, filter sizes by available quantity for that color
+  if (!product) return base;
+
+  // If product has stock/variants/sizes data, filter base sizes by available stock for this variant/color
   try {
-    if (Array.isArray(product?.stock) && product.stock.length && variant) {
-      const tempId = variant.tempId || variant._id || variant.id || variant.temp || null;
-      const name = variant.name || null;
-      const hex = variant.hex || variant.normalizedHex || null;
-      const normalizeColor = (v: any) => (v == null ? '' : String(v).toLowerCase().trim().replace(/^#/, ''));
-      // Build set of sizes that have quantity > 0 for this color
-      const sizesWithStock = new Set<string>();
-      product.stock.forEach((st: any) => {
-        if (!st) return;
-        const matchesColor = (() => {
-          if (!st.colorTempId) return false;
-          const sKey = normalizeColor(st.colorTempId);
-          if (tempId && sKey === normalizeColor(tempId)) return true;
-          if (name && sKey === normalizeColor(name)) return true;
-          if (hex && sKey === normalizeColor(hex)) return true;
-          return false;
-        })();
-        if (!matchesColor) return;
-        const sizeId = st.sizeId;
-        // Try to resolve sizeId to a display size value
-        let displaySize = sizeId;
-        if (Array.isArray(product.sizes) && product.sizes.length) {
-          const found = product.sizes.find((s: any) => s.id === sizeId || s.value === sizeId);
-          if (found) displaySize = found.value || found.id;
-        }
-        if ((st.quantity || 0) > 0) sizesWithStock.add(String(displaySize));
+    const hasGranularStock = (Array.isArray(product.stock) && product.stock.length > 0) ||
+      (Array.isArray(product.variants) && product.variants.some((v: any) => typeof v?.inventory === 'number')) ||
+      (Array.isArray(product.sizesObjects) && product.sizesObjects.length > 0);
+
+    if (hasGranularStock) {
+      const vId = variant ? (variant._id || variant.id || variant.tempId || variant.variantId) : undefined;
+      const vColor = variant ? (variant.hex || variant.normalizedHex || variant.color || variant.value || variant.name) : undefined;
+      const vName = variant ? variant.name : undefined;
+
+      const filtered = base.filter((s: string) => {
+        return getAvailableStockForItem(product, {
+          size: s,
+          color: vColor,
+          colorName: vName,
+          variantId: vId
+        }) > 0;
       });
-      return base.filter(s => sizesWithStock.has(String(s)));
+
+      if (filtered.length > 0) return filtered;
     }
   } catch (e) {
-    // ignore and fallback
+    // fallback
   }
 
   return base;
