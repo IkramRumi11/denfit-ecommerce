@@ -189,14 +189,18 @@ const AdminProductEdit: React.FC = () => {
               id: `size_legacy_${idx}`, 
               value: s, 
               inStock: true, 
-              quantity: null, 
+              quantity: null,
+              quantityManual: false,
             };
           }
+          const qty = (s.quantity != null && !Number.isNaN(Number(s.quantity))) ? Number(s.quantity) : (s.qty != null && !Number.isNaN(Number(s.qty)) ? Number(s.qty) : null);
           return {
             id: s.id || `size_${idx}`,
             value: s.value || '',
             inStock: s.inStock ?? true,
-            quantity: (s.quantity != null && !Number.isNaN(Number(s.quantity))) ? Number(s.quantity) : (s.qty != null && !Number.isNaN(Number(s.qty)) ? Number(s.qty) : null),
+            quantity: qty,
+            // If a size has a saved quantity value, treat it as manually set to preserve the cap behavior
+            quantityManual: qty !== null && qty >= 0,
           };
         }) : [];
 
@@ -517,7 +521,7 @@ const AdminProductEdit: React.FC = () => {
     const id = `size_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`;
     setForm((s: any) => ({
       ...s,
-      sizes: [...(s.sizes || []), { id, value: '', inStock: true, quantity: null }],
+      sizes: [...(s.sizes || []), { id, value: '', inStock: true, quantity: null, quantityManual: false }],
     }));
   };
 
@@ -544,22 +548,28 @@ const AdminProductEdit: React.FC = () => {
   const updateSizeQuantity = (idx: number, quantity: number | null) => {
     setForm((s: any) => {
       const sizes = [...(s.sizes || [])];
-      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null } : { ...sizes[idx] };
+      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null, quantityManual: false } : { ...sizes[idx] };
       cur.quantity = quantity;
+      // Mark as manually set when admin explicitly enters a value, clear manual flag when cleared
+      cur.quantityManual = quantity !== null && quantity !== undefined;
       sizes[idx] = cur;
       const next = { ...s, sizes };
 
-      // Maintain per-color-size stock entries when colors are present
+      // If colors exist, ensure stock entries exist for each color+size (but do NOT overwrite existing values)
       if (Array.isArray(next.colors) && next.colors.length > 0) {
         const stock = [...(s.stock || [])];
         next.colors.forEach((c: any) => {
           const cid = c.tempId;
           const si = stock.findIndex((st: any) => st.colorTempId === cid && st.sizeId === cur.id);
           if (quantity === null || quantity === undefined) {
+            // Size total was cleared — remove stock entries for this size
             if (si >= 0) stock.splice(si, 1);
           } else {
-            if (si >= 0) stock[si].quantity = quantity;
-            else stock.push({ colorTempId: cid, sizeId: cur.id, quantity });
+            // Only create a zero-initialized entry if one doesn't exist yet
+            if (si < 0) {
+              stock.push({ colorTempId: cid, sizeId: cur.id, quantity: 0 });
+            }
+            // Do NOT overwrite existing per-color quantities — the manual total is a cap, not an assignment
           }
         });
         next.stock = stock;
@@ -579,11 +589,34 @@ const AdminProductEdit: React.FC = () => {
         if (idx >= 0) stock[idx].quantity = quantity;
         else stock.push({ colorTempId, sizeId, quantity });
       }
+      // deterministic ordering
       stock.sort((a: any, b: any) => {
         if (String(a.colorTempId) === String(b.colorTempId)) return String(a.sizeId).localeCompare(String(b.sizeId));
         return String(a.colorTempId).localeCompare(String(b.colorTempId));
       });
-      return { ...s, stock };
+
+      // Auto-calculate size total from color quantities when the size total is NOT manually set
+      const sizes = [...(s.sizes || [])];
+      const sizeIdx = sizes.findIndex((sz: any) => {
+        const szId = typeof sz === 'string' ? `size_legacy_${sizes.indexOf(sz)}` : sz.id;
+        return String(szId) === String(sizeId);
+      });
+      if (sizeIdx >= 0) {
+        const sz = typeof sizes[sizeIdx] === 'string'
+          ? { id: `size_legacy_${sizeIdx}`, value: sizes[sizeIdx], inStock: true, quantity: null, quantityManual: false }
+          : { ...sizes[sizeIdx] };
+        if (!sz.quantityManual) {
+          // Auto-calculate: sum all color quantities for this size
+          const szId = sz.id;
+          const colorSum = stock
+            .filter((st: any) => String(st.sizeId) === String(szId))
+            .reduce((sum: number, st: any) => sum + (Number(st.quantity) || 0), 0);
+          sz.quantity = colorSum > 0 ? colorSum : null;
+          sizes[sizeIdx] = sz;
+        }
+      }
+
+      return { ...s, stock, sizes };
     });
   };
 
@@ -835,7 +868,7 @@ const AdminProductEdit: React.FC = () => {
         });
       });
 
-      // Normalize sizes
+      // Normalize sizes — strip UI-only quantityManual flag before sending to backend
       const sizesPayload = (form.sizes || []).map((s: any, idx: number) => {
         if (!s) return null;
         if (typeof s === 'string') {
