@@ -74,6 +74,130 @@ export const generateSKU = (category, brand) => {
   return `${catCode}-${brandCode}-${timestamp}`;
 };
 
+// Safe Related Products normalization helper
+export const normalizeRelatedProducts = async (input, ProductModel = null) => {
+  if (input === undefined || input === null) return [];
+
+  const candidateIds = [];
+  const candidateTexts = [];
+
+  const extractTokens = (val, depth = 0) => {
+    if (depth > 8 || val === undefined || val === null) return;
+
+    if (Array.isArray(val)) {
+      val.forEach(item => extractTokens(item, depth + 1));
+      return;
+    }
+
+    if (typeof val === 'object') {
+      if (val._id) {
+        extractTokens(val._id, depth + 1);
+      } else if (val.id) {
+        extractTokens(val.id, depth + 1);
+      } else if (typeof val.toString === 'function') {
+        const str = val.toString().trim();
+        if (/^[a-fA-F0-9]{24}$/.test(str)) {
+          candidateIds.push(str);
+        }
+      }
+      return;
+    }
+
+    if (typeof val === 'string') {
+      let s = val.trim();
+      if (!s) return;
+
+      // 1. Direct 24-character hex ObjectId
+      if (/^[a-fA-F0-9]{24}$/.test(s)) {
+        candidateIds.push(s);
+        return;
+      }
+
+      // 2. Try JSON parsing
+      for (let i = 0; i < 5; i++) {
+        try {
+          const parsed = JSON.parse(s);
+          if (parsed !== s) {
+            extractTokens(parsed, depth + 1);
+            return;
+          }
+        } catch (e) {
+          try {
+            const cleaned = s.replace(/`/g, '').trim();
+            if (/^[[{].*[\]}]$/.test(cleaned)) {
+              const parsed = JSON.parse(cleaned.replace(/'/g, '"'));
+              if (parsed !== s) {
+                extractTokens(parsed, depth + 1);
+                return;
+              }
+            }
+          } catch (e2) {}
+          break;
+        }
+      }
+
+      // 3. Comma-separated entries
+      if (s.includes(',')) {
+        s.split(',').forEach(part => extractTokens(part, depth + 1));
+        return;
+      }
+
+      // 4. Strip surrounding backticks, quotes, brackets
+      const stripped = s.replace(/^[`'"\[\]{}]+|[`'"\[\]{}]+$/g, '').trim();
+      if (stripped && stripped !== s) {
+        extractTokens(stripped, depth + 1);
+        return;
+      }
+
+      // 5. Search for embedded 24-hex ObjectId(s)
+      const hexMatches = s.match(/[a-fA-F0-9]{24}/g);
+      if (hexMatches && hexMatches.length > 0) {
+        hexMatches.forEach(m => candidateIds.push(m));
+        return;
+      }
+
+      // 6. Otherwise might be a SKU or slug
+      const cleaned = s.replace(/[^A-Za-z0-9-_]/g, '').trim();
+      if (cleaned) {
+        candidateTexts.push(cleaned);
+      }
+    }
+  };
+
+  extractTokens(input);
+
+  const resolvedIds = [...candidateIds];
+
+  // Resolve SKUs or slugs if ProductModel is available
+  if (candidateTexts.length && ProductModel) {
+    try {
+      const found = await ProductModel.find({
+        $or: [
+          { sku: { $in: candidateTexts } },
+          { 'seo.slug': { $in: candidateTexts } }
+        ]
+      }, '_id sku seo.slug').lean();
+
+      if (found && found.length) {
+        found.forEach(p => {
+          if (p._id) resolvedIds.push(String(p._id));
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to resolve related products by SKU/slug:', err?.message || err);
+    }
+  }
+
+  // Deduplicate and filter strictly to valid 24-hex ObjectIds
+  const validObjectIds = Array.from(
+    new Set(
+      resolvedIds.filter(id => typeof id === 'string' && /^[a-fA-F0-9]{24}$/.test(id))
+    )
+  );
+
+  return validObjectIds;
+};
+
 // Normalize core product fields
 export const normalizeProductInput = async (body, ProductModel) => {
   const productData = { ...body };
@@ -196,48 +320,8 @@ export const normalizeProductInput = async (body, ProductModel) => {
   }
 
   // 9. Related Products
-  if (productData.relatedProducts && typeof productData.relatedProducts === 'string') {
-    const rp = safeParse(productData.relatedProducts);
-    if (Array.isArray(rp)) {
-      productData.relatedProducts = rp.map((entry) => {
-        if (typeof entry === 'string') {
-          const e = entry.trim();
-          if ((e.startsWith('[') || e.startsWith('{')) && (e.endsWith(']') || e.endsWith('}'))) {
-            try {
-              const inner = JSON.parse(e.replace(/'/g, '"'));
-              if (Array.isArray(inner) && inner.length) return inner[0];
-              if (typeof inner === 'string') return inner;
-            } catch (err) {}
-          }
-          return e.replace(/^['`"]+|['`"]+$/g, '');
-        }
-        return entry;
-      });
-    }
-  }
-
-  if (Array.isArray(productData.relatedProducts) && productData.relatedProducts.length && ProductModel) {
-    const nonObjectIds = productData.relatedProducts.filter(r => typeof r === 'string' && !/^[a-fA-F0-9]{24}$/.test(r));
-    if (nonObjectIds.length) {
-      const cleaned = nonObjectIds.map(s => String(s).replace(/[^A-Za-z0-9-]/g, ''));
-      try {
-        const found = await ProductModel.find({ sku: { $in: cleaned } }, '_id sku');
-        if (found && found.length) {
-          const skuToId = {};
-          found.forEach(p => { skuToId[p.sku] = p._id; });
-          productData.relatedProducts = productData.relatedProducts.map(entry => {
-            if (typeof entry === 'string') {
-              if (/^[a-fA-F0-9]{24}$/.test(entry)) return entry;
-              if (skuToId[entry]) return skuToId[entry];
-              const c = entry.replace(/[^A-Za-z0-9-]/g, '');
-              if (skuToId[c]) return skuToId[c];
-              return null;
-            }
-            return entry;
-          }).filter(Boolean);
-        }
-      } catch (e) {}
-    }
+  if (productData.relatedProducts !== undefined) {
+    productData.relatedProducts = await normalizeRelatedProducts(productData.relatedProducts, ProductModel);
   }
 
   // 10. Normalizing category, subcategory and SKU

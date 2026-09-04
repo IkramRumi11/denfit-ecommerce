@@ -305,7 +305,9 @@ const AdminProductEdit: React.FC = () => {
             }
             return [String(input)];
           })(p.tags),
-          relatedProducts: p.relatedProducts || [],
+          relatedProducts: Array.isArray(p.relatedProducts)
+            ? p.relatedProducts.map((r: any) => typeof r === 'object' && r ? String(r._id || r.id || '') : String(r).trim()).filter(Boolean)
+            : [],
           specifications: p.specifications || { 
             material: '', 
             care: '', 
@@ -329,7 +331,10 @@ const AdminProductEdit: React.FC = () => {
 
         // Initialize related products input
         if (p.relatedProducts && Array.isArray(p.relatedProducts)) {
-          setRelatedInput(p.relatedProducts.join(', '));
+          const cleanIds = p.relatedProducts
+            .map((r: any) => typeof r === 'object' && r ? String(r._id || r.id || '') : String(r).trim())
+            .filter(Boolean);
+          setRelatedInput(cleanIds.join(', '));
         }
 
         // Populate existing variant images
@@ -744,24 +749,31 @@ const AdminProductEdit: React.FC = () => {
 
   // Related products management
   const updateRelatedFromInput = () => {
-    const normalizeEntry = (raw: string) => {
-      if (!raw) return null;
-      let s = raw.trim();
-      try {
-        const cleaned = s.replace(/`/g, '');
-        const parsed = JSON.parse(cleaned);
-        if (Array.isArray(parsed) && parsed.length) return String(parsed[0]).trim();
-        if (typeof parsed === 'string') return parsed.trim();
-      } catch (e) {
-        // ignore parse errors
-      }
-      s = s.replace(/^['`"]+|['`"]+$/g, '').trim();
-      return s || null;
-    };
+    if (!relatedInput || !relatedInput.trim()) {
+      setForm((s: any) => ({ ...s, relatedProducts: [] }));
+      showToast('Related products cleared', 'info');
+      return;
+    }
 
-    const vals = Array.from(new Set(relatedInput.split(',').map(s => normalizeEntry(s)).filter(Boolean)));
-    setForm((s: any) => ({ ...s, relatedProducts: vals }));
-    showToast('Related products updated', 'success');
+    const tokens: string[] = [];
+    const raw = relatedInput.trim();
+
+    // 1. Check for 24-character hex ObjectIds anywhere in the input
+    const hexMatches = raw.match(/[a-fA-F0-9]{24}/g);
+    if (hexMatches && hexMatches.length > 0) {
+      hexMatches.forEach(id => tokens.push(id));
+    } else {
+      // 2. Otherwise split by commas/newlines and clean tokens (for SKUs/slugs)
+      raw.split(/[\n,]+/).forEach(part => {
+        const cleaned = part.replace(/^[`'"\[\]{}]+|[`'"\[\]{}]+$/g, '').trim();
+        if (cleaned) tokens.push(cleaned);
+      });
+    }
+
+    const uniqueVals = Array.from(new Set(tokens)).slice(0, 20);
+    setForm((s: any) => ({ ...s, relatedProducts: uniqueVals }));
+    setRelatedInput(uniqueVals.join(', '));
+    showToast(`Updated ${uniqueVals.length} related product(s)`, 'success');
   };
 
   // Form submission
@@ -883,9 +895,14 @@ const AdminProductEdit: React.FC = () => {
       }).filter(Boolean);
       fd.append('sizes', JSON.stringify(sizesPayload));
 
-      // Include related products
+      // Include related products — ensure clean string IDs only
       if (form.relatedProducts && form.relatedProducts.length > 0) {
-        fd.append('relatedProducts', JSON.stringify(form.relatedProducts));
+        const cleanRelated = form.relatedProducts
+          .map((r: any) => (typeof r === 'object' && r ? String(r._id || r.id || '') : String(r).trim()))
+          .filter(Boolean);
+        if (cleanRelated.length > 0) {
+          fd.append('relatedProducts', JSON.stringify(cleanRelated));
+        }
       }
 
       // Submit to API
@@ -1584,7 +1601,12 @@ const AdminProductEdit: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {(suggestedProducts || []).map((p: any) => {
-                        const already = (form.relatedProducts || []).some((r: any) => String(r) === String(p._id) || String(r) === String(p.sku));
+                        const prodId = String(p._id);
+                        const prodSku = String(p.sku || '');
+                        const already = (form.relatedProducts || []).some((r: any) => {
+                          const rid = typeof r === 'object' && r ? String(r._id || r.id) : String(r);
+                          return rid === prodId || (prodSku && rid === prodSku);
+                        });
                         const thumb = Array.isArray(p.images) && p.images.length ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url) : '';
                         return (
                           <div key={p._id} className="flex items-center gap-3 p-2 border rounded">
@@ -1607,16 +1629,41 @@ const AdminProductEdit: React.FC = () => {
                                   type="button"
                                   onClick={() => {
                                     setForm((s: any) => {
-                                      const cur = Array.isArray(s.relatedProducts) ? [...s.relatedProducts] : [];
-                                      if (!already) cur.unshift(String(p._id));
-                                      return { ...s, relatedProducts: Array.from(new Set(cur)).slice(0, 20) };
+                                      const cur = Array.isArray(s.relatedProducts)
+                                        ? s.relatedProducts.map((r: any) => typeof r === 'object' && r ? String(r._id || r.id) : String(r)).filter(Boolean)
+                                        : [];
+                                      if (!cur.includes(prodId)) cur.unshift(prodId);
+                                      const next = Array.from(new Set(cur)).slice(0, 20);
+                                      return { ...s, relatedProducts: next };
+                                    });
+                                    setRelatedInput(prev => {
+                                      const parts = prev ? prev.split(',').map(x => x.trim()).filter(Boolean) : [];
+                                      if (!parts.includes(prodId)) parts.unshift(prodId);
+                                      return parts.join(', ');
                                     });
                                   }}
                                   className={`px-3 py-1 text-sm rounded ${already ? 'bg-gray-200 text-gray-700' : 'bg-blue-600 text-white'}`}
                                 >{already ? 'Added' : 'Add'}</button>
                               </div>
                               {already && (
-                                <button type="button" onClick={() => setForm((s: any) => ({ ...s, relatedProducts: (s.relatedProducts || []).filter((r:any) => String(r) !== String(p._id) && String(r) !== String(p.sku)) }))} className="text-xs text-red-600">Remove</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((s: any) => ({
+                                      ...s,
+                                      relatedProducts: (s.relatedProducts || []).filter((r: any) => {
+                                        const rid = typeof r === 'object' && r ? String(r._id || r.id) : String(r);
+                                        return rid !== prodId && rid !== prodSku;
+                                      })
+                                    }));
+                                    setRelatedInput(prev => {
+                                      return prev.split(',').map(x => x.trim()).filter(x => x && x !== prodId && x !== prodSku).join(', ');
+                                    });
+                                  }}
+                                  className="text-xs text-red-600"
+                                >
+                                  Remove
+                                </button>
                               )}
                             </div>
                           </div>
@@ -1641,7 +1688,28 @@ const AdminProductEdit: React.FC = () => {
                             </div>
                             <p className="mt-2 text-sm text-gray-700 line-clamp-3">{previewProduct.description}</p>
                             <div className="mt-3 flex gap-2">
-                              <button type="button" onClick={() => { setForm((s:any) => ({ ...s, relatedProducts: Array.from(new Set([...(s.relatedProducts||[]), String(previewProduct._id)])) })); setPreviewProduct(null); }} className="px-3 py-1 bg-blue-600 text-white rounded">Add to Related</button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const prodId = String(previewProduct._id);
+                                  setForm((s: any) => {
+                                    const cur = Array.isArray(s.relatedProducts)
+                                      ? s.relatedProducts.map((r: any) => typeof r === 'object' && r ? String(r._id || r.id) : String(r)).filter(Boolean)
+                                      : [];
+                                    if (!cur.includes(prodId)) cur.unshift(prodId);
+                                    return { ...s, relatedProducts: Array.from(new Set(cur)).slice(0, 20) };
+                                  });
+                                  setRelatedInput(prev => {
+                                    const parts = prev ? prev.split(',').map(x => x.trim()).filter(Boolean) : [];
+                                    if (!parts.includes(prodId)) parts.unshift(prodId);
+                                    return parts.join(', ');
+                                  });
+                                  setPreviewProduct(null);
+                                }}
+                                className="px-3 py-1 bg-blue-600 text-white rounded"
+                              >
+                                Add to Related
+                              </button>
                               <button type="button" onClick={() => setPreviewProduct(null)} className="px-3 py-1 bg-white border rounded">Close</button>
                             </div>
                           </div>
@@ -1652,12 +1720,33 @@ const AdminProductEdit: React.FC = () => {
 
                   {form.relatedProducts && form.relatedProducts.length > 0 && (
                     <div className="mt-3 flex gap-2 flex-wrap">
-                      {form.relatedProducts.map((r: string, i: number) => (
-                        <span key={i} className="px-2 py-1 bg-gray-100 rounded text-sm flex items-center gap-2">
-                          <span>{r}</span>
-                          <button type="button" onClick={() => setForm((s:any) => ({ ...s, relatedProducts: (s.relatedProducts || []).filter((x:any, idx:number) => idx !== i) }))} className="text-xs text-red-600">x</button>
-                        </span>
-                      ))}
+                      {form.relatedProducts.map((r: any, i: number) => {
+                        const rId = typeof r === 'object' && r ? String(r._id || r.id) : String(r);
+                        const matched = (suggestedProducts || []).find((sp: any) => String(sp._id) === rId || String(sp.sku) === rId);
+                        const label = matched ? `${matched.name} (${matched.sku || rId.slice(-6)})` : rId;
+                        return (
+                          <span key={i} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-md text-xs font-medium flex items-center gap-2">
+                            <span>{label}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((s: any) => ({
+                                  ...s,
+                                  relatedProducts: (s.relatedProducts || []).filter((_: any, idx: number) => idx !== i)
+                                }));
+                                setRelatedInput(prev => {
+                                  const parts = prev.split(',').map(x => x.trim()).filter(Boolean);
+                                  return parts.filter(x => x !== rId).join(', ');
+                                });
+                              }}
+                              className="text-blue-600 hover:text-red-600 font-bold ml-1 text-sm leading-none"
+                              title="Remove"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </>
