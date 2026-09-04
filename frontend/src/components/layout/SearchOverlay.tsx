@@ -1,6 +1,6 @@
 // src/components/layout/SearchOverlay.tsx
 import { useEffect, useRef, useState } from "react";
-import { X, Heart } from "lucide-react";
+import { X, Heart, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";

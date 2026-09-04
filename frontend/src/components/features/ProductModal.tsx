@@ -40,13 +40,15 @@ export default function ProductModal({
 
   if (!isOpen || !product) return null;
 
+  const hasSizes = Array.isArray(product.sizes) && product.sizes.length > 0;
+
   const handleAddToCart = () => {
-    if (!selectedSize) {
+    if (hasSizes && !selectedSize) {
       setError("Please select a size");
       return;
     }
     setError(null);
-    onAddToCart(product, selectedSize);
+    onAddToCart(product, selectedSize || '');
   };
 
   const rawOriginalPrice = (product as any)?.originalPrice || (product as any)?.compareAtPrice;

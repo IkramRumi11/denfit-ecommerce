@@ -637,7 +637,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
   };
 
   // ─── Color Filter ───
-  const renderColorFilter = (slug: string, options: typeof displayOptions, activeValues: string[]) => {
+  const renderColorFilter = (slug: string, options: any[], activeValues: string[]) => {
     return (
       <div className="flex flex-wrap gap-2 pt-1 pb-2">
         {options.map(opt => {

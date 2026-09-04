@@ -26,6 +26,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const { showToast } = useToast();
   const { addItem, getItemQuantity } = useCart();
   const navigate = useNavigate();
+  const reducedMotion = useReducedMotion();
 
   // State
   const [showMobileQuickAdd, setShowMobileQuickAdd] = useState(false);
