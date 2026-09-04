@@ -88,7 +88,7 @@ const ConfirmModal: React.FC<{
             }}
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
-          <motion.div initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 6 }} className="relative z-10 w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-100 p-6">
+          <motion.div initial={{ scale: 0.98, y: 8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 6 }} className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto my-auto custom-scrollbar bg-white rounded-2xl shadow-2xl border border-slate-100 p-6">
             <h3 className="text-lg font-semibold">{title}</h3>
             {description && <p className="mt-2 text-sm text-slate-600">{description}</p>}
             <div className="mt-4 flex justify-end gap-3">

@@ -69,6 +69,14 @@ export default function PromoMarquee({ text }: PromoMarqueeProps): JSX.Element |
     const el = textRef.current;
     if (!el) return;
 
+    // If only 1 message, keep cleanly centered without animating out and in
+    if (messages.length <= 1) {
+      el.style.left = '50%';
+      el.style.opacity = '1';
+      el.style.transform = 'translateX(-50%)';
+      return;
+    }
+
     let phaseStartTime: number | null = null;
     let currentPhase: 'enter' | 'hold' | 'exit' = 'hold';
 

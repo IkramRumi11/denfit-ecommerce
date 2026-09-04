@@ -519,9 +519,11 @@ router.patch('/features/:id', updateFlag);
 // ========================
 router.get('/promo-codes', getAllPromoCodes);
 router.post('/promo-codes', createPromoCode);
-router.get('/promo-codes/:id', getPromoCodeById);
-router.put('/promo-codes/:id', updatePromoCode);
-router.delete('/promo-codes/:id', deletePromoCode);
+router.route('/promo-codes/:id')
+  .get(getPromoCodeById)
+  .put(updatePromoCode)
+  .patch(updatePromoCode)
+  .delete(deletePromoCode);
 router.patch('/promo-codes/:id/toggle', togglePromoCode);
 
 export default router;

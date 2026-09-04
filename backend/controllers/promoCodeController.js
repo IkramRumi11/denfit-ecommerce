@@ -42,10 +42,15 @@ export const validatePromoCode = async (req, res) => {
     return res.status(200).json({
       success: true,
       valid: true,
+      promoCode: promo,
+      discountAmount: validation.calculatedDiscount,
+      calculatedDiscount: validation.calculatedDiscount,
       data: {
+        valid: true,
+        promoCode: promo,
         code: promo.code,
         discountType: promo.discountType,
-        discountAmount: promo.discountAmount,
+        discountAmount: validation.calculatedDiscount,
         calculatedDiscount: validation.calculatedDiscount,
         minOrderAmount: promo.minOrderAmount,
         description: promo.description || ''

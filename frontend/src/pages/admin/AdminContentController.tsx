@@ -100,6 +100,8 @@ export default function AdminContentController(): JSX.Element {
     return () => clearInterval(timer);
   }, [announcements]);
 
+  const [savingSection, setSavingSection] = useState<string | null>(null);
+
   // Announcement handlers
   const handleAddMessage = () => {
     if (announcements.messages.length >= 3) {
@@ -140,15 +142,23 @@ export default function AdminContentController(): JSX.Element {
 
     setSaving(true);
     try {
-      await contentAPI.updateAnnouncements({
+      const res: any = await contentAPI.updateAnnouncements({
         messages: validMessages,
         enabled: announcements.enabled,
         intervalSeconds: announcements.intervalSeconds,
       });
+      const data = res?.data?.announcements || res?.announcements;
+      if (data) {
+        setAnnouncements({
+          messages: Array.isArray(data.messages) && data.messages.length > 0 ? data.messages : validMessages,
+          enabled: data.enabled !== false,
+          intervalSeconds: Number(data.intervalSeconds) || announcements.intervalSeconds,
+        });
+      }
       showToast('Announcement strip settings saved successfully', 'success');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Save announcements error', err);
-      showToast('Failed to save announcement settings', 'error');
+      showToast(err?.message || 'Failed to save announcement settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -185,11 +195,25 @@ export default function AdminContentController(): JSX.Element {
       } else {
         showToast('Upload succeeded but no image URL returned', 'warning');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error', err);
-      showToast('Failed to upload banner image', 'error');
+      showToast(err?.message || 'Failed to upload banner image', 'error');
     } finally {
       setUploadingSection(null);
+    }
+  };
+
+  const handleSaveSingleBanner = async (key: string) => {
+    setSavingSection(key);
+    try {
+      await contentAPI.updateBanners({ banners });
+      const secLabel = BANNER_SECTIONS.find((s) => s.key === key)?.label || 'Banner';
+      showToast(`${secLabel} saved successfully`, 'success');
+    } catch (err: any) {
+      console.error('Save banner error', err);
+      showToast(err?.message || 'Failed to save banner', 'error');
+    } finally {
+      setSavingSection(null);
     }
   };
 
@@ -197,10 +221,10 @@ export default function AdminContentController(): JSX.Element {
     setSaving(true);
     try {
       await contentAPI.updateBanners({ banners });
-      showToast('Page banners saved successfully', 'success');
-    } catch (err) {
+      showToast('All page banners saved successfully', 'success');
+    } catch (err: any) {
       console.error('Save banners error', err);
-      showToast('Failed to save banner settings', 'error');
+      showToast(err?.message || 'Failed to save banner settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -423,21 +447,35 @@ export default function AdminContentController(): JSX.Element {
                         <h3 className="text-base font-semibold text-neutral-900">{sec.label}</h3>
                       </div>
 
-                      {/* Active Toggle */}
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <span className={`text-xs font-semibold uppercase tracking-wider ${current.isActive ? 'text-emerald-600' : 'text-neutral-400'}`}>
-                          {current.isActive ? 'Active' : 'Disabled'}
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(current.isActive)}
-                          onChange={(e) => handleBannerChange(sec.key, 'isActive', e.target.checked)}
-                          className="sr-only"
-                        />
-                        <div className={`w-9 h-5 rounded-full transition-colors relative ${current.isActive ? 'bg-emerald-600' : 'bg-neutral-300'}`}>
-                          <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-[3px] transition-transform ${current.isActive ? 'left-5' : 'left-1'}`} />
-                        </div>
-                      </label>
+                      <div className="flex items-center gap-3">
+                        {/* Active Toggle */}
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <span className={`text-xs font-semibold uppercase tracking-wider ${current.isActive ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                            {current.isActive ? 'Active' : 'Disabled'}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(current.isActive)}
+                            onChange={(e) => handleBannerChange(sec.key, 'isActive', e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`w-9 h-5 rounded-full transition-colors relative ${current.isActive ? 'bg-emerald-600' : 'bg-neutral-300'}`}>
+                            <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-[3px] transition-transform ${current.isActive ? 'left-5' : 'left-1'}`} />
+                          </div>
+                        </label>
+
+                        {/* Direct Save Banner Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSaveSingleBanner(sec.key)}
+                          disabled={savingSection === sec.key || saving}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-[11px] font-semibold uppercase tracking-wider transition disabled:opacity-50"
+                          title="Save this banner immediately"
+                        >
+                          <Save className="h-3 w-3" />
+                          {savingSection === sec.key ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Preview Image */}

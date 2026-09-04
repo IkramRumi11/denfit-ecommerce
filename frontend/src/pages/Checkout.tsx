@@ -60,10 +60,19 @@ export const Checkout: React.FC = () => {
     setIsApplyingPromo(true);
     setPromoError(null);
     try {
-      const res = await ordersAPI.validatePromo(code, subtotal || 0);
-      if (res && res.data && res.data.valid) {
-        setAppliedPromo(res.data.promoCode);
-        setPromoDiscount(res.data.discountAmount);
+      const res: any = await ordersAPI.validatePromo(code, subtotal || 0);
+      const isSuccess = Boolean(res?.valid || res?.success || res?.data?.valid);
+      if (isSuccess) {
+        const promo = res?.data?.promoCode || res?.promoCode || res?.data || { code: code.toUpperCase() };
+        const discount = Number(
+          res?.data?.calculatedDiscount ??
+          res?.data?.discountAmount ??
+          res?.calculatedDiscount ??
+          res?.discountAmount ??
+          0
+        );
+        setAppliedPromo(promo);
+        setPromoDiscount(discount);
         showToast(`Promo code "${code.toUpperCase()}" applied!`, 'success');
       } else {
         setPromoError(res?.message || 'Invalid promo code');

@@ -189,13 +189,13 @@ const HistoryModal: React.FC<Props> = ({ order, onClose }) => {
         <motion.div
           ref={modalRef}
           variants={containerVariant}
-          className="relative z-10 w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
+          className="relative z-10 w-full max-w-3xl mx-auto max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 my-auto"
           role="dialog"
           aria-modal="true"
           aria-labelledby="history-title"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-5">
+          <div className="flex-shrink-0 bg-gradient-to-r from-slate-800 to-slate-700 text-white p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
@@ -228,7 +228,7 @@ const HistoryModal: React.FC<Props> = ({ order, onClose }) => {
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-[70vh] overflow-y-auto" aria-live="polite">
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar" aria-live="polite">
             {reversed.length === 0 ? (
               <div className="py-12 text-center text-slate-600">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 mb-4">

@@ -436,9 +436,9 @@ export const AdminPromoCodes: React.FC = () => {
 
       {/* Create / Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <Tag className="w-5 h-5 text-blue-600" />
                 <span>{editingPromo ? 'Edit Promotional Code' : 'Create Promotional Code'}</span>
@@ -451,148 +451,150 @@ export const AdminPromoCodes: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSavePromo} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSavePromo} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Code Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. SUMMER20"
+                      value={formState.code}
+                      onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
+                      className="w-full text-sm font-mono uppercase px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Discount Type
+                    </label>
+                    <select
+                      value={formState.discountType}
+                      onChange={(e) => setFormState({ ...formState, discountType: e.target.value as any })}
+                      className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                    >
+                      <option value="percentage">Percentage (% Off)</option>
+                      <option value="fixed">Fixed Amount (Rs Off)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Code Name *
+                    Discount Value * {formState.discountType === 'percentage' ? '(%)' : '(Rs)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={formState.discountType === 'percentage' ? 100 : undefined}
+                    required
+                    placeholder={formState.discountType === 'percentage' ? 'e.g. 15' : 'e.g. 500'}
+                    value={formState.discountAmount}
+                    onChange={(e) => setFormState({ ...formState, discountAmount: e.target.value === '' ? '' : Number(e.target.value) })}
+                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Min Order Spend (Rs)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0 for no minimum"
+                      value={formState.minOrderAmount}
+                      onChange={(e) => setFormState({ ...formState, minOrderAmount: e.target.value === '' ? '' : Number(e.target.value) })}
+                      className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Max Discount Limit (Rs)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Optional ceiling cap"
+                      disabled={formState.discountType === 'fixed'}
+                      value={formState.maxDiscountAmount}
+                      onChange={(e) => setFormState({ ...formState, maxDiscountAmount: e.target.value === '' ? '' : Number(e.target.value) })}
+                      className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formState.startDate}
+                      onChange={(e) => setFormState({ ...formState, startDate: e.target.value })}
+                      className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      End Date (Expiration)
+                    </label>
+                    <input
+                      type="date"
+                      value={formState.endDate}
+                      onChange={(e) => setFormState({ ...formState, endDate: e.target.value })}
+                      className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Max Total Redemptions
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Leave empty for unlimited"
+                    value={formState.maxUses}
+                    onChange={(e) => setFormState({ ...formState, maxUses: e.target.value === '' ? '' : Number(e.target.value) })}
+                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Internal Description / Notes
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. SUMMER20"
-                    value={formState.code}
-                    onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
-                    className="w-full text-sm font-mono uppercase px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Discount Type
-                  </label>
-                  <select
-                    value={formState.discountType}
-                    onChange={(e) => setFormState({ ...formState, discountType: e.target.value as any })}
-                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-                  >
-                    <option value="percentage">Percentage (% Off)</option>
-                    <option value="fixed">Fixed Amount (Rs Off)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Discount Value * {formState.discountType === 'percentage' ? '(%)' : '(Rs)'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max={formState.discountType === 'percentage' ? 100 : undefined}
-                  required
-                  placeholder={formState.discountType === 'percentage' ? 'e.g. 15' : 'e.g. 500'}
-                  value={formState.discountAmount}
-                  onChange={(e) => setFormState({ ...formState, discountAmount: e.target.value === '' ? '' : Number(e.target.value) })}
-                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Min Order Spend (Rs)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0 for no minimum"
-                    value={formState.minOrderAmount}
-                    onChange={(e) => setFormState({ ...formState, minOrderAmount: e.target.value === '' ? '' : Number(e.target.value) })}
+                    placeholder="e.g. Eid sale 2026 campaign"
+                    value={formState.description}
+                    onChange={(e) => setFormState({ ...formState, description: e.target.value })}
                     className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Max Discount Limit (Rs)
-                  </label>
+
+                <div className="flex items-center gap-2 pt-2">
                   <input
-                    type="number"
-                    min="0"
-                    placeholder="Optional ceiling cap"
-                    disabled={formState.discountType === 'fixed'}
-                    value={formState.maxDiscountAmount}
-                    onChange={(e) => setFormState({ ...formState, maxDiscountAmount: e.target.value === '' ? '' : Number(e.target.value) })}
-                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                    type="checkbox"
+                    id="promoIsActive"
+                    checked={formState.isActive}
+                    onChange={(e) => setFormState({ ...formState, isActive: e.target.checked })}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
                   />
+                  <label htmlFor="promoIsActive" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    Activate promo code immediately
+                  </label>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formState.startDate}
-                    onChange={(e) => setFormState({ ...formState, startDate: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                    End Date (Expiration)
-                  </label>
-                  <input
-                    type="date"
-                    value={formState.endDate}
-                    onChange={(e) => setFormState({ ...formState, endDate: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Max Total Redemptions
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="Leave empty for unlimited"
-                  value={formState.maxUses}
-                  onChange={(e) => setFormState({ ...formState, maxUses: e.target.value === '' ? '' : Number(e.target.value) })}
-                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Internal Description / Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Eid sale 2026 campaign"
-                  value={formState.description}
-                  onChange={(e) => setFormState({ ...formState, description: e.target.value })}
-                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="promoIsActive"
-                  checked={formState.isActive}
-                  onChange={(e) => setFormState({ ...formState, isActive: e.target.checked })}
-                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
-                />
-                <label htmlFor="promoIsActive" className="text-sm font-medium text-gray-700 cursor-pointer">
-                  Activate promo code immediately
-                </label>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 flex justify-end gap-2">
+              <div className="flex-shrink-0 px-6 py-3.5 border-t border-gray-100 bg-gray-50/80 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -615,8 +617,8 @@ export const AdminPromoCodes: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto my-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6" />
             </div>

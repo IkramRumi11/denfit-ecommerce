@@ -161,6 +161,7 @@ const LuxuryHomePage = () => {
   const { addItem, getItemQuantity, items } = useCart();
   const { showToast } = useToast();
   const { banner: homeTopBanner } = usePageBanner('home_top');
+  const { banner: homeHeroBanner } = usePageBanner('home_hero');
   const navigate = useNavigate();
 
   // Quick-add overlay state
@@ -170,8 +171,8 @@ const LuxuryHomePage = () => {
   const [qaSelectedColorName, setQaSelectedColorName] = useState<string>("");
   const [qaSelectedVariantId, setQaSelectedVariantId] = useState<string>("");
 
-  const heroSlides = useMemo(
-    () => [
+  const heroSlides = useMemo(() => {
+    const defaultSlides = [
       {
         image:
           "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&q=90",
@@ -199,9 +200,24 @@ const LuxuryHomePage = () => {
         cta: "Shop Kids",
         link: "/shop?gender=kids",
       },
-    ],
-    []
-  );
+    ];
+
+    if (homeHeroBanner?.isActive && homeHeroBanner?.imageUrl) {
+      return [
+        {
+          image: homeHeroBanner.imageUrl,
+          title: homeHeroBanner.title || "NEW COLLECTION",
+          subtitle: homeHeroBanner.subtitle || "Denfit Studio Limited Edition",
+          tagline: "Designed with precision and exceptional luxury.",
+          cta: homeHeroBanner.buttonText || "Shop Collection",
+          link: homeHeroBanner.link || "/shop",
+        },
+        ...defaultSlides,
+      ];
+    }
+
+    return defaultSlides;
+  }, [homeHeroBanner]);
 
   const defaultCollections = useMemo(
     () => [

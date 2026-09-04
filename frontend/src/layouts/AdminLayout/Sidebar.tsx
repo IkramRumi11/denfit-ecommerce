@@ -45,11 +45,10 @@ const Sidebar: React.FC<Props> = ({
   return (
     <nav 
       aria-label="Main navigation"
-      className="flex h-full flex-col justify-between bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700"
+      className="flex h-full flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 overflow-hidden"
     >
-      {/* 🔝 Top Section */}
-      <div className="p-4">
-        {/* Logo */}
+      {/* 🔝 Fixed Top Section (Logo & Collapse) */}
+      <div className="flex-shrink-0 p-4 border-b border-slate-100 dark:border-slate-700/40">
         <div className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
           <div 
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold text-lg shadow-sm"
@@ -77,40 +76,38 @@ const Sidebar: React.FC<Props> = ({
             </Button>
           )}
         </div>
-
-        {/* Menu */}
-        <div className="mt-8">
-          <ul className={`space-y-1 ${collapsed ? "items-center" : ""}`}>
-            {allowedMenu.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end
-                  onClick={() => mobileOverlay && onToggleCollapse?.()}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                        : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50"
-                    } ${collapsed ? "justify-center px-2 py-3" : ""}`
-                  }
-                  title={collapsed ? item.label : undefined}
-                >
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                    {item.icon}
-                  </span>
-                  {!collapsed && <span>{item.label}</span>}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
 
-      <Separator className="dark:bg-slate-700" />
+      {/* 📜 Scrollable Navigation Menu */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar">
+        <ul className={`space-y-1 ${collapsed ? "items-center" : ""}`}>
+          {allowedMenu.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end
+                onClick={() => mobileOverlay && onToggleCollapse?.()}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                      : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50"
+                  } ${collapsed ? "justify-center px-2 py-3" : ""}`
+                }
+                title={collapsed ? item.label : undefined}
+              >
+                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                  {item.icon}
+                </span>
+                {!collapsed && <span>{item.label}</span>}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      {/* 👇 Bottom User */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+      {/* 👇 Fixed Bottom User */}
+      <div className="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">

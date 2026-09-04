@@ -106,13 +106,13 @@ const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
           ref={modalRef}
           role="dialog"
           aria-modal="true"
-          className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
+          className="relative z-10 w-full max-w-md max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 my-auto"
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0, transition: { type: "spring", damping: 22 } }}
           exit={{ scale: 0.95, opacity: 0, y: 10 }}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-5 flex justify-between items-center">
+          <div className="flex-shrink-0 bg-gradient-to-r from-slate-800 to-slate-700 text-white p-5 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/10 rounded-lg">
                 <Truck className="w-5 h-5" />
@@ -135,7 +135,7 @@ const TrackingModal: React.FC<Props> = ({ order, onClose, onSubmit }) => {
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 text-slate-700">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-slate-700 custom-scrollbar">
             <div>
               <label htmlFor="trackingCarrier" className="block text-xs text-slate-600 mb-1 font-medium">Carrier</label>
               <div className="relative">
