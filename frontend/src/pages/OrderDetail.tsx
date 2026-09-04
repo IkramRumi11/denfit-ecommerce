@@ -142,8 +142,10 @@ const OrderDetail: React.FC = () => {
             {order && (order.taxAmount || 0) > 0 && (
               <div className="flex justify-between"><span>Tax</span><span>{formatCurrency(order.taxAmount || 0)}</span></div>
             )}
-            <div className="flex justify-between"><span>Shipping</span><span>{order.shippingCost ? formatCurrency(order.shippingCost) : 'Free'}</span></div>
-            <div className="flex justify-between font-semibold"><span>Total</span><span>{formatCurrency(order.total || 0)}</span></div>
+            <div className="flex justify-between font-semibold">
+              <span>Total</span>
+              <span>{formatCurrency(order.customerTotal != null ? Number(order.customerTotal) : (Number(order.discountAmount || 0) > 0 ? Math.max(0, Number(order.subtotal || 0) - Number(order.discountAmount || 0)) + Number(order.shippingCost || 0) : Number(order.total || 0)))}</span>
+            </div>
           </div>
         </div>
 

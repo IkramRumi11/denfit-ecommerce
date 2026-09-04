@@ -232,19 +232,43 @@ export const COLOR_HEX_MAP = Object.entries(COLOR_NAME_MAP).reduce((acc, [hex, n
   'olive green': '#808000',
   'gold': '#D4AF37',
   'grey': '#808080',
-  'gray': '#808080'
+  'gray': '#808080',
+  'red': '#FF0000',
+  'blue': '#0000FF',
+  'green': '#008000',
+  'yellow': '#FFFF00',
+  'orange': '#FFA500',
+  'pink': '#FFC0CB',
+  'purple': '#800080',
+  'brown': '#795548',
+  'saddle brown': '#8B4513',
+  'beige': '#F5F5DC',
+  'teal': '#008080',
+  'cyan': '#00FFFF',
+  'maroon': '#800000',
+  'silver': '#C0C0C0',
+  'charcoal': '#36454F',
+  'burgundy': '#800020'
 });
 
 export function normalizeHex(input) {
   if (!input) return null;
   let s = String(input).trim().toLowerCase();
   if (!s) return null;
-  if (s.startsWith('#')) s = s.slice(1);
-  s = s.replace(/[^0-9a-f]/g, '');
-  if (s.length === 3) {
-    s = s.split('').map(ch => ch + ch).join('');
+  if (s.startsWith('#')) {
+    s = s.slice(1);
+    if (/^[0-9a-f]{3}$/.test(s)) {
+      return s.split('').map(ch => ch + ch).join('');
+    }
+    if (/^[0-9a-f]{6}$/.test(s)) {
+      return s;
+    }
+    return null;
   }
-  if (s.length === 6 && /^[0-9a-f]{6}$/.test(s)) return s;
+  // If no leading '#', only treat as hex if it strictly matches exactly 6 hex characters
+  if (/^[0-9a-f]{6}$/.test(s)) {
+    return s;
+  }
   return null;
 }
 
@@ -285,20 +309,18 @@ export function getColorName(input) {
     return '';
   }
 
-  // Check if input is a hex code
-  const hex = normalizeHex(str);
-  if (hex) {
-    const exact = COLOR_NAME_MAP[hex];
-    if (exact) return exact;
-    return findClosestColorName(hex);
+  // If input is an explicit hex code (starts with '#') or a strict 6-digit hex string
+  const isExplicitHex = str.startsWith('#') || /^[0-9a-fA-F]{6}$/.test(str);
+  if (isExplicitHex) {
+    const hex = normalizeHex(str);
+    if (hex) {
+      const exact = COLOR_NAME_MAP[hex];
+      if (exact) return exact;
+      return findClosestColorName(hex);
+    }
   }
 
-  // If input starts with # or is hex-like
-  if (/^#[0-9a-fA-F]{3,6}$/.test(str)) {
-    const norm = normalizeHex(str);
-    if (norm) return findClosestColorName(norm);
-  }
-
+  // Otherwise, input is already a human-friendly color name (e.g. "Black", "Brown", "Navy Blue", "Dark Olive", etc.)
   // Clean string that might have hex codes in parentheses or trailing hex
   const cleaned = str.replace(/#?[0-9a-fA-F]{6}/gi, '').replace(/[()#_-]/g, ' ').trim();
   const target = cleaned || str;
@@ -314,10 +336,25 @@ export function getColorName(input) {
 export function resolveColorHex(input) {
   if (!input) return null;
   const t = String(input).trim().toLowerCase();
+  if (t.startsWith('#') && (t.length === 4 || t.length === 7)) return t;
   const norm = normalizeHex(t);
-  if (norm) return `#${norm.toUpperCase()}`;
-  const found = COLOR_HEX_MAP[t];
-  if (found) return found;
+  if (norm && /^[0-9a-f]{6}$/i.test(t.replace('#', ''))) return `#${norm.toUpperCase()}`;
+  
+  if (COLOR_HEX_MAP[t]) return COLOR_HEX_MAP[t];
+
+  const cleaned = t.replace(/[^a-z0-9\s]/g, '').trim();
+  if (COLOR_HEX_MAP[cleaned]) return COLOR_HEX_MAP[cleaned];
+
+  // Try matching words in compound names
+  const words = cleaned.split(/\s+/);
+  for (const w of words) {
+    if (COLOR_HEX_MAP[w]) return COLOR_HEX_MAP[w];
+  }
+
+  for (const [name, hex] of Object.entries(COLOR_HEX_MAP)) {
+    if (t.includes(name) || name.includes(t)) return hex;
+  }
+
   return null;
 }
 

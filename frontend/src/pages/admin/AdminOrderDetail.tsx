@@ -317,8 +317,10 @@ const AdminOrderDetail: React.FC = () => {
   const discountAmount = order?.discountAmount ?? 0;
   const promoCode = order?.promoCode;
   const shippingCost = order?.shippingCost ?? 0;
-  // Admin UI should display tax-excluded totals only
-  const displayedTotal = (typeof order?.total === 'number' && !Number.isNaN(Number(order.total))) ? Number(order.total) : Math.round(((subtotal - discountAmount) + shippingCost) * 100) / 100;
+  // Admin UI should display tax-excluded, discount-deducted totals only
+  const displayedTotal = order?.customerTotal != null
+    ? Number(order.customerTotal)
+    : Math.round((Math.max(0, subtotal - discountAmount) + shippingCost) * 100) / 100;
 
   /* ---------- render ---------- */
   if (loading) {

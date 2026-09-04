@@ -262,12 +262,19 @@ const AdminOrders: React.FC = () => {
                     <td className="p-3 align-top whitespace-nowrap">
                       <div className="text-xs space-y-0.5 text-gray-600">
                         <div>Subtotal: Rs {Number(o.subtotal || 0).toFixed(2)}</div>
+                        {Number(o.discountAmount || 0) > 0 && (
+                          <div className="text-emerald-600 font-medium">
+                            Discount {o.promoCode ? `(${o.promoCode})` : ''}: -Rs {Number(o.discountAmount).toFixed(2)}
+                          </div>
+                        )}
                         <div>Shipping: Rs {Number(o.shippingCost || 0).toFixed(2)}</div>
                         {typeof o.taxAmount === 'number' && o.taxAmount > 0 && (
                           <div>Tax: Rs {o.taxAmount.toFixed(2)}</div>
                         )}
                       </div>
-                      <div className="text-sm font-bold text-blue-600 mt-1">Rs {Number(o.total || 0).toFixed(2)}</div>
+                      <div className="text-sm font-bold text-blue-600 mt-1">
+                        Rs {Number(o.customerTotal != null ? o.customerTotal : (o.total != null ? o.total : Math.max(0, Number(o.subtotal || 0) - Number(o.discountAmount || 0)) + Number(o.shippingCost || 0))).toFixed(2)}
+                      </div>
                     </td>
                     <td className="p-3 align-top">
                       <div className="flex items-center gap-2">

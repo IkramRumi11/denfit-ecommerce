@@ -199,8 +199,9 @@ export const ProductDetail: React.FC = () => {
     }
     if (!selectedColor && product?.colors && Array.isArray(product.colors) && product.colors.length) {
       const firstC = product.colors[0];
-                    const hex = firstC?.hex || firstC?.normalizedHex || firstC?.value || '';
+      const { hex, name } = getConsistentColor(firstC);
       if (hex) setSelectedColor(hex);
+      if (name) setSelectedColorName(name);
     }
   }, [product, selectedVariantId, selectedColor, setSelectedVariantId]);
 
@@ -1090,7 +1091,7 @@ export const ProductDetail: React.FC = () => {
             {/* Color Selection */}
             {product.colors && Array.isArray(product.colors) && product.colors.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Select Color: <span className="text-gray-500 font-normal">{getColorName(selectedColorName || selectedColor)}</span></h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Select Color: <span className="text-gray-500 font-normal">{selectedColorName || (selectedColor ? getColorName(selectedColor) : '')}</span></h3>
                 <div className="flex items-center gap-3 mb-3">
                   {product.colors.map((c: any, idx: number) => {
                     const { hex, name } = getConsistentColor(c);
@@ -1420,10 +1421,10 @@ export const ProductDetail: React.FC = () => {
                   {(() => {
                     try {
                       if (Array.isArray(product.colors) && product.colors.length) {
-                        return product.colors.map((c: any) => getColorName(c.name || c.displayName || c.value || c.hex || '')).filter(Boolean).join(', ');
+                        return product.colors.map((c: any) => c.name || c.displayName || getColorName(c.value || c.hex || '')).filter(Boolean).join(', ');
                       }
                       if (Array.isArray((product as any).variants) && (product as any).variants.length) {
-                        return (product as any).variants.map((v: any) => getColorName(v.name || v.hex || '')).filter(Boolean).join(', ');
+                        return (product as any).variants.map((v: any) => v.name || getColorName(v.hex || '')).filter(Boolean).join(', ');
                       }
                     } catch (e) {
                       // ignore

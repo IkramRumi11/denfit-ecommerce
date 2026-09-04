@@ -240,7 +240,8 @@ export const COLOR_HEX_MAP: Record<string, string> = Object.entries(COLOR_NAME_M
   'orange': '#FFA500',
   'pink': '#FFC0CB',
   'purple': '#800080',
-  'brown': '#8B4513',
+  'brown': '#795548',
+  'saddle brown': '#8B4513',
   'beige': '#F5F5DC',
   'teal': '#008080',
   'cyan': '#00FFFF',
@@ -254,12 +255,20 @@ export function normalizeHex(input?: string | null): string | null {
   if (!input) return null;
   let s = String(input).trim().toLowerCase();
   if (!s) return null;
-  if (s.startsWith('#')) s = s.slice(1);
-  s = s.replace(/[^0-9a-f]/g, '');
-  if (s.length === 3) {
-    s = s.split('').map(ch => ch + ch).join('');
+  if (s.startsWith('#')) {
+    s = s.slice(1);
+    if (/^[0-9a-f]{3}$/.test(s)) {
+      return s.split('').map(ch => ch + ch).join('');
+    }
+    if (/^[0-9a-f]{6}$/.test(s)) {
+      return s;
+    }
+    return null;
   }
-  if (s.length === 6 && /^[0-9a-f]{6}$/.test(s)) return s;
+  // If no leading '#', only treat as hex if it strictly matches exactly 6 hex characters
+  if (/^[0-9a-f]{6}$/.test(s)) {
+    return s;
+  }
   return null;
 }
 
@@ -300,20 +309,18 @@ export function getColorName(input?: string | null): string {
     return '';
   }
 
-  // Check if input is a hex code
-  const hex = normalizeHex(str);
-  if (hex) {
-    const exact = COLOR_NAME_MAP[hex];
-    if (exact) return exact;
-    return findClosestColorName(hex);
+  // If input is an explicit hex code (starts with '#') or a strict 6-digit hex string
+  const isExplicitHex = str.startsWith('#') || /^[0-9a-fA-F]{6}$/.test(str);
+  if (isExplicitHex) {
+    const hex = normalizeHex(str);
+    if (hex) {
+      const exact = COLOR_NAME_MAP[hex];
+      if (exact) return exact;
+      return findClosestColorName(hex);
+    }
   }
 
-  // If input starts with # or is hex-like
-  if (/^#[0-9a-fA-F]{3,6}$/.test(str)) {
-    const norm = normalizeHex(str);
-    if (norm) return findClosestColorName(norm);
-  }
-
+  // Otherwise, input is already a human-friendly color name (e.g. "Black", "Brown", "Navy Blue", "Dark Olive", etc.)
   // Clean string that might have hex codes in parentheses or trailing hex
   const cleaned = str.replace(/#?[0-9a-fA-F]{6}/gi, '').replace(/[()#_-]/g, ' ').trim();
   const target = cleaned || str;
@@ -352,3 +359,4 @@ export function resolveColorHex(input?: string | null): string | null {
 }
 
 export default getColorName;
+

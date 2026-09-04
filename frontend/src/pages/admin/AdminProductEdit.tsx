@@ -661,7 +661,7 @@ const AdminProductEdit: React.FC = () => {
       // Auto-fill hex if name is entered
       if (field === 'name') {
         try {
-          if (normalized.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(normalized)) {
+          if (normalized.startsWith('#')) {
             cur.name = getColorName(normalized);
             const resolved = resolveColorHex(cur.name) || normalized;
             cur.value = resolved;
@@ -684,10 +684,10 @@ const AdminProductEdit: React.FC = () => {
         } catch (e) {
           // ignore parse errors
         }
-        // Auto-fill friendly name if empty or entered as a hex code
+        // Only auto-fill friendly name if empty or entered as a hex code
         if (!cur.name || cur.name.startsWith('#')) {
           try {
-            const friendly = getColorName(cur.hex || cur.value || cur.name);
+            const friendly = getColorName(cur.hex || cur.value);
             if (friendly) cur.name = friendly;
           } catch (e) {}
         }

@@ -156,8 +156,9 @@ const Orders: React.FC = () => {
                     </div>
 
                     <div className="text-right">
-                      <div className="text-sm text-gray-700">{o.items?.length ?? 0} items</div>
-                      <div className="font-semibold mt-1">Rs {Number(o.total || o.totalAmount || 0).toLocaleString()}</div>
+                      <div className="font-semibold mt-1">
+                        Rs {Number(o.customerTotal != null ? o.customerTotal : (Number(o.discountAmount || 0) > 0 ? Math.max(0, Number(o.subtotal || 0) - Number(o.discountAmount || 0)) + Number(o.shippingCost || 0) : (o.total || o.totalAmount || 0))).toLocaleString()}
+                      </div>
                       <Link to={`/orders/${orderKey}`} className="text-blue-600 text-sm mt-2 inline-block">View</Link>
                     </div>
                   </div>

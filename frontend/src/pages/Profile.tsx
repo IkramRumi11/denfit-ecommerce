@@ -297,7 +297,7 @@ export const Profile: React.FC = () => {
                             {getStatusText(order.status)}
                           </span>
                           <p className="text-sm text-gray-900 font-medium mt-1">
-                            {items.length} items • Rs {Number(order.total || order.totalAmount || 0).toLocaleString()}
+                            {items.length} items • Rs {Number(order.customerTotal != null ? order.customerTotal : (Number(order.discountAmount || 0) > 0 ? Math.max(0, Number(order.subtotal || 0) - Number(order.discountAmount || 0)) + Number(order.shippingCost || 0) : (order.total || order.totalAmount || 0))).toLocaleString()}
                           </p>
                         </div>
                       </div>

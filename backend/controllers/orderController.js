@@ -522,16 +522,19 @@ export const getOrders = async (req, res) => {
     const orders = await Order.find({ customer: req.user.id })
       .sort({ createdAt: -1 });
 
-    // Transform orders for customer-facing responses: override `total` to exclude tax
+    // Transform orders for customer-facing responses: override `total` to exclude tax and deduct discounts
     const customerOrders = (orders || []).map(o => {
       const ord = o && o.toObject ? o.toObject() : JSON.parse(JSON.stringify(o || {}));
       const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
-      const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((subtotal < 5000) ? 300 : 0);
-      const customerTotal = Math.round((subtotal + shippingCost) * 100) / 100;
+      const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
+      const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+      const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+      const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
       // Present tax-excluded total to customer and hide tax fields
       ord.customerTotal = customerTotal;
       ord.originalTotal = customerTotal;
       ord.taxAmount = 0;
+      ord.discountAmount = discountAmount;
       if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
       if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
       if (typeof ord.storedTax !== 'undefined') delete ord.storedTax;
@@ -565,20 +568,23 @@ export const getOrder = async (req, res) => {
       });
     }
 
-    // Prepare a customer-facing snapshot: compute subtotal/shipping and override total to exclude tax
+    // Prepare a customer-facing snapshot: compute subtotal/shipping/discount and override total
     const ord = order && order.toObject ? order.toObject() : JSON.parse(JSON.stringify(order || {}));
     const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
-    const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((subtotal < 5000) ? 300 : 0);
-    const customerTotal = Math.round((subtotal + shippingCost) * 100) / 100;
+    const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+    const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
     ord.customerTotal = customerTotal;
     ord.originalTotal = customerTotal;
     ord.taxAmount = 0;
+    ord.discountAmount = discountAmount;
     if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
     if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
     if (typeof ord.storedTax !== 'undefined') delete ord.storedTax;
     ord.subtotal = subtotal;
     ord.shippingCost = shippingCost;
-    ord.total = customerTotal; // tax-excluded for customer
+    ord.total = customerTotal; // tax-excluded, discount deducted for customer
 
     res.status(200).json({ success: true, data: { order: ord } });
   } catch (error) {

@@ -64,20 +64,23 @@ import { getColorName } from '../utils/colorHelper.js';
 const transformOrderForDisplay = (orderDoc) => {
   const ord = orderDoc && orderDoc.toObject ? orderDoc.toObject() : JSON.parse(JSON.stringify(orderDoc || {}));
   const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
-  const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((subtotal < 5000) ? 300 : 0);
-  const customerTotal = Math.round((subtotal + shippingCost) * 100) / 100;
+  const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+  const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
   ord.customerTotal = customerTotal;
   // For API responses, hide tax values and ensure displayed totals exclude tax.
   // Keep DB fields for compatibility, but do not expose historic tax values here.
   ord.originalTotal = customerTotal;
   ord.taxAmount = 0;
+  ord.discountAmount = discountAmount;
   // Remove any legacy tax fields from the response object so UIs don't display them
   if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
   if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
   if (typeof ord.storedTax !== 'undefined') delete ord.storedTax;
   ord.subtotal = subtotal;
   ord.shippingCost = shippingCost;
-  // Override `total` for all returned API views so UIs (admin + customer) show tax-excluded totals
+  // Override `total` for all returned API views so UIs (admin + customer) show accurate discounted totals
   ord.total = customerTotal;
   return ord;
 };
@@ -139,10 +142,10 @@ export const getDashboardStats = async (req, res) => {
       Product.countDocuments(),
       Order.countDocuments(),
       
-      // Revenue calculations — use subtotal + shipping to exclude stored tax from displayed revenue
+      // Revenue calculations — use discounted subtotal + shipping to exclude stored tax and deduct discounts
       Order.aggregate([
         { $match: { paymentStatus: 'paid' } },
-        { $group: { _id: null, total: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
       ]),
       
       // Today's orders
@@ -150,7 +153,7 @@ export const getDashboardStats = async (req, res) => {
         createdAt: { $gte: startOfToday } 
       }),
       
-      // Monthly revenue (subtotal + shipping)
+      // Monthly revenue (discounted subtotal + shipping)
       Order.aggregate([
         { 
           $match: { 
@@ -158,10 +161,10 @@ export const getDashboardStats = async (req, res) => {
             createdAt: { $gte: startOfMonth }
           } 
         },
-        { $group: { _id: null, total: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
       ]),
       
-      // Yearly revenue (subtotal + shipping)
+      // Yearly revenue (discounted subtotal + shipping)
       Order.aggregate([
         { 
           $match: { 
@@ -169,7 +172,7 @@ export const getDashboardStats = async (req, res) => {
             createdAt: { $gte: startOfYear }
           } 
         },
-        { $group: { _id: null, total: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
       ]),
       
       // Low stock products — compute availableQuantity server-side and count those <= threshold
@@ -220,7 +223,7 @@ export const getDashboardStats = async (req, res) => {
             createdAt: { $gte: startOfMonth }
           }
         },
-        { $group: { _id: null, total: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
       ]),
       Order.aggregate([
         {
@@ -229,7 +232,7 @@ export const getDashboardStats = async (req, res) => {
             createdAt: { $gte: previousMonthStart, $lt: startOfMonth }
           }
         },
-        { $group: { _id: null, total: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
       ]),
 
       // New users this month vs previous month
@@ -1271,13 +1274,13 @@ export const getAllOrders = async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
-    // Calculate totals for summary — exclude stored tax from displayed revenue
+    // Calculate totals for summary — exclude stored tax and deduct discounts from displayed revenue
     const revenueStats = await Order.aggregate([
       { $match: query },
       { $group: {
         _id: null,
-        totalRevenue: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } },
-        averageOrder: { $avg: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } }
+        totalRevenue: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } },
+        averageOrder: { $avg: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } }
       } }
     ]);
 

@@ -188,7 +188,9 @@ orderSchema.pre('save', function(next) {
   if (!TAX_FEATURE_ENABLED) {
     try {
       const subtotal = Number(this.subtotal || 0);
+      const discountAmount = Number(this.discountAmount || 0);
       const shippingCost = Number(this.shippingCost || 0);
+      const discountedSubtotal = Math.max(0, subtotal - discountAmount);
       // Preserve legacyTax/legacyTotal if this document currently has non-zero values
       if (typeof this.taxAmount === 'number' && Number(this.taxAmount) > 0 && typeof this.legacyTax === 'undefined') {
         this.legacyTax = Number(this.taxAmount);
@@ -196,9 +198,9 @@ orderSchema.pre('save', function(next) {
       if (typeof this.total === 'number' && typeof this.legacyTotal === 'undefined') {
         this.legacyTotal = Number(this.total);
       }
-      // Force tax amount to zero and set total to subtotal + shipping
+      // Force tax amount to zero and set total to discountedSubtotal + shipping
       this.taxAmount = 0;
-      this.total = Math.round((subtotal + shippingCost) * 100) / 100;
+      this.total = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
     } catch (e) {
       // don't block save on unexpected errors here
     }

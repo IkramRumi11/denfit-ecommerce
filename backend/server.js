@@ -37,6 +37,7 @@ import notificationJob from './jobs/notification.job.js';
 import { startReservationSweeper } from './jobs/reservationSweeper.job.js';
 import paymentsRoutes from './routes/payments.js';
 import contentRoutes from './routes/content.js';
+import Order from './models/Order.js';
 import errorHandler, { notFound } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -267,11 +268,35 @@ const verifyPuppeteer = async () => {
   }
 };
 
+const healPromoDiscountOrders = async () => {
+  try {
+    const ordersToHeal = await Order.find({ discountAmount: { $gt: 0 } });
+    let healedCount = 0;
+    for (const ord of ordersToHeal) {
+      const sub = Number(ord.subtotal || 0);
+      const disc = Number(ord.discountAmount || 0);
+      const ship = Number(ord.shippingCost || 0);
+      const expectedTotal = Math.round((Math.max(0, sub - disc) + ship) * 100) / 100;
+      if (Math.abs(Number(ord.total || 0) - expectedTotal) > 0.01) {
+        ord.total = expectedTotal;
+        await ord.save();
+        healedCount++;
+      }
+    }
+    if (healedCount > 0) {
+      console.log(`✅ [Order Heal] Healed ${healedCount} historical order(s) with unapplied promo discount.`);
+    }
+  } catch (e) {
+    console.warn('[Order Heal] Notice:', e?.message || e);
+  }
+};
+
 // 🏁 Start Server
 // ==============================
 const startServer = async () => {
   try {
     await connectDB();
+    healPromoDiscountOrders(); // run order discount heal in background
     verifyPuppeteer(); // run check in background
 
     const sslKey = process.env.SSL_KEY_PATH;

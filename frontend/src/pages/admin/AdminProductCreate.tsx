@@ -400,7 +400,7 @@ const AdminProductCreate: React.FC = () => {
       // Auto-fill hex if name is entered
       if (field === 'name') {
         try {
-          if (normalized.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(normalized)) {
+          if (normalized.startsWith('#')) {
             cur.name = getColorName(normalized);
             const resolved = resolveColorHex(cur.name) || normalized;
             cur.value = resolved;
@@ -424,10 +424,10 @@ const AdminProductCreate: React.FC = () => {
         } catch (e) {
           // ignore parse errors
         }
-        // If admin didn't provide an explicit name or entered a hex as name, auto-fill a friendly name
+        // Only auto-fill friendly name if admin did not provide an explicit name or entered a hex code as name
         if (!cur.name || cur.name.startsWith('#')) {
           try {
-            const friendly = getColorName(cur.hex || cur.value || cur.name);
+            const friendly = getColorName(cur.hex || cur.value);
             if (friendly) cur.name = friendly;
           } catch (e) {}
         }

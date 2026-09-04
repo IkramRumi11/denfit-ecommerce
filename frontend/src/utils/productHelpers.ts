@@ -6,7 +6,7 @@ export function getConsistentColor(c: any): { hex: string; name: string } {
   if (!c) return { hex: '#000000', name: 'Color' };
   if (typeof c === 'string') {
     const raw = c.trim();
-    if (raw.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(raw)) {
+    if (raw.startsWith('#') || /^[0-9a-fA-F]{6}$/.test(raw)) {
       const hex = raw.startsWith('#') ? raw : `#${raw}`;
       return { hex, name: getColorName(hex) || hex };
     }
@@ -17,18 +17,19 @@ export function getConsistentColor(c: any): { hex: string; name: string } {
   const rawHex = c?.hex || c?.normalizedHex || (typeof c?.value === 'string' && c.value.startsWith('#') ? c.value : undefined);
   const rawName = c?.name && !c.name.startsWith('#') ? c.name : (c?.displayName || '');
 
-  if (rawHex && (rawHex.startsWith('#') || /^[0-9a-fA-F]{3,6}$/.test(rawHex))) {
-    const hex = rawHex.startsWith('#') ? rawHex : `#${rawHex}`;
-    const derivedName = getColorName(hex);
-    // If rawName is a standard color that completely contradicts the hex, prioritize derivedName
-    const standardConflict = rawName && ['black', 'white', 'gray', 'grey', 'red', 'blue', 'green', 'yellow', 'brown', 'pink', 'purple', 'orange'].includes(rawName.toLowerCase()) && derivedName && rawName.toLowerCase() !== derivedName.toLowerCase();
-    const name = standardConflict ? derivedName : (rawName || derivedName || 'Color');
-    return { hex, name };
+  // 1. If rawName is already a valid human-friendly color name, preserve it as the single source of truth
+  if (rawName) {
+    const hex = (rawHex && (rawHex.startsWith('#') || /^[0-9a-fA-F]{6}$/.test(rawHex) || /^[0-9a-fA-F]{3}$/.test(rawHex)))
+      ? (rawHex.startsWith('#') ? rawHex : `#${rawHex}`)
+      : (resolveColorHex(rawName) || resolveColorHex(c?.value) || '#000000');
+    return { hex, name: rawName };
   }
 
-  if (rawName) {
-    const hex = resolveColorHex(rawName) || resolveColorHex(c?.value) || '#000000';
-    return { hex, name: rawName };
+  // 2. If only hex is provided, resolve name from hex
+  if (rawHex && (rawHex.startsWith('#') || /^[0-9a-fA-F]{6}$/.test(rawHex) || /^[0-9a-fA-F]{3}$/.test(rawHex))) {
+    const hex = rawHex.startsWith('#') ? rawHex : `#${rawHex}`;
+    const name = getColorName(hex) || 'Color';
+    return { hex, name };
   }
 
   const val = String(c?.value || '');
@@ -150,7 +151,7 @@ export const resolveProductSelection = (
 
   // 3. Fallback from requested color
   const reqColor = requested?.color || requested?.colorName;
-  const colName = requested?.colorName || (reqColor ? getColorName(reqColor) : undefined);
+  const colName = requested?.colorName || (reqColor ? (reqColor.startsWith('#') ? getColorName(reqColor) : reqColor) : undefined);
   const colHex = requested?.color?.startsWith('#') ? requested.color : (colName ? resolveColorHex(colName) : undefined);
 
   return {
