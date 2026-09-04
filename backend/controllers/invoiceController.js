@@ -57,6 +57,7 @@ export const getInvoice = async (req, res, next) => {
     const storedTax = (typeof order.legacyTax === 'number' && !Number.isNaN(order.legacyTax))
       ? Number(order.legacyTax)
       : ((typeof order.taxAmount === 'number' && !Number.isNaN(order.taxAmount)) ? Number(order.taxAmount) : Math.round((subtotal * TAX_RATE) * 100) / 100);
+    const tax = 0; // customer-facing tax is omitted
     // Promotional discount calculation
     const discount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
     const discountedSubtotal = Math.max(0, subtotal - discount);
