@@ -9,7 +9,8 @@ import {
   Mail,
   Settings, 
   Zap,
-  Megaphone 
+  Megaphone,
+  Tag
 } from 'lucide-react';
 
 export type AdminMenuItem = {
@@ -23,6 +24,7 @@ export type AdminMenuItem = {
 const adminMenu: AdminMenuItem[] = [
   { to: '/admin', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
   { to: '/admin/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, permission: 'orders.view' },
+  { to: '/admin/promo-codes', label: 'Promo Codes', icon: <Tag className="w-5 h-5" />, permission: 'products.view' },
   { to: '/admin/reviews', label: 'Reviews', icon: <Users className="w-5 h-5" />, permission: 'reviews.manage' },
   { to: '/admin/products', label: 'Products', icon: <Package className="w-5 h-5" />, permission: 'products.view' },
   { to: '/admin/users', label: 'Customers', icon: <Users className="w-5 h-5" />, permission: 'users.view' },

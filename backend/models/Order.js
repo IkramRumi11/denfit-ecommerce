@@ -55,9 +55,9 @@ const orderSchema = new mongoose.Schema({
     name: { type: String, required: true },
     street: { type: String, required: true },
     city: { type: String, required: true },
-    // `state` is optional because some frontends do not collect it for certain countries
+    // `state` and `zipCode` are optional
     state: { type: String },
-    zipCode: { type: String, required: true },
+    zipCode: { type: String, default: '' },
     country: { type: String, default: 'Pakistan' },
     phone: { type: String, required: true },
     // Allow storing an email on the shipping address so orders always carry a contact email
@@ -111,6 +111,15 @@ const orderSchema = new mongoose.Schema({
   subtotal: {
     type: Number,
     required: true
+  },
+  promoCode: {
+    type: String,
+    trim: true,
+    uppercase: true
+  },
+  discountAmount: {
+    type: Number,
+    default: 0
   },
   taxAmount: {
     type: Number,

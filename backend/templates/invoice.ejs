@@ -499,6 +499,18 @@
                         Rs <%= typeof subtotal !== 'undefined' ? Number(subtotal).toFixed(2) : (order.subtotal ? Number(order.subtotal).toFixed(2) : '0.00') %>
                       </td>
                     </tr>
+                    <% 
+                      const effDiscount = (typeof discount !== 'undefined' && discount > 0) ? discount : ((order.discountAmount && order.discountAmount > 0) ? order.discountAmount : 0);
+                      const effPromo = (typeof promoCode !== 'undefined' && promoCode) ? promoCode : (order.promoCode || 'PROMO');
+                    %>
+                    <% if (effDiscount > 0) { %>
+                    <tr>
+                      <td colspan="3" class="align-right" style="padding:8px;color:#16a34a">Promo Discount (<%= effPromo %>)</td>
+                      <td class="align-right" style="padding:8px;color:#16a34a">
+                        -Rs <%= Number(effDiscount).toFixed(2) %>
+                      </td>
+                    </tr>
+                    <% } %>
                     <!-- TAX FEATURE TEMPORARILY DISABLED FOR CUSTOMER-INVOICES
                          Original GST row preserved below for future reactivation. -->
                     <% if (typeof storedTax !== 'undefined' && storedTax != null) { %>

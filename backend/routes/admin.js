@@ -71,6 +71,14 @@ import {
   listCampaigns,
   deleteCampaign
 } from '../controllers/adminEmailMarketingController.js';
+import {
+  getAllPromoCodes,
+  getPromoCodeById,
+  createPromoCode,
+  updatePromoCode,
+  deletePromoCode,
+  togglePromoCode
+} from '../controllers/promoCodeController.js';
 
 const router = express.Router();
 
@@ -506,6 +514,14 @@ router.post('/system/backup', backupDatabase);
 router.get('/features', getAllFlags);
 router.post('/features', createFlag);
 router.patch('/features/:id', updateFlag);
-router.delete('/features/:id', deleteFlag);
+// ========================
+// PROMO CODES Management (Admin)
+// ========================
+router.get('/promo-codes', getAllPromoCodes);
+router.post('/promo-codes', createPromoCode);
+router.get('/promo-codes/:id', getPromoCodeById);
+router.put('/promo-codes/:id', updatePromoCode);
+router.delete('/promo-codes/:id', deletePromoCode);
+router.patch('/promo-codes/:id/toggle', togglePromoCode);
 
 export default router;

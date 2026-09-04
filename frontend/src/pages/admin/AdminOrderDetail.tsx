@@ -314,9 +314,11 @@ const AdminOrderDetail: React.FC = () => {
 
   /* ---------- helpers ---------- */
   const subtotal = order?.subtotal ?? 0;
+  const discountAmount = order?.discountAmount ?? 0;
+  const promoCode = order?.promoCode;
   const shippingCost = order?.shippingCost ?? 0;
   // Admin UI should display tax-excluded totals only
-  const displayedTotal = (typeof order?.total === 'number' && !Number.isNaN(Number(order.total))) ? Number(order.total) : Math.round((subtotal + shippingCost) * 100) / 100;
+  const displayedTotal = (typeof order?.total === 'number' && !Number.isNaN(Number(order.total))) ? Number(order.total) : Math.round(((subtotal - discountAmount) + shippingCost) * 100) / 100;
 
   /* ---------- render ---------- */
   if (loading) {
@@ -483,6 +485,12 @@ const AdminOrderDetail: React.FC = () => {
             <h4 className="text-sm text-slate-500">Summary</h4>
             <div className="mt-3 space-y-3">
               <div className="flex justify-between text-sm text-slate-600"><div>Subtotal</div><div>{formatCurrency(subtotal)}</div></div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                  <div>Promo Discount {promoCode ? `(${promoCode})` : ''}</div>
+                  <div>-{formatCurrency(discountAmount)}</div>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-slate-600"><div>Shipping</div><div>{formatCurrency(shippingCost)}</div></div>
               <div className="flex justify-between text-lg font-semibold"><div>Total</div><div>{formatCurrency(displayedTotal)}</div></div>
             </div>
@@ -646,11 +654,14 @@ function renderInvoiceHTML(order: OrderType) {
       <td style="padding:8px;border:1px solid #ddd;text-align:right">Rs ${Number(it.price).toFixed(2)}</td>
     </tr>
   `}).join("");
-  // Compute subtotal and shipping; do NOT include tax in customer-facing invoice
+  // Compute subtotal, discount, and shipping; do NOT include tax in customer-facing invoice
   const subtotal = typeof order.subtotal === 'number' ? Number(order.subtotal) : (order.items || []).reduce((s:any,it:any)=>s + ((Number(it.price)||0)*(Number(it.quantity)||0)), 0);
-  const shipping = typeof order.shippingCost === 'number' ? Number(order.shippingCost) : (subtotal < 5000 ? 300 : 0);
+  const discount = typeof (order as any).discountAmount === 'number' ? Number((order as any).discountAmount) : 0;
+  const promoCode = (order as any).promoCode;
+  const discountedSubtotal = Math.max(0, subtotal - discount);
+  const shipping = typeof order.shippingCost === 'number' ? Number(order.shippingCost) : (discountedSubtotal < 5000 ? 300 : 0);
   // Do not include tax in invoice preview; compute totals without tax
-  const total = Math.round((subtotal + shipping) * 100) / 100;
+  const total = typeof order.total === 'number' ? Number(order.total) : Math.round((discountedSubtotal + shipping) * 100) / 100;
 
   return `
     <html>
@@ -670,6 +681,7 @@ function renderInvoiceHTML(order: OrderType) {
           <tbody>
             ${itemsHtml}
             <tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:right"><strong>Subtotal</strong></td><td style="padding:8px;border:1px solid #ddd;text-align:right"><strong>Rs ${Number(subtotal).toFixed(2)}</strong></td></tr>
+            ${discount > 0 ? `<tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:right;color:#16a34a"><strong>Promo Discount ${promoCode ? `(${promoCode})` : ''}</strong></td><td style="padding:8px;border:1px solid #ddd;text-align:right;color:#16a34a"><strong>-Rs ${Number(discount).toFixed(2)}</strong></td></tr>` : ''}
             <!-- GST row intentionally omitted -->
             <tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:right">Shipping</td><td style="padding:8px;border:1px solid #ddd;text-align:right">Rs ${Number(shipping).toFixed(2)}</td></tr>
             <tr><td colspan="3" style="padding:8px;border:1px solid #ddd;text-align:right"><strong>Total</strong></td><td style="padding:8px;border:1px solid #ddd;text-align:right"><strong>Rs ${Number(total).toFixed(2)}</strong></td></tr>

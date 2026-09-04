@@ -13,7 +13,8 @@ import {
   Plus,
   Package,
   ArrowRight,
-  ShoppingBag
+  ShoppingBag,
+  Tag
 } from 'lucide-react';
 
 import { useCart } from '../context/CartContext';
@@ -43,6 +44,44 @@ export const Checkout: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>('cod');
   const [createdOrder, setCreatedOrder] = useState<any | null>(null);
   const [stockIssuesList, setStockIssuesList] = useState<Array<{ item: any; availableStock: number }>>([]);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any | null>(null);
+  const [promoDiscount, setPromoDiscount] = useState<number>(0);
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  const effectiveSubtotal = Math.max(0, (subtotal || 0) - promoDiscount);
+  const calculatedShipping = effectiveSubtotal >= 5000 ? 0 : 300;
+  const calculatedTotal = effectiveSubtotal + calculatedShipping + (tax || 0);
+
+  const handleApplyPromo = async () => {
+    const code = promoCodeInput.trim();
+    if (!code) return;
+    setIsApplyingPromo(true);
+    setPromoError(null);
+    try {
+      const res = await ordersAPI.validatePromo(code, subtotal || 0);
+      if (res && res.data && res.data.valid) {
+        setAppliedPromo(res.data.promoCode);
+        setPromoDiscount(res.data.discountAmount);
+        showToast(`Promo code "${code.toUpperCase()}" applied!`, 'success');
+      } else {
+        setPromoError(res?.message || 'Invalid promo code');
+      }
+    } catch (err: any) {
+      setPromoError(err?.message || 'Failed to apply promo code');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoDiscount(0);
+    setPromoCodeInput('');
+    setPromoError(null);
+    showToast('Promo code removed', 'info');
+  };
 
   // Safe array access with fallbacks
   const safeItems = Array.isArray(items) ? items : [];
@@ -68,11 +107,19 @@ export const Checkout: React.FC = () => {
   });
   const itemsCount = safeItems.length;
 
+  // Scroll to top on initial mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   // Scroll to top when order is complete or component renders complete
   useEffect(() => {
     if (isComplete) {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     }
   }, [isComplete]);
 
@@ -259,6 +306,8 @@ export const Checkout: React.FC = () => {
     }
     setStep(2);
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -343,6 +392,7 @@ export const Checkout: React.FC = () => {
           country: shippingInfo.country,
           phone: shippingInfo.phone
         },
+        promoCode: appliedPromo?.code ? appliedPromo.code.toUpperCase() : undefined,
         // Explicit customer identity fields to help backend distinguish guest vs account orders
         customerEmail: shippingInfo.email || null,
         userId: user?.id || user?._id || null,
@@ -486,7 +536,13 @@ export const Checkout: React.FC = () => {
                 <div className="p-4 rounded-xl border border-gray-100 space-y-1">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">Payment & Total</span>
                   <p className="text-gray-600">Method: <span className="font-medium text-gray-900">Cash on Delivery</span></p>
-                  <p className="text-gray-600">Estimated Delivery: <span className="font-medium text-gray-900">3–5 Business Days</span></p>
+                  <p className="text-gray-600">Estimated Delivery: <span className="font-medium text-gray-900">5–7 Days (7–9 Days for Sale items)</span></p>
+                  <p className="text-[11px] text-gray-400 leading-tight">Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.</p>
+                  {createdOrder?.discountAmount > 0 && (
+                    <p className="text-emerald-600 text-sm font-medium pt-1">
+                      Promo Discount {createdOrder.promoCode ? `(${createdOrder.promoCode})` : ''}: -{formatCurrency(createdOrder.discountAmount)}
+                    </p>
+                  )}
                   <div className="pt-2 border-t border-gray-100 mt-2">
                     <span className="text-xs text-gray-500">Total Payable Amount:</span>
                     <p className="text-lg font-bold text-gray-900">{formatCurrency(orderTotal)}</p>
@@ -578,7 +634,15 @@ export const Checkout: React.FC = () => {
                     <h2 className="text-xl font-semibold text-gray-900">Shipping Details</h2>
                   </div>
                   {step > 1 && (
-                    <button onClick={() => setStep(1)} className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    <button
+                      onClick={() => {
+                        setStep(1);
+                        window.scrollTo(0, 0);
+                        document.documentElement.scrollTop = 0;
+                        document.body.scrollTop = 0;
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
                       Edit
                     </button>
                   )}
@@ -817,15 +881,21 @@ export const Checkout: React.FC = () => {
                       </div>
 
                       <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                        {/* COD confirmation */}
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-orange-50 border border-orange-100 rounded-xl p-6 text-center">
                            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
                              <Truck className="h-6 w-6 text-orange-600" />
                            </div>
                            <h3 className="font-semibold text-gray-900 mb-1">Pay at your doorstep</h3>
-                           <p className="text-sm text-gray-600">
+                           <p className="text-sm text-gray-600 mb-3">
                              Pay in cash upon delivery. Our courier will collect the payment.
                            </p>
+                           <div className="text-xs text-gray-600 bg-white/80 rounded-lg p-3 border border-orange-200/60 text-left space-y-1">
+                             <div className="font-medium text-gray-800">🚚 Standard Delivery: <span className="font-semibold text-gray-900">5–7 working days</span></div>
+                             <div>⚡ Sale Items Delivery: <span className="font-semibold text-gray-900">7–9 working days</span> (depending on sale volume)</div>
+                             <div className="text-[11px] text-gray-500 pt-1 border-t border-orange-100">
+                               Note: Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.
+                             </div>
+                           </div>
                         </motion.div>
 
                         <button 
@@ -938,15 +1008,83 @@ export const Checkout: React.FC = () => {
                 ))}
               </div>
 
+              {/* Promotional Code */}
+              <div className="border-t border-gray-100 mt-4 pt-4">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 uppercase tracking-wider mb-2">
+                  <Tag className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Promo Code</span>
+                </label>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-emerald-700 uppercase">{appliedPromo.code}</span>
+                      <span className="text-xs text-emerald-600">
+                        ({appliedPromo.discountType === 'percentage' ? `${appliedPromo.discountAmount}% off` : `Rs ${appliedPromo.discountAmount} off`})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-xs font-medium text-red-600 hover:text-red-700 ml-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter code"
+                        value={promoCodeInput}
+                        onChange={(e) => {
+                          setPromoCodeInput(e.target.value.toUpperCase());
+                          setPromoError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleApplyPromo();
+                          }
+                        }}
+                        className="flex-1 text-sm uppercase rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 px-3 border"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPromo}
+                        disabled={!promoCodeInput.trim() || isApplyingPromo}
+                        className="btn-secondary px-3 py-2 text-sm font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isApplyingPromo ? 'Applying...' : 'Apply'}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-xs text-red-600 mt-1.5">{promoError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="border-t border-gray-100 mt-4 pt-4 space-y-3">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Subtotal</span>
                   <span>{formatCurrency(subtotal || 0)}</span>
                 </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                    <span>Discount {appliedPromo?.code ? `(${appliedPromo.code})` : ''}</span>
+                    <span>-{formatCurrency(promoDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Shipping</span>
-                  <span className="text-green-600 font-medium">
-                    {(shipping || 0) === 0 ? 'Free' : formatCurrency(shipping || 0)}
+                  <div className="flex flex-col">
+                    <span>Shipping</span>
+                    {promoDiscount > 0 && effectiveSubtotal < 5000 && (subtotal || 0) >= 5000 && (
+                      <span className="text-[11px] text-amber-600">Subtotal after discount &lt; Rs. 5,000</span>
+                    )}
+                  </div>
+                  <span className={calculatedShipping === 0 ? "text-green-600 font-medium" : "font-medium text-gray-900"}>
+                    {calculatedShipping === 0 ? 'Free' : formatCurrency(calculatedShipping)}
                   </span>
                 </div>
                 {tax > 0 && (
@@ -957,7 +1095,7 @@ export const Checkout: React.FC = () => {
                 )}
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-end">
                   <span className="text-base font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-bold text-blue-600">{formatCurrency(total || 0)}</span>
+                  <span className="text-2xl font-bold text-blue-600">{formatCurrency(calculatedTotal)}</span>
                 </div>
               </div>
 

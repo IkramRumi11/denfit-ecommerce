@@ -35,12 +35,12 @@ const AccordionItem: React.FC<{
     <div className="border-b border-gray-200">
       <button
         onClick={onClick}
-        className="w-full py-5 flex items-center justify-between text-left focus:outline-none group bg-white"
+        className="w-full py-4 flex items-center justify-between text-left focus:outline-none group bg-white"
       >
-        <span className="text-base md:text-lg font-medium text-gray-900 group-hover:text-gray-600 transition-colors uppercase tracking-wide">
+        <span className="text-sm md:text-base font-medium text-gray-900 group-hover:text-gray-600 transition-colors uppercase tracking-wide">
           {title}
         </span>
-        <span className="text-2xl font-light text-gray-400 group-hover:text-gray-900 transition-colors select-none">
+        <span className="text-xl font-light text-gray-400 group-hover:text-gray-900 transition-colors select-none">
           {isOpen ? '−' : '+'}
         </span>
       </button>
@@ -1263,12 +1263,12 @@ export const ProductDetail: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 relative">
+            <div className="flex gap-2.5 relative">
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || isAllInCart}
                 aria-busy={isAdding}
-                className="flex-1 bg-black text-white py-4 px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] shadow-sm active:scale-[0.99]"
+                className="flex-1 bg-black text-white py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
                 {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : null}
                 {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Add to Cart'}
@@ -1276,13 +1276,13 @@ export const ProductDetail: React.FC = () => {
               <button
                 onClick={handleBuyNow}
                 disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || (isAllInCart && inCartQty === 0)}
-                className="flex-1 bg-neutral-900 text-white py-4 px-6 rounded-full font-medium hover:bg-black disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all text-xs uppercase tracking-[0.2em] shadow-sm active:scale-[0.99]"
+                className="flex-1 bg-neutral-900 text-white py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-black disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
                 {isAdding ? 'Adding...' : 'Buy Now'}
               </button>
               <button
                 onClick={handleWishlistToggle}
-                className={`p-3.5 border rounded-full transition-colors flex items-center justify-center ${
+                className={`p-2 sm:p-3 border rounded-full transition-colors flex items-center justify-center ${
                   isWishlisted
                     ? 'border-red-500 bg-red-50 text-red-600'
                     : 'border-neutral-200 text-neutral-400 hover:border-neutral-500 hover:text-neutral-700'
@@ -1290,20 +1290,20 @@ export const ProductDetail: React.FC = () => {
                 title={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <Heart
-                  className={`h-5 w-5 ${
+                  className={`h-4 w-4 sm:h-5 sm:w-5 ${
                     isWishlisted ? 'text-red-500 fill-current' : 'text-neutral-400'
                   }`}
                 />
               </button>
               <button
                 onClick={() => setShareOpen(true)}
-                className="p-3.5 border border-neutral-200 rounded-full hover:border-neutral-500 hover:text-neutral-700 transition-colors"
+                className="p-2 sm:p-3 border border-neutral-200 rounded-full hover:border-neutral-500 hover:text-neutral-700 transition-colors"
                 title="Share product"
                 aria-label="Share product"
                 aria-haspopup="dialog"
                 aria-expanded={shareOpen}
               >
-                <Share2 className="h-5 w-5 text-neutral-500" />
+                <Share2 className="h-4 w-4 sm:h-5 sm:w-5 text-neutral-500" />
               </button>
 
               {/* Share popover */}
@@ -1334,26 +1334,26 @@ export const ProductDetail: React.FC = () => {
             </div>
 
             {/* Features (Truck, Returns, Secure) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-              <div className="flex items-center gap-3">
-                <Truck className="h-6 w-6 text-gray-400" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-gray-200">
+              <div className="flex items-center gap-2.5">
+                <Truck className="h-5 w-5 text-gray-400 shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-900">Free Shipping</p>
-                  <p className="text-sm text-gray-500">Over Rs 5,000</p>
+                  <p className="text-sm font-medium text-gray-900">Free Shipping</p>
+                  <p className="text-xs text-gray-500">Over Rs 5,000</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <RotateCcw className="h-6 w-6 text-gray-400" />
+              <div className="flex items-center gap-2.5">
+                <RotateCcw className="h-5 w-5 text-gray-400 shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-900">Easy Returns</p>
-                  <p className="text-sm text-gray-500">14 days return policy</p>
+                  <p className="text-sm font-medium text-gray-900">Easy Returns</p>
+                  <p className="text-xs text-gray-500">14 days return policy</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Shield className="h-6 w-6 text-gray-400" />
+              <div className="flex items-center gap-2.5">
+                <Shield className="h-5 w-5 text-gray-400 shrink-0" />
                 <div>
-                  <p className="font-medium text-gray-900">Secure Payment</p>
-                  <p className="text-sm text-gray-500">100% secure</p>
+                  <p className="text-sm font-medium text-gray-900">Secure Payment</p>
+                  <p className="text-xs text-gray-500">100% secure</p>
                 </div>
               </div>
             </div>
@@ -1461,9 +1461,20 @@ export const ProductDetail: React.FC = () => {
             isOpen={openSection === 'shipping'}
             onClick={() => toggleSection('shipping')}
           >
-            <p>
-              A shipping fee of <span className="font-medium text-gray-900">Rs.300</span> is applicable on all orders. All orders may take up to <span className="font-medium text-gray-900">3 - 5</span> working days to be delivered. All Lahore Orders would be delivered within <span className="font-medium text-gray-900">48</span> hours of the order being placed. If Lahore orders are not delivered within <span className="font-medium text-gray-900">48</span> hours, please contact our customer support or message us.
-            </p>
+            <div className="space-y-2">
+              <p>
+                A standard delivery fee of <span className="font-medium text-gray-900">Rs. 300</span> applies to all orders under Rs. 5,000. Orders of <span className="font-medium text-gray-900">Rs. 5,000 and above qualify for FREE delivery</span>.
+              </p>
+              <p>
+                Standard delivery time is consistently <span className="font-medium text-gray-900">5–7 working days</span> across Pakistan. For <span className="font-medium text-gray-900">Sale items</span>, delivery time may vary and can be <span className="font-medium text-gray-900">7–9 working days</span> depending on order volume.
+              </p>
+              <p>
+                All Lahore orders are typically delivered within <span className="font-medium text-gray-900">48 hours</span> of dispatch.
+              </p>
+              <p className="text-xs text-gray-500 italic pt-1 border-t border-gray-100">
+                Note: Delivery times may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.
+              </p>
+            </div>
           </AccordionItem>
 
           {/* Return & Exchange */}
@@ -1494,8 +1505,8 @@ export const ProductDetail: React.FC = () => {
 
         {/* --- DEDICATED REVIEW SECTION --- */}
         <div ref={reviewsRef} className="max-w-7xl mx-auto border-t border-gray-200 pt-16 mb-20 scroll-mt-24">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-10">
-            <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Customer Reviews</h2>
             <div className="flex items-center gap-2 mt-2 md:mt-0">
                <span className="text-yellow-400 font-bold text-xl">★</span>
                <span className="font-bold text-lg">{displayRating !== null ? displayRating.toFixed(1) : 'No rating'}</span>
@@ -1545,8 +1556,8 @@ export const ProductDetail: React.FC = () => {
 
         {/* Recommendations: You Might Also Like */}
         <div className="mt-12">
-          <div className="text-center mb-10">
-            <h3 className="text-2xl font-bold text-gray-900">You Might Also Like</h3>
+          <div className="text-center mb-8">
+            <h3 className="text-xl font-bold text-gray-900 tracking-tight">You Might Also Like</h3>
           </div>
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 justify-start">

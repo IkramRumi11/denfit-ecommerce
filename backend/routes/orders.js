@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 
 import { protect, optionalAuth } from '../middleware/auth.js';
 import {
@@ -7,9 +7,13 @@ import {
   getOrder,
   cancelOrder
 } from '../controllers/orderController.js';
+import { validatePromoCode } from '../controllers/promoCodeController.js';
 
 console.log('ORDERS ROUTE LOADED');
 const router = express.Router();
+
+// Validate promotional code at checkout
+router.post('/validate-promo', validatePromoCode);
 
 // Public endpoints are intentionally omitted: orders are user-specific and require auth
 // Create an order (allow guest checkout — accept optional auth so req.user is set when present)

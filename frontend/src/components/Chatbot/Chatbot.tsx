@@ -776,12 +776,12 @@ Or are you looking for something specific?`;
     if (lower.includes('delivery') || lower.includes('ship') || lower.includes('dispatch') || lower.includes('charges') || lower.includes('fee')) {
       let cityInfo = '';
       if (currentContext.city) {
-        cityInfo = `\n\n📍 For ${currentContext.city}: Delivery usually takes 3-5 working days.`;
+        cityInfo = `\n\n📍 For ${currentContext.city}: Delivery usually takes 5-7 working days (7-9 days for Sale items).`;
       } else {
         cityInfo = '\n\nPlease share your city for more accurate delivery estimates.';
       }
       
-      return `🚚 Delivery Information:\n\n⏱️ Delivery Time: 5-7 working days across Pakistan\n\n💰 Delivery Charges:\n• Orders below Rs 5,000: Flat Rs 300 delivery fee\n• Orders Rs 5,000 and above: FREE delivery\n\n📦 We use reliable courier services across all major cities.${cityInfo}`;
+      return `🚚 Delivery Information:\n\n⏱️ Standard Delivery: 5-7 working days across Pakistan\n⚡ Sale Items Delivery: 7-9 working days\n\n💰 Delivery Charges:\n• Orders below Rs 5,000: Flat Rs 300 delivery fee\n• Orders Rs 5,000 and above: FREE delivery\n\n📦 We use reliable courier services across all major cities.${cityInfo}\n\n⚠️ Note: Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.`;
     }
 
     // Return / exchange / warranty

@@ -133,6 +133,12 @@ const OrderDetail: React.FC = () => {
           <h3 className="font-semibold mb-4">Summary</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(order.subtotal || 0)}</span></div>
+            {order && (order.discountAmount || 0) > 0 && (
+              <div className="flex justify-between text-emerald-600 font-medium">
+                <span>Promo Discount {order.promoCode ? `(${order.promoCode})` : ''}</span>
+                <span>-{formatCurrency(order.discountAmount || 0)}</span>
+              </div>
+            )}
             {order && (order.taxAmount || 0) > 0 && (
               <div className="flex justify-between"><span>Tax</span><span>{formatCurrency(order.taxAmount || 0)}</span></div>
             )}

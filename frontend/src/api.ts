@@ -1,5 +1,5 @@
 // frontend/src/api.ts
-import { Product, User, CartItem, Order, ApiResponse } from "./types";
+import { Product, User, CartItem, Order, PromoCode, ApiResponse } from "./types";
 
 const env = (import.meta as any).env;
 const defaultApiUrl = env?.PROD ? '' : 'http://localhost:3002';
@@ -388,6 +388,18 @@ export const ordersAPI = {
     return { orders };
   },
   getById: (id: string) => handleRequest<{ order: Order }>(`/orders/${id}`),
+  validatePromo: (code: string, subtotal: number) =>
+    handleRequest<{
+      valid: boolean;
+      promoCode: PromoCode;
+      discountAmount: number;
+      discountedSubtotal: number;
+      shippingCost: number;
+      finalTotal: number;
+    }>("/orders/validate-promo", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotal }),
+    }),
 };
 
 // ======================
@@ -752,6 +764,20 @@ export const adminAPI = {
     if (params) Object.entries(params).forEach(([k, v]) => (v !== undefined && v !== null) && q.append(k, String(v)));
     return handleRequest<{ data: { items: any[]; pagination?: any } }>(`/admin/email-marketing/campaigns${q.toString() ? `?${q.toString()}` : ''}`);
   },
+  // Promo Codes
+  getPromoCodes: (params?: { page?: number; limit?: number; search?: string; isActive?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.search) q.set('search', params.search);
+    if (params?.isActive !== undefined) q.set('isActive', String(params.isActive));
+    return handleRequest<{ promoCodes: PromoCode[]; pagination: { current: number; pages: number; total: number } }>(`/admin/promo-codes${q.size ? `?${q.toString()}` : ''}`);
+  },
+  getPromoCode: (id: string) => handleRequest<{ promoCode: PromoCode }>(`/admin/promo-codes/${id}`),
+  createPromoCode: (payload: Partial<PromoCode>) => handleRequest<{ promoCode: PromoCode }>(`/admin/promo-codes`, { method: 'POST', body: JSON.stringify(payload) }),
+  updatePromoCode: (id: string, payload: Partial<PromoCode>) => handleRequest<{ promoCode: PromoCode }>(`/admin/promo-codes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deletePromoCode: (id: string) => handleRequest(`/admin/promo-codes/${id}`, { method: 'DELETE' }),
+  togglePromoCode: (id: string) => handleRequest<{ promoCode: PromoCode }>(`/admin/promo-codes/${id}/toggle`, { method: 'PATCH' }),
 };
 
 // ======================

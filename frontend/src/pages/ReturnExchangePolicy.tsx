@@ -193,7 +193,7 @@ export const ReturnExchangePolicy = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-900 text-lg mb-1">Receive Replacement</h4>
-                  <p>After our quality assurance team inspects the returned item, your requested replacement will be dispatched within 3-5 working days.</p>
+                  <p>After our quality assurance team inspects the returned item, your requested replacement will be dispatched within 5-7 working days (7-9 working days for sale items). Note that delivery timelines may be affected by weather conditions, disasters, local restrictions, or circumstances beyond our control.</p>
                 </div>
               </div>
             </div>

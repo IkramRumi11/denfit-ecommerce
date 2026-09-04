@@ -57,14 +57,15 @@ export const getInvoice = async (req, res, next) => {
     const storedTax = (typeof order.legacyTax === 'number' && !Number.isNaN(order.legacyTax))
       ? Number(order.legacyTax)
       : ((typeof order.taxAmount === 'number' && !Number.isNaN(order.taxAmount)) ? Number(order.taxAmount) : Math.round((subtotal * TAX_RATE) * 100) / 100);
-    // For customer-facing invoice, zero-out tax to avoid showing or charging customers.
-    const tax = 0; // customer-facing tax suppressed
-    // Shipping cost: use stored shippingCost if present; otherwise apply rule: subtotal < 5000 => 300 fixed, else 0
-    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((subtotal < 5000) ? 300 : 0);
+    // Promotional discount calculation
+    const discount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discount);
+    // Shipping cost: use stored shippingCost if present; otherwise apply rule: discountedSubtotal < 5000 => 300 fixed, else 0
+    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
     // Preserve original total calculation in variable for future use (not used in customer invoice)
-    const originalTotal = Math.round((subtotal + storedTax + shipping) * 100) / 100;
-    // But for customer-facing invoice, exclude tax
-    const total = Math.round((subtotal + tax + shipping) * 100) / 100;
+    const originalTotal = Math.round((discountedSubtotal + storedTax + shipping) * 100) / 100;
+    // Customer-facing invoice excludes tax: discountedSubtotal + shipping
+    const total = (typeof order.total === 'number' && !Number.isNaN(order.total)) ? Number(order.total) : Math.round((discountedSubtotal + tax + shipping) * 100) / 100;
     // Amount due (if paid, zero)
     const amount = (String(order.paymentStatus || '').toLowerCase() === 'paid') ? 0 : total;
 
@@ -144,6 +145,8 @@ export const getInvoice = async (req, res, next) => {
       order: Object.assign({}, order, { formattedPaymentMethod: formatPaymentMethod(order.paymentMethod) }),
       totalItems,
       subtotal,
+      discount,
+      promoCode: order.promoCode || '',
       // include storedTax so templates or admin code can access preserved value if needed
       tax: tax,
       storedTax,
@@ -185,10 +188,13 @@ export const getInvoicePdf = async (req, res, next) => {
       ? Number(order.legacyTax)
       : ((typeof order.taxAmount === 'number' && !Number.isNaN(order.taxAmount)) ? Number(order.taxAmount) : Math.round((subtotal * TAX_RATE) * 100) / 100);
     const tax = 0; // suppressed for customer PDF
-    // Shipping cost: use stored shippingCost if present; otherwise apply rule: subtotal < 5000 => 300 fixed, else 0
-    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((subtotal < 5000) ? 300 : 0);
-    const originalTotal = Math.round((subtotal + storedTax + shipping) * 100) / 100;
-    const total = Math.round((subtotal + tax + shipping) * 100) / 100;
+    // Promotional discount calculation
+    const discount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discount);
+    // Shipping cost: use stored shippingCost if present; otherwise apply rule: discountedSubtotal < 5000 => 300 fixed, else 0
+    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+    const originalTotal = Math.round((discountedSubtotal + storedTax + shipping) * 100) / 100;
+    const total = (typeof order.total === 'number' && !Number.isNaN(order.total)) ? Number(order.total) : Math.round((discountedSubtotal + tax + shipping) * 100) / 100;
     const amount = (String(order.paymentStatus || '').toLowerCase() === 'paid') ? 0 : total;
     // Courier validation: require for shipped/delivered orders, optional/Not Assigned otherwise
     const isShippedOrDelivered = ['shipped', 'delivered'].includes(String(order.status).toLowerCase());
@@ -259,6 +265,8 @@ export const getInvoicePdf = async (req, res, next) => {
       order: Object.assign({}, order, { formattedPaymentMethod: formatPaymentMethod(order.paymentMethod) }),
       totalItems,
       subtotal,
+      discount,
+      promoCode: order.promoCode || '',
       tax,
       storedTax,
       shipping,

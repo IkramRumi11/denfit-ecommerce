@@ -118,11 +118,14 @@
 
             <div class="summary">
               <p><strong>Subtotal:</strong> Rs <%= (order.subtotal || 0).toFixed(2) %></p>
+              <% if (order.discountAmount && order.discountAmount > 0) { %>
+                <p style="color: #16a34a;"><strong>Promo Discount <%= order.promoCode ? '(' + order.promoCode + ')' : '' %>:</strong> -Rs <%= Number(order.discountAmount).toFixed(2) %></p>
+              <% } %>
                   <!-- TAX FEATURE TEMPORARILY DISABLED
                     Customer emails must not display tax. Original tax shown here preserved in order.taxAmount. -->
                   <% /* suppressed tax display */ %>
               <p><strong>Shipping:</strong> Rs <%= (order.shippingCost || 0).toFixed(2) %></p>
-              <p style="font-size:16px; margin-top:6px;"><strong>Total:</strong> Rs <%= ((order.subtotal || 0) + (order.shippingCost || 0)).toFixed(2) %></p>
+              <p style="font-size:16px; margin-top:6px;"><strong>Total:</strong> Rs <%= (order.total != null ? Number(order.total) : ((order.subtotal || 0) - (order.discountAmount || 0) + (order.shippingCost || 0))).toFixed(2) %></p>
             </div>
 
             <% if (order.shippingAddress) { %>

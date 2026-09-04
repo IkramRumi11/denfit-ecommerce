@@ -57,6 +57,7 @@ import EmailMarketingCreate from './pages/admin/EmailMarketingCreate';
 import EmailMarketingHistory from './pages/admin/EmailMarketingHistory';
 import AdminFilters from './pages/admin/AdminFilters';
 import AdminContentController from './pages/admin/AdminContentController';
+import AdminPromoCodes from './pages/admin/AdminPromoCodes';
 
 // Context Providers
 // NOTE: AuthProvider and SearchProvider are in main.tsx — do not re-import here
@@ -80,12 +81,17 @@ function AppContent() {
   }, []);
 
   React.useEffect(() => {
-    // Smoothly scroll to top on route change for a seamless experience.
-    try {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
+    // Reliably reset scroll to top on every route change immediately
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    // Also run on next animation frame in case animations/transitions delayed render
+    const rafId = requestAnimationFrame(() => {
       window.scrollTo(0, 0);
-    }
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [location.pathname]);
 
   // If user clicks a link to the same page currently open, scroll to top.
@@ -106,12 +112,9 @@ function AppContent() {
         // Normalize pathname (strip trailing slash)
         const normalize = (p: string) => (p.endsWith('/') && p.length > 1 ? p.slice(0, -1) : p);
         if (normalize(url.pathname) === normalize(location.pathname) && !url.hash) {
-          // Smooth scroll to top for UX when clicking the same-route link
-          try {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          } catch (e) {
-            window.scrollTo(0, 0);
-          }
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
         }
       } catch (e) {
         // invalid URL - ignore
@@ -183,6 +186,7 @@ function AppContent() {
             <Route path="products/:id/edit" element={<AdminProductEdit />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:id" element={<AdminOrderDetail />} />
+            <Route path="promo-codes" element={<AdminPromoCodes />} />
             <Route path="audits" element={<AdminAudits />} />
             <Route path="filters" element={/* Filters management */ <AdminFilters />} />
             <Route path="features" element={<AdminFeatures />} />

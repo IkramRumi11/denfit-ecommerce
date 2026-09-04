@@ -28,7 +28,7 @@ export interface Address {
   street: string;
   city: string;
   state: string;
-  zipCode: string;
+  zipCode?: string;
   country: string;
   isDefault: boolean;
 }
@@ -112,6 +112,8 @@ export interface Order {
   user: string;
   items: OrderItem[];
   subtotal: number;
+  promoCode?: string;
+  discountAmount?: number;
   shippingCost: number;
   taxAmount: number;
   total: number;
@@ -121,6 +123,24 @@ export interface Order {
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PromoCode {
+  _id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountAmount: number;
+  minOrderAmount?: number;
+  maxDiscountAmount?: number;
+  startDate?: string;
+  endDate?: string;
+  isActive: boolean;
+  maxUses?: number;
+  usedCount: number;
+  description?: string;
+  isExpired?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface OrderItem {

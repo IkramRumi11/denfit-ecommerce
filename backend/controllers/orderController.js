@@ -10,6 +10,7 @@ import StockReservation from '../models/StockReservation.js';
 import { supportsTransactions } from '../utils/dbUtils.js';
 import bus from '../events/index.js';
 import User from '../models/User.js';
+import PromoCode from '../models/PromoCode.js';
 
 export const createOrder = async (req, res) => {
   console.log('Entered createOrder');
@@ -155,7 +156,7 @@ export const createOrder = async (req, res) => {
       if (s.phone && !phoneRe.test(s.phone)) validationErrors.push('shippingAddress.phone must be + followed by 12 digits (13 chars) or start with 03 and be 11 digits');
       if (s.street && s.street.length < 20) validationErrors.push('shippingAddress.street must be at least 20 characters');
       if (s.city && s.city.length < 1) validationErrors.push('shippingAddress.city is required');
-      if (s.zipCode && !/^\d+$/.test(s.zipCode)) validationErrors.push('shippingAddress.zipCode must contain only digits');
+      if (s.zipCode && s.zipCode.length > 0 && !/^\d+$/.test(s.zipCode)) validationErrors.push('shippingAddress.zipCode must contain only digits');
 
       normalizedShippingAddress = s;
     }
@@ -195,13 +196,34 @@ export const createOrder = async (req, res) => {
 
     // Calculate totals
     const subtotal = normalizedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Validate and apply promo code if provided
+    let appliedPromoCode = null;
+    let discountAmount = 0;
+    let promoDoc = null;
+    const requestedPromo = String(req.body?.promoCode || '').trim().toUpperCase();
+    if (requestedPromo) {
+      promoDoc = await PromoCode.findOne({ code: requestedPromo });
+      if (!promoDoc) {
+        return res.status(400).json({ success: false, message: `Promo code "${requestedPromo}" is invalid or does not exist.` });
+      }
+      const promoVal = promoDoc.validateForSubtotal(subtotal);
+      if (!promoVal.valid) {
+        return res.status(400).json({ success: false, message: promoVal.message });
+      }
+      appliedPromoCode = promoDoc.code;
+      discountAmount = promoVal.calculatedDiscount;
+    }
+
     // TAX system disabled: preserve fields but set taxAmount to 0
-    // Original implementation: taxAmount = subtotal * 0.13
     const taxAmount = 0; // disabled
-    const shippingCost = subtotal < 5000 ? 300 : 0;
-    // originalTotal kept for historical/admin reporting but exclude tax when storing customer-facing total
-    const originalTotal = Math.round((subtotal + taxAmount + shippingCost) * 100) / 100;
-    const customerTotal = Math.round((subtotal + shippingCost) * 100) / 100;
+
+    // Requirement 7: Promo discount MUST be applied BEFORE determining final shipping eligibility
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const shippingCost = discountedSubtotal < 5000 ? 300 : 0;
+    // Customer-facing total includes discounted subtotal + shippingCost
+    const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
+    const originalTotal = customerTotal;
 
     // Reservation + order creation
     let order = null;
@@ -300,9 +322,11 @@ export const createOrder = async (req, res) => {
         shippingAddress: normalizedShippingAddress,
         paymentMethod,
         subtotal,
+        promoCode: appliedPromoCode || undefined,
+        discountAmount: discountAmount || 0,
         taxAmount,
         shippingCost,
-        total: originalTotal
+        total: customerTotal
       };
 
       const createOrderNonTransactional = async () => {
@@ -409,6 +433,15 @@ export const createOrder = async (req, res) => {
       throw createErr;
     } finally {
       try { if (session) await session.endSession(); } catch (e) { /* ignore */ }
+    }
+
+    // Increment promo code usage count
+    if (promoDoc) {
+      try {
+        await PromoCode.findByIdAndUpdate(promoDoc._id, { $inc: { usedCount: 1 } });
+      } catch (e) {
+        console.warn('Failed to increment promo code usedCount:', e?.message || e);
+      }
     }
 
     // Enqueue order confirmation email (best-effort)
