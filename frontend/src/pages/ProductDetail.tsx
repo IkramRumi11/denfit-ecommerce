@@ -908,8 +908,8 @@ export const ProductDetail: React.FC = () => {
 
               <div
                 ref={thumbsRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-2 scroll-smooth touch-pan-y touch-manipulation"
-                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                className="flex gap-2 overflow-x-auto no-scrollbar py-2 px-2 scroll-smooth touch-pan-x touch-pan-y touch-manipulation"
+                style={{ WebkitOverflowScrolling: 'touch' }}
               >
                 {galleryImages.map((image: any, index: number) => {
                   const imageSrc = typeof image === 'string' ? image : (image as any).url;

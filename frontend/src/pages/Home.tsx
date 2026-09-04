@@ -28,6 +28,130 @@ import { getAvailableStockForItem, isOutOfStock, isLowStock, getAvailableQuantit
 import { getColorName } from '../utils/colorNames';
 import { usePageBanner } from '../hooks/usePageBanner';
 
+interface UseAutoScrollCarouselOptions {
+  interval?: number;
+  autoPlay?: boolean;
+}
+
+function useAutoScrollCarousel({ interval = 3500, autoPlay = true }: UseAutoScrollCarouselOptions = {}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchState = useRef({
+    startX: 0,
+    startY: 0,
+    moved: false,
+    resumeTimer: null as any,
+  });
+
+  const scrollNext = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    // Loop back smoothly to beginning if at or near the end
+    if (container.scrollLeft >= maxScrollLeft - 20) {
+      container.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+
+    const item = container.querySelector("[data-carousel-item]") as HTMLElement | null;
+    const step = item ? item.getBoundingClientRect().width : container.clientWidth;
+    container.scrollBy({ left: step, behavior: "smooth" });
+  }, []);
+
+  const scrollPrev = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    // Loop back smoothly to end if at or near the start
+    if (container.scrollLeft <= 20) {
+      container.scrollTo({ left: maxScrollLeft, behavior: "smooth" });
+      return;
+    }
+
+    const item = container.querySelector("[data-carousel-item]") as HTMLElement | null;
+    const step = item ? item.getBoundingClientRect().width : container.clientWidth;
+    container.scrollBy({ left: -step, behavior: "smooth" });
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    setIsPaused(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsPaused(false);
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (touchState.current.resumeTimer) {
+      clearTimeout(touchState.current.resumeTimer);
+      touchState.current.resumeTimer = null;
+    }
+    setIsPaused(true);
+    const touch = e.touches[0];
+    touchState.current.startX = touch.clientX;
+    touchState.current.startY = touch.clientY;
+    touchState.current.moved = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchState.current.startX);
+    const dy = Math.abs(touch.clientY - touchState.current.startY);
+    if (dx > 10 || dy > 10) {
+      touchState.current.moved = true;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchState.current.resumeTimer) {
+      clearTimeout(touchState.current.resumeTimer);
+    }
+    touchState.current.resumeTimer = setTimeout(() => {
+      setIsPaused(false);
+    }, interval);
+
+    setTimeout(() => {
+      touchState.current.moved = false;
+    }, 150);
+  }, [interval]);
+
+  const hasSwiped = useCallback(() => {
+    return touchState.current.moved;
+  }, []);
+
+  useEffect(() => {
+    if (!autoPlay || isPaused) return;
+    const id = setInterval(() => {
+      scrollNext();
+    }, interval);
+    return () => clearInterval(id);
+  }, [autoPlay, isPaused, interval, scrollNext]);
+
+  useEffect(() => {
+    return () => {
+      if (touchState.current.resumeTimer) {
+        clearTimeout(touchState.current.resumeTimer);
+      }
+    };
+  }, []);
+
+  return {
+    ref: containerRef,
+    scrollNext,
+    scrollPrev,
+    handleMouseEnter,
+    handleMouseLeave,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    hasSwiped,
+  };
+}
+
 const LuxuryHomePage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
@@ -276,51 +400,10 @@ const LuxuryHomePage = () => {
 
   const formatPrice = (price: number) => `₨${price.toLocaleString()}`;
 
-  // Carousel refs + state for featured & trending
-  const featuredRef = useRef<HTMLDivElement | null>(null);
-  const trendingRef = useRef<HTMLDivElement | null>(null);
-  const collectionsRef = useRef<HTMLDivElement | null>(null);
-  const [featuredHover, setFeaturedHover] = useState(false);
-  const [trendingHover, setTrendingHover] = useState(false);
-  const [collectionsHover, setCollectionsHover] = useState(false);
-
-  const scrollByAmount = useCallback((container: HTMLElement | null, amount: number) => {
-    if (!container) return;
-    container.scrollBy({ left: amount, behavior: "smooth" });
-  }, []);
-
-  const scrollNext = useCallback((container: HTMLElement | null) => {
-    if (!container) return;
-    const item = container.querySelector('[data-carousel-item]') as HTMLElement | null;
-    const step = (item?.clientWidth || container.clientWidth) ;
-    scrollByAmount(container, step);
-  }, [scrollByAmount]);
-
-  const scrollPrev = useCallback((container: HTMLElement | null) => {
-    if (!container) return;
-    const item = container.querySelector('[data-carousel-item]') as HTMLElement | null;
-    const step = (item?.clientWidth || container.clientWidth) ;
-    scrollByAmount(container, -step);
-  }, [scrollByAmount]);
-
-  // Autoplay: advance every 5s when not hovered
-  useEffect(() => {
-    const container = featuredRef.current;
-    if (!container) return;
-    const id = window.setInterval(() => {
-      if (!featuredHover) scrollNext(container);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [featuredRef, featuredHover, scrollNext]);
-
-  useEffect(() => {
-    const container = collectionsRef.current;
-    if (!container) return;
-    const id = window.setInterval(() => {
-      if (!collectionsHover) scrollNext(container);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [collectionsRef, collectionsHover, scrollNext]);
+  // Carousel hooks for category, featured & trending
+  const collectionsCarousel = useAutoScrollCarousel({ interval: 3500 });
+  const featuredCarousel = useAutoScrollCarousel({ interval: 3500 });
+  const trendingCarousel = useAutoScrollCarousel({ interval: 3500 });
 
   // Fetch collections from API (fallback to defaults)
   useEffect(() => {
@@ -349,64 +432,58 @@ const LuxuryHomePage = () => {
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    const container = trendingRef.current;
-    if (!container) return;
-    const id = window.setInterval(() => {
-      if (!trendingHover) scrollNext(container);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [trendingRef, trendingHover, scrollNext]);
-
-  const ProductCard = ({ product }: { product: Product }) => {
+  const ProductCard = ({ product, hasSwiped }: { product: Product; hasSwiped?: () => boolean }) => {
     const imageSrc = primaryImage(product) || "https://via.placeholder.com/300";
-        const isQuickOpen = quickAddProduct && (quickAddProduct._id ?? quickAddProduct.id) === (product._id ?? product.id);
+    const isQuickOpen = quickAddProduct && (quickAddProduct._id ?? quickAddProduct.id) === (product._id ?? product.id);
 
-        // compute pricing/discount for badge
-        const pPrice = priceNumber(product);
-        const pOriginal = (product as any).originalPrice || (product as any).compareAtPrice || undefined;
-        const pDiscount = pOriginal && pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
+    // compute pricing/discount for badge
+    const pPrice = priceNumber(product);
+    const pOriginal = (product as any).originalPrice || (product as any).compareAtPrice || undefined;
+    const pDiscount = pOriginal && pOriginal > pPrice ? Math.round(((pOriginal - pPrice) / pOriginal) * 100) : 0;
 
-        const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
-        const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(productId(product)) : false;
-        const inCartTotal = getItemQuantity(productId(product));
+    const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+    const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(productId(product)) : false;
+    const inCartTotal = getItemQuantity(productId(product));
 
-        const handleWishlistToggle = (e: React.MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (isWishlisted) {
-            removeFromWishlist(productId(product));
-            showToast('Removed from wishlist', 'info');
-          } else {
-            addToWishlist({
-              id: productId(product),
-              name: product.name,
-              price: priceNumber(product),
-              image: primaryImage(product),
-              category: product.category ?? '',
-              rating: (product as any).rating,
-            });
-            showToast('Added to wishlist!', 'success');
-          }
-        };
+    const handleWishlistToggle = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isWishlisted) {
+        removeFromWishlist(productId(product));
+        showToast('Removed from wishlist', 'info');
+      } else {
+        addToWishlist({
+          id: productId(product),
+          name: product.name,
+          price: priceNumber(product),
+          image: primaryImage(product),
+          category: product.category ?? '',
+          rating: (product as any).rating,
+        });
+        showToast('Added to wishlist!', 'success');
+      }
+    };
 
     return (
       <motion.div
         whileHover={{ y: -6 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        className="group cursor-pointer rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 p-4 backdrop-blur-sm touch-manipulation"
-        style={{ touchAction: 'pan-y' }}
+        className="group cursor-pointer rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 p-4 backdrop-blur-sm select-none"
+        onClickCapture={(e) => {
+          if (hasSwiped && hasSwiped()) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
       >
         <div 
           className="relative overflow-hidden mb-4 aspect-[3/4] rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900"
-          style={{ touchAction: 'pan-y' }}
         >
           <img
             src={imageSrc}
             alt={product.name}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-auto"
-            style={{ touchAction: 'pan-y' }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-60 group-hover:opacity-80 transition-opacity pointer-events-none" />
 
@@ -726,36 +803,39 @@ const LuxuryHomePage = () => {
           <div className="relative">
             <button
               aria-label="Collections prev"
-              onClick={() => {
-                const c = collectionsRef.current;
-                if (!c) return;
-                scrollPrev(c);
-              }}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2"
+              onClick={collectionsCarousel.scrollPrev}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2 transition shadow-lg"
             >
               <ChevronLeft size={18} />
             </button>
 
             <div
-              ref={collectionsRef}
-              onMouseEnter={() => setCollectionsHover(true)}
-              onMouseLeave={() => setCollectionsHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+              ref={collectionsCarousel.ref}
+              onMouseEnter={collectionsCarousel.handleMouseEnter}
+              onMouseLeave={collectionsCarousel.handleMouseLeave}
+              onTouchStart={collectionsCarousel.handleTouchStart}
+              onTouchMove={collectionsCarousel.handleTouchMove}
+              onTouchEnd={collectionsCarousel.handleTouchEnd}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {collectionsState.map((c, i) => (
-                <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2" style={{ touchAction: 'pan-y' }}>
+                <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2">
                   <a
-                      href={typeof window !== 'undefined' ? `http://${window.location.host}${(['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}` : (['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}
-                      className="relative group block overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 touch-manipulation"
-                      style={{ touchAction: 'pan-y' }}
-                    >
-                    <div className="relative overflow-hidden aspect-[3/4]" style={{ touchAction: 'pan-y' }}>
+                    href={typeof window !== 'undefined' ? `http://${window.location.host}${(['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}` : (['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}
+                    onClick={(e) => {
+                      if (collectionsCarousel.hasSwiped()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    className="relative group block overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/5 via-white/0 to-white/5 select-none"
+                  >
+                    <div className="relative overflow-hidden aspect-[3/4]">
                       <img
                         src={c.image}
                         alt={c.title}
                         className="w-full h-full object-cover transition-transform duration-[900ms] group-hover:scale-110 pointer-events-auto"
-                        style={{ touchAction: 'pan-y' }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/85 group-hover:via-black/60 transition-colors pointer-events-none" />
                       <div className="absolute top-5 left-5">
@@ -787,12 +867,8 @@ const LuxuryHomePage = () => {
 
             <button
               aria-label="Collections next"
-              onClick={() => {
-                const c = collectionsRef.current;
-                if (!c) return;
-                scrollNext(c);
-              }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2"
+              onClick={collectionsCarousel.scrollNext}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2 transition shadow-lg"
             >
               <ChevronRight size={18} />
             </button>
@@ -829,37 +905,40 @@ const LuxuryHomePage = () => {
           <div className="relative">
             <button
               aria-label="Featured prev"
-              onClick={() => scrollPrev(featuredRef.current)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2"
+              onClick={featuredCarousel.scrollPrev}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white ml-2 transition shadow-lg"
             >
               <ChevronLeft size={18} />
             </button>
             <div
-              ref={featuredRef}
-              onMouseEnter={() => setFeaturedHover(true)}
-              onMouseLeave={() => setFeaturedHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+              ref={featuredCarousel.ref}
+              onMouseEnter={featuredCarousel.handleMouseEnter}
+              onMouseLeave={featuredCarousel.handleMouseLeave}
+              onTouchStart={featuredCarousel.handleTouchStart}
+              onTouchMove={featuredCarousel.handleTouchMove}
+              onTouchEnd={featuredCarousel.handleTouchEnd}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {loading
                 ? [...Array(4)].map((_, i) => (
                     <div
                       key={i}
-                      className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2"
+                      className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2"
                     >
                       <div className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4]" />
                     </div>
                   ))
                 : featuredProducts.map((p) => (
-                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
-                      <ProductCard product={p} />
+                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2">
+                      <ProductCard product={p} hasSwiped={featuredCarousel.hasSwiped} />
                     </div>
                   ))}
             </div>
             <button
               aria-label="Featured next"
-              onClick={() => scrollNext(featuredRef.current)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2"
+              onClick={featuredCarousel.scrollNext}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white mr-2 transition shadow-lg"
             >
               <ChevronRight size={18} />
             </button>
@@ -901,37 +980,40 @@ const LuxuryHomePage = () => {
           <div className="relative">
             <button
               aria-label="Trending prev"
-              onClick={() => scrollPrev(trendingRef.current)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 ml-2"
+              onClick={trendingCarousel.scrollPrev}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 ml-2 transition shadow-lg"
             >
               <ChevronLeft size={18} />
             </button>
             <div
-              ref={trendingRef}
-              onMouseEnter={() => setTrendingHover(true)}
-              onMouseLeave={() => setTrendingHover(false)}
-              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-y touch-manipulation"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+              ref={trendingCarousel.ref}
+              onMouseEnter={trendingCarousel.handleMouseEnter}
+              onMouseLeave={trendingCarousel.handleMouseLeave}
+              onTouchStart={trendingCarousel.handleTouchStart}
+              onTouchMove={trendingCarousel.handleTouchMove}
+              onTouchEnd={trendingCarousel.handleTouchEnd}
+              className="scroll-smooth snap-x snap-mandatory overflow-x-auto no-scrollbar px-0 flex gap-4 touch-pan-x touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {loading
                 ? [...Array(4)].map((_, i) => (
                     <div
                       key={i}
-                              className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2"
+                      className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2"
                     >
-                              <div className="animate-pulse rounded-3xl border border-gray-100 bg-gradient-to-b from-neutral-100 via-neutral-50 to-neutral-100 aspect-[3/4]" />
+                      <div className="animate-pulse rounded-3xl border border-gray-100 bg-gradient-to-b from-neutral-100 via-neutral-50 to-neutral-100 aspect-[3/4]" />
                     </div>
                   ))
                 : trendingProducts.map((p) => (
-                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full md:w-1/2 lg:w-1/4 px-2">
-                      <ProductCard product={p} />
+                    <div key={productId(p)} data-carousel-item className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2">
+                      <ProductCard product={p} hasSwiped={trendingCarousel.hasSwiped} />
                     </div>
                   ))}
             </div>
             <button
               aria-label="Trending next"
-              onClick={() => scrollNext(trendingRef.current)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 mr-2"
+              onClick={trendingCarousel.scrollNext}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 hover:bg-white text-gray-800 border border-gray-200 mr-2 transition shadow-lg"
             >
               <ChevronRight size={18} />
             </button>
