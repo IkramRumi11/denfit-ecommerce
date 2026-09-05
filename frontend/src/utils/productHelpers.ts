@@ -67,7 +67,9 @@ export const resolveProductSelection = (
     variantId?: string;
   }
 ) => {
-  const reqSize = requested?.size || (Array.isArray(product?.sizes) && product.sizes[0]) || 'One Size';
+  const rawFirstSize = Array.isArray(product?.sizes) && product.sizes.length > 0 ? product.sizes[0] : null;
+  const defaultSize = rawFirstSize ? (typeof rawFirstSize === 'string' ? rawFirstSize : (rawFirstSize.value || 'One Size')) : 'One Size';
+  const reqSize = requested?.size || defaultSize;
 
   if (!product) {
     return {

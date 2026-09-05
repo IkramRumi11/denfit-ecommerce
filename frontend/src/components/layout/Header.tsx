@@ -25,6 +25,7 @@ const categories = [
   { name: "Women", slug: "women" },
   { name: "Kids", slug: "kids" },
   { name: "Accessories", slug: "accessories" },
+  { name: "Fragrances", slug: "fragrances" },
   { name: "Sale", slug: "sale" },
   { name: "Brands", slug: "brands" },
 ];
@@ -232,7 +233,7 @@ export default function Header(): JSX.Element {
             {categories.map((cat) => (
               <div key={cat.slug} onMouseEnter={() => setMegaIndex(cat.slug)}>
                 {(() => {
-                  const path = ['men','women','kids','sale','accessories','brands'].includes(cat.slug)
+                  const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
                     ? `/${cat.slug}`
                     : `/shop?gender=${cat.slug}`;
                   return (
@@ -424,7 +425,7 @@ export default function Header(): JSX.Element {
                         ) : (
                           <>
                             {(() => {
-                              const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
+                              const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
                                 ? `/${cat.slug}`
                                 : `/shop?gender=${cat.slug}`;
                               return (
@@ -450,7 +451,10 @@ export default function Header(): JSX.Element {
                                   {(items as string[]).map((item) => {
                                           const sectionSlug = String(slugify(section || '')).toLowerCase();
                                           const genderForLink = ['men','women','kids'].includes(sectionSlug) ? sectionSlug : cat.slug;
-                                          const path = `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
+                                          const isFragrance = item.toLowerCase() === 'fragrances' || item.toLowerCase() === 'fragrance';
+                                          const path = isFragrance
+                                            ? (['men','women','kids'].includes(genderForLink) ? `/fragrances?gender=${genderForLink}` : '/fragrances')
+                                            : `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
                                           return (
                                             <Link
                                               key={item}

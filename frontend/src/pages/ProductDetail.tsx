@@ -694,19 +694,22 @@ export const ProductDetail: React.FC = () => {
   }
 
   const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(String(product?.id || product?._id || '')) : false;
+  const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
-      showToast('Please select a size', 'error');
+      showToast(isFragrance ? 'Please select a volume' : 'Please select a size', 'error');
       return false;
     }
-    if (product.variants && Array.isArray(product.variants) && product.variants.length && !selectedVariantId) {
-      showToast('Please select a color', 'error');
-      return false;
-    }
-    if (!selectedVariantId && product.colors && Array.isArray(product.colors) && product.colors.length && !selectedColor) {
-      showToast('Please select a color', 'error');
-      return false;
+    if (!isFragrance) {
+      if (product.variants && Array.isArray(product.variants) && product.variants.length && !selectedVariantId) {
+        showToast('Please select a color', 'error');
+        return false;
+      }
+      if (!selectedVariantId && product.colors && Array.isArray(product.colors) && product.colors.length && !selectedColor) {
+        showToast('Please select a color', 'error');
+        return false;
+      }
     }
 
     if (displayAvailableQuantity <= 0) {
@@ -723,9 +726,9 @@ export const ProductDetail: React.FC = () => {
     try {
       const selection = resolveProductSelection(product, {
         size: selectedSize,
-        color: selectedColor,
-        colorName: selectedColorName,
-        variantId: selectedVariantId
+        color: isFragrance ? '' : selectedColor,
+        colorName: isFragrance ? '' : selectedColorName,
+        variantId: isFragrance ? undefined : selectedVariantId
       });
 
       const result = addItem({
@@ -734,12 +737,12 @@ export const ProductDetail: React.FC = () => {
         price: product.price,
         image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
         size: selection.size,
-        color: selection.color,
-        colorName: selection.colorName,
-        variantId: selection.variantId,
-        variantName: selection.variantName,
-        variantHex: selection.variantHex,
-        variantImage: selection.variantImage,
+        color: isFragrance ? '' : selection.color,
+        colorName: isFragrance ? '' : selection.colorName,
+        variantId: isFragrance ? undefined : selection.variantId,
+        variantName: isFragrance ? undefined : selection.variantName,
+        variantHex: isFragrance ? undefined : selection.variantHex,
+        variantImage: isFragrance ? undefined : selection.variantImage,
         quantity: quantity,
         maxStock: displayAvailableQuantity
       }, displayAvailableQuantity);
@@ -1094,8 +1097,8 @@ export const ProductDetail: React.FC = () => {
 
             <p className="text-neutral-600 leading-relaxed font-light text-sm md:text-base">{String(product.description ?? '')}</p>
 
-            {/* Color Selection */}
-            {product.colors && Array.isArray(product.colors) && product.colors.length > 0 && (
+            {/* Color Selection - Hidden for Fragrances */}
+            {!isFragrance && product.colors && Array.isArray(product.colors) && product.colors.length > 0 && (
               <div>
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Select Color: <span className="text-gray-500 font-normal">{selectedColorName || (selectedColor ? getColorName(selectedColor) : '')}</span></h3>
                 <div className="flex items-center gap-3 mb-3">
@@ -1158,9 +1161,11 @@ export const ProductDetail: React.FC = () => {
               </div>
             )}
 
-            {/* Size Selection */}
+            {/* Size / Volume Selection */}
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Select Size</h3>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">
+                {isFragrance ? 'Select Volume' : 'Select Size'}
+              </h3>
               <div className="flex gap-2 flex-wrap">
                 {(() => {
                   const allSizes = getDisplaySizesForProduct(product);
@@ -1203,7 +1208,7 @@ export const ProductDetail: React.FC = () => {
                   });
                 })()}
               </div>
-              {((product.sizeGuide && (product.sizeGuide.image || product.sizeGuide.tableHtml || product.sizeGuide.description)) ) && (
+              {!isFragrance && ((product.sizeGuide && (product.sizeGuide.image || product.sizeGuide.tableHtml || product.sizeGuide.description)) ) && (
                 <div className="mt-3">
                   <button onClick={() => setSizeGuideOpen(true)} className="text-sm text-blue-600 hover:underline">View size guide</button>
                 </div>

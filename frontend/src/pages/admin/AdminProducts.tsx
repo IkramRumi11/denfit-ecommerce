@@ -248,6 +248,7 @@ const AdminProducts: React.FC = () => {
             <option value="men">Men</option>
             <option value="women">Women</option>
             <option value="kids">Kids</option>
+            <option value="fragrances">Fragrances</option>
             <option value="sale">Sale</option>
           </select>
 

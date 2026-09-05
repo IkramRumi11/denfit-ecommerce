@@ -470,7 +470,7 @@ const AdminOrderDetail: React.FC = () => {
                       )}
                       <div className="font-semibold">{it.name}</div>
                       <div className="text-sm text-slate-500">
-                        Qty {it.quantity} • {it.size ?? "—"}
+                        Qty {it.quantity} • {it.size ? (/ml$/i.test(String(it.size).trim()) ? `Vol: ${it.size}` : `Size: ${it.size}`) : "—"}
                         {(() => {
                           const variantLabel = it.variantName || it.colorName || '';
                           const colorObj = it.color && typeof it.color === 'object' ? it.color : null;

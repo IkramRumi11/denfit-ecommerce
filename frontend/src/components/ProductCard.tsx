@@ -150,17 +150,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
     return [String(input)];
   };
 
+  const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
+
   // Check if product has colors/variants
-  const hasColors = 
+  const hasColors = !isFragrance && (
     (product.variants && Array.isArray(product.variants) && product.variants.length > 0) ||
-    (product.colors && Array.isArray(product.colors) && product.colors.length > 0);
+    (product.colors && Array.isArray(product.colors) && product.colors.length > 0)
+  );
 
   // Handlers
   const handleAddToCart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
 
     if (!selectedSize) {
-      showToast('Please select a size', 'error');
+      showToast(isFragrance ? 'Please select a volume' : 'Please select a size', 'error');
       return;
     }
 
@@ -200,9 +203,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       try {
         const selection = resolveProductSelection(product, {
           size,
-          color,
-          colorName: selectedColorName,
-          variantId
+          color: isFragrance ? '' : color,
+          colorName: isFragrance ? '' : selectedColorName,
+          variantId: isFragrance ? undefined : variantId
         });
 
         const imageSrc = primaryImage({ ...product, selectedVariantId: selection.variantId } as any) || '';
@@ -228,12 +231,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
           price,
           image: imageSrc,
           size: selection.size,
-          color: selection.color,
-          colorName: selection.colorName,
-          variantId: selection.variantId,
-          variantName: selection.variantName,
-          variantHex: selection.variantHex,
-          variantImage: selection.variantImage,
+          color: isFragrance ? '' : selection.color,
+          colorName: isFragrance ? '' : selection.colorName,
+          variantId: isFragrance ? undefined : selection.variantId,
+          variantName: isFragrance ? undefined : selection.variantName,
+          variantHex: isFragrance ? undefined : selection.variantHex,
+          variantImage: isFragrance ? undefined : selection.variantImage,
           quantity: 1,
           maxStock: availableStock
         }, availableStock);
@@ -549,7 +552,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-normal text-gray-700 uppercase tracking-wider">
-                        Size
+                        {isFragrance ? 'Volume' : 'Size'}
                       </span>
                       {selectedSize && (
                         <span className="text-xs text-gray-500">
@@ -588,8 +591,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                         );
                       })}
                     </div>
-                  </div>                  {/* Color Selection - Only show if product has colors */}
-                  {colorList.length > 0 && (
+                  </div>                  {/* Color Selection - Only show if product has colors and not fragrance */}
+                  {!isFragrance && colorList.length > 0 && (
                     <div className="mt-5 mb-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-normal text-gray-700 uppercase tracking-wider">
@@ -805,8 +808,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             )}
           </div>
 
-          {/* Color Dots on Card */}
-          {colorList.length > 0 && (
+          {/* Color Dots on Card - Hidden for Fragrances */}
+          {!isFragrance && colorList.length > 0 && (
             <div className="flex items-center gap-1.5 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
               {colorList.map((c: any) => {
                 const isSelected = (selectedVariantId && selectedVariantId === c.id) || selectedColor === c.hex || selectedColor === c.rawName;

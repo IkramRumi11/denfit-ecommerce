@@ -44,7 +44,8 @@ export const megaMenuData: MegaMenuData = {
         'Bags',
         'Sunglasses',
         'Hats & Caps',
-        'Ties'
+        'Ties',
+        'Fragrances'
       ],
       'Sportswear': [
         'Active Tops',
@@ -90,7 +91,8 @@ export const megaMenuData: MegaMenuData = {
         'Sunglasses',
         'Hats',
         'Belts',
-        'Watches'
+        'Watches',
+        'Fragrances'
       ],
       'Activewear': [
         'Sports Bras',
@@ -138,7 +140,8 @@ export const megaMenuData: MegaMenuData = {
         'Hats & Caps',
         'Bags',
         'Socks',
-        'Hair Accessories'
+        'Hair Accessories',
+        'Fragrances'
       ]
     },
     featured: {
@@ -193,7 +196,8 @@ export const megaMenuData: MegaMenuData = {
         'Bags',
         'Sunglasses',
         'Hats & Caps',
-        'Ties'
+        'Ties',
+        'Fragrances'
       ],
       'Women': [
         'Handbags',
@@ -202,14 +206,16 @@ export const megaMenuData: MegaMenuData = {
         'Sunglasses',
         'Hats',
         'Belts',
-        'Watches'
+        'Watches',
+        'Fragrances'
       ],
       'Kids': [
         'Bags',
         'Hats',
         'Sunglasses',
         'Socks',
-        'Hair Accessories'
+        'Hair Accessories',
+        'Fragrances'
       ],
       'By Type': [
         'Bags & Backpacks',
@@ -217,7 +223,8 @@ export const megaMenuData: MegaMenuData = {
         'Eyewear',
         'Small Leather Goods',
         'Hats & Caps',
-        'Tech Accessories'
+        'Tech Accessories',
+        'Fragrances'
       ]
     },
     featured: {

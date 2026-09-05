@@ -56,9 +56,11 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   const { showToast } = useToast();
   const { shippingConfig } = useShipping();
 
+  const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
+
   // Normalize color list across variants or colors array
   const colorList = useMemo(() => {
-    if (!product) return [];
+    if (!product || isFragrance) return [];
     if (Array.isArray((product as any).variants) && (product as any).variants.length > 0) {
       return (product as any).variants.map((v: any, idx: number) => {
         const swatchImage = v?.swatchImage ? (typeof v.swatchImage === 'string' ? v.swatchImage : v.swatchImage.url) : undefined;
@@ -152,7 +154,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
-      showToast('Please select a size', 'error');
+      showToast(isFragrance ? 'Please select a volume' : 'Please select a size', 'error');
       return;
     }
 
@@ -168,7 +170,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
     try {
       const variantSnapshot = (() => {
-        if (product && (product as any).variants && selectedVariantId) {
+        if (!isFragrance && product && (product as any).variants && selectedVariantId) {
           const v = (product as any).variants.find((x: any) => String(x._id || x.id) === String(selectedVariantId));
           if (v) return { id: String(v._id || v.id), name: v.name, hex: v.hex, image: Array.isArray(v.images) && v.images[0] ? (typeof v.images[0] === 'string' ? v.images[0] : v.images[0].url) : undefined };
         }
@@ -178,7 +180,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
       if (onAddToCart) {
         try {
           setIsAdding(true);
-          const colorKey = variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name || variantSnapshot.id) : selectedColor;
+          const colorKey = isFragrance ? undefined : (variantSnapshot ? (variantSnapshot.hex || variantSnapshot.name || variantSnapshot.id) : selectedColor);
           const maybePromise = onAddToCart(selectedSize, colorKey);
           if (maybePromise && typeof (maybePromise as any).then === 'function') {
             await (maybePromise as Promise<any>);
@@ -195,9 +197,9 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
       const selection = resolveProductSelection(product, {
         size: selectedSize,
-        color: selectedColor,
-        colorName: selectedColorName,
-        variantId: selectedVariantId
+        color: isFragrance ? '' : selectedColor,
+        colorName: isFragrance ? '' : selectedColorName,
+        variantId: isFragrance ? undefined : selectedVariantId
       });
 
       const result = addItem({
@@ -206,12 +208,12 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
         price: product.price,
         image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
         size: selection.size,
-        color: selection.color,
-        colorName: selection.colorName,
-        variantId: selection.variantId,
-        variantName: selection.variantName,
-        variantHex: selection.variantHex,
-        variantImage: selection.variantImage,
+        color: isFragrance ? '' : selection.color,
+        colorName: isFragrance ? '' : selection.colorName,
+        variantId: isFragrance ? undefined : selection.variantId,
+        variantName: isFragrance ? undefined : selection.variantName,
+        variantHex: isFragrance ? undefined : selection.variantHex,
+        variantImage: isFragrance ? undefined : selection.variantImage,
         quantity: 1,
         maxStock: selectedStock
       }, selectedStock);
@@ -757,8 +759,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                         {product.description}
                       </p>
 
-                      {/* Color / Variant Selection */}
-                      {colorList.length > 0 && (
+                      {/* Color / Variant Selection - Hidden for Fragrances */}
+                      {!isFragrance && colorList.length > 0 && (
                         <div className="mb-5">
                           <div className="flex items-center justify-between mb-2.5">
                             <span className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-700">
@@ -842,7 +844,9 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                       {/* Size Selection */}
                       <div className="mb-5">
                         <div className="flex items-center justify-between mb-2.5">
-                          <span className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-700">Select Size</span>
+                          <span className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-700">
+                            {isFragrance ? 'Select Volume' : 'Select Size'}
+                          </span>
                           {selectedSize && (
                             <span className="text-xs text-neutral-500">Selected: <span className="font-semibold text-neutral-900">{selectedSize}</span></span>
                           )}

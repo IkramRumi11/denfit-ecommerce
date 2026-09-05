@@ -123,10 +123,15 @@ export default function MegaMenu({ activeCategory, brands = [], onClose }: Props
                     {(items as string[]).map((item) => {
                       const sectionSlug = String(slugify(section || ''))?.toLowerCase();
                       const genderForLink = ['men', 'women', 'kids'].includes(sectionSlug) ? sectionSlug : String(activeCategory);
+                      const isFragrance = item.toLowerCase() === 'fragrances' || item.toLowerCase() === 'fragrance';
+                      const linkTarget = isFragrance
+                        ? (genderForLink && ['men', 'women', 'kids'].includes(genderForLink) ? `/fragrances?gender=${genderForLink}` : '/fragrances')
+                        : `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
+
                       return (
                         <li key={item}>
                           <Link
-                            to={`/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`}
+                            to={linkTarget}
                             className="text-gray-600 hover:text-black transition-colors"
                             onClick={onClose}
                           >

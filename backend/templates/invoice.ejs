@@ -471,7 +471,7 @@
                                 <div class="small" style="font-size: 11px; color: var(--brand-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px;">
                                   <% if (itemBrand) { %><span style="font-weight: 600; text-transform: uppercase; color: var(--brand-primary);"><%= itemBrand %></span><% } %>
                                   <% if (itemBrand && (it.size || displayLabel)) { %><span>•</span><% } %>
-                                  <% if (it.size) { %><span>Size: <%= it.size %></span><% } %>
+                                  <% if (it.size) { %><span><%= (/ml$/i.test(String(it.size).trim())) ? 'Volume:' : 'Size:' %> <%= it.size %></span><% } %>
                                   <% if (it.size && displayLabel) { %><span>•</span><% } %>
                                   <% if (displayLabel) { %>
                                     <span style="display: inline-flex; align-items: center; gap: 4px;">

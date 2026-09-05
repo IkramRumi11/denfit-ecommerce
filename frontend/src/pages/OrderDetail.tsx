@@ -180,7 +180,7 @@ const OrderDetail: React.FC = () => {
                           const displayLabel = getColorName(label);
                           return (
                             <span className="inline-flex flex-wrap items-center gap-1.5">
-                              <span>Size: {it.size}</span>
+                              <span>{/ml$/i.test(String(it.size || '').trim()) ? 'Volume:' : 'Size:'} {it.size}</span>
                               {displayLabel ? (
                                 <span className="inline-flex items-center gap-1">
                                   • Color: 

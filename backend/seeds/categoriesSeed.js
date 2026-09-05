@@ -47,27 +47,30 @@ const CATEGORY_STRUCTURE = {
   men: {
     Clothing: ['T-Shirts', 'Shirts', 'Polo', 'Hoodies-Sweatshirts', 'Pants-Trousers', 'Jeans', 'Shorts', 'Jackets-Coats', 'Suits-Blazers'],
     Footwear: ['Sneakers', 'Loafers', 'Boots', 'Sandals', 'Formal-Shoes', 'Sports-Shoes'],
-    Accessories: ['Watches', 'Belts', 'Wallets', 'Bags', 'Sunglasses', 'Hats-Caps', 'Ties', 'Jewelry', 'Scarves']
+    Accessories: ['Watches', 'Belts', 'Wallets', 'Bags', 'Sunglasses', 'Hats-Caps', 'Ties', 'Jewelry', 'Scarves', 'Fragrances']
   },
   women: {
     Clothing: ['Dresses', 'Tops-Blouses', 'Sweaters-Knits', 'Skirts', 'Co-ord-Sets', 'Jumpsuits-Rompers', 'Pants-Jeans', 'Jackets'],
     Footwear: ['Heels', 'Flats', 'Boots', 'Sandals', 'Sneakers', 'Espadrilles'],
-    Accessories: ['Handbags', 'Jewelry', 'Scarves', 'Sunglasses', 'Watches', 'Belts', 'Hats', 'Wallets']
+    Accessories: ['Handbags', 'Jewelry', 'Scarves', 'Sunglasses', 'Watches', 'Belts', 'Hats', 'Wallets', 'Fragrances']
   },
   kids: {
     'Boys Clothing': ['T-Shirts-Tops', 'Pants-Jeans', 'Sets-Outfits', 'Jackets', 'Bodysuits', 'Rompers', 'Sleepwear'],
     'Boys Footwear': ['Shoes', 'Sneakers', 'Sandals'],
     'Girls Clothing': ['Tops-Dresses', 'Pants-Skirts', 'Sets-Outfits', 'Jackets', 'Bodysuits', 'Rompers', 'Sleepwear'],
     'Girls Footwear': ['Shoes', 'Sneakers', 'Sandals'],
-    Accessories: ['Bags', 'Hats', 'Accessories']
+    Accessories: ['Bags', 'Hats', 'Accessories', 'Fragrances']
   },
   sale: {
-    'Men Sale': ['All', 'Clothing', 'Footwear', 'Accessories'],
-    'Women Sale': ['All', 'Clothing', 'Footwear', 'Accessories'],
-    'Kids Sale': ['All', 'Clothing', 'Footwear', 'Accessories']
+    'Men Sale': ['All', 'Clothing', 'Footwear', 'Accessories', 'Fragrances'],
+    'Women Sale': ['All', 'Clothing', 'Footwear', 'Accessories', 'Fragrances'],
+    'Kids Sale': ['All', 'Clothing', 'Footwear', 'Accessories', 'Fragrances']
   },
   accessories: {
-    Unisex: ['Watches', 'Sunglasses', 'Scarves', 'Bags', 'Jewelry', 'Belts', 'Hats', 'Wallets']
+    Unisex: ['Watches', 'Sunglasses', 'Scarves', 'Bags', 'Jewelry', 'Belts', 'Hats', 'Wallets', 'Fragrances']
+  },
+  fragrances: {
+    'Collections': ['Eau de Parfum', 'Eau de Toilette', 'Perfume Oil', 'Cologne', 'Body Mist', 'Gift Sets']
   }
 };
 
@@ -268,15 +271,18 @@ async function seed() {
         const alternateConfigKey = `${subcategorySlug}:`;
         const filterConfigId = configMap[configKey] || configMap[alternateConfigKey] || null;
         // Disambiguate subcategory display name if a global conflict exists
+        const sectionSlug = makeSlug(sectionName);
+        const finalSlug = `${genderSlug}-${sectionSlug}-${subcategorySlug}`;
         let displayName = subcategoryName.replace(/-/g, ' ');
         const existingSubConflict = await Category.findOne({ name: displayName }).lean();
         if (existingSubConflict && String(existingSubConflict.parent || '') !== String(sectionId)) {
-          displayName = `${displayName} (${sectionName})`;
+          const capGender = genderSlug.charAt(0).toUpperCase() + genderSlug.slice(1);
+          displayName = `${displayName} (${capGender} ${sectionName})`;
         }
-
-        // Compute section slug and use a composite slug including gender and section to ensure global uniqueness
-        const sectionSlug = makeSlug(sectionName);
-        const finalSlug = `${genderSlug}-${sectionSlug}-${subcategorySlug}`;
+        const secondConflict = await Category.findOne({ name: displayName }).lean();
+        if (secondConflict && String(secondConflict.parent || '') !== String(sectionId)) {
+          displayName = `${displayName} - ${finalSlug}`;
+        }
 
         // Use parent + (finalSlug or displayName) so reruns don't create duplicates when names or slugs collide
         const existing = await Category.findOneAndUpdate(

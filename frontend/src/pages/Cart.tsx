@@ -163,6 +163,12 @@ export const Cart: React.FC = () => {
               >
                 Accessories
               </Link>
+              <Link
+                to="/fragrances"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Fragrances
+              </Link>
             </div>
           </div>
 
@@ -245,7 +251,7 @@ export const Cart: React.FC = () => {
                         {item.name}
                       </h3>
                       <div className="text-gray-600 text-sm mb-1">
-                        <div>Size: <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
+                        <div>{/ml$/i.test(String(item.size || '').trim()) ? 'Volume:' : 'Size:'} <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
                         {(() => {
                           const variantLabel = item.variantName || item.colorName || '';
                           const colorValue = item.variantHex || item.color || '';

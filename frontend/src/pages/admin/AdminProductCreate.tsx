@@ -102,6 +102,8 @@ const AdminProductCreate: React.FC = () => {
     (cleaned) => setForm((s: any) => ({ ...s, attributes: cleaned }))
   );
 
+  const isFragrance = form.category === 'fragrances' || form.subcategory === 'fragrances';
+
   const toggleAttribute = (groupSlug: string, value: string) => {
     setDynamicAttributes((prev) => {
       const current = prev[groupSlug] || [];
@@ -581,17 +583,29 @@ const AdminProductCreate: React.FC = () => {
       return;
     }
 
+    if (isFragrance) {
+      if (!form.sizes || form.sizes.length === 0) {
+        showToast('Please add at least one volume variant (e.g., 50 ml, 100 ml) for the fragrance', 'error');
+        return;
+      }
+      const hasAnyStock = form.sizes.some((s: any) => (Number(s.quantity) || 0) > 0);
+      if (!hasAnyStock) {
+        showToast('Please specify stock quantity for at least one volume variant', 'error');
+        return;
+      }
+    }
+
     // Require at least one image overall: either general product images or per-color variant images
     const anyGeneral = (form.images && form.images.length > 0);
     const anyPerColor = (Object.keys(variantFiles || {}).length > 0 && Object.values(variantFiles).some((p: any) => (p.images || []).length > 0)) ||
                         (Object.keys(existingVariantImages || {}).length > 0 && Object.values(existingVariantImages).some((arr:any) => (arr || []).length > 0));
     if (!anyGeneral && !anyPerColor) {
-      showToast('Please upload at least one product image (either general images or images under color variants)', 'error');
+      showToast('Please upload at least one product image', 'error');
       return;
     }
 
     // Clean up variantFiles and existingVariantImages for removed colors
-    if (form.colors && form.colors.length > 0) {
+    if (!isFragrance && form.colors && form.colors.length > 0) {
       const colorTempIds = new Set((form.colors || []).map((c: any) => c.tempId));
       Object.keys(variantFiles).forEach(k => {
         if (!colorTempIds.has(k)) delete variantFiles[k];
@@ -608,9 +622,16 @@ const AdminProductCreate: React.FC = () => {
         form.images[0].isPrimary = true;
       }
 
+      if (isFragrance) {
+        form.colors = [];
+        form.stock = [];
+      }
+
       // Compute total canonical inventory
       let totalInventory = 0;
-      if (form.colors && form.colors.length > 0) {
+      if (isFragrance) {
+        totalInventory = (form.sizes || []).reduce((sum: number, s: any) => sum + (Number(s?.quantity) || 0), 0);
+      } else if (form.colors && form.colors.length > 0) {
         totalInventory = (form.stock || []).reduce((sum: number, st: any) => sum + (Number(st.quantity) || 0), 0);
       } else if (form.sizes && form.sizes.length > 0 && form.sizes.some((s: any) => s && s.quantity !== null && s.quantity !== undefined && !Number.isNaN(Number(s.quantity)))) {
         totalInventory = (form.sizes || []).reduce((sum: number, s: any) => sum + (Number(s?.quantity) || 0), 0);
@@ -621,12 +642,27 @@ const AdminProductCreate: React.FC = () => {
       // Prepare form data
       const fd = new FormData();
       
+      const targetCategory = isFragrance ? 'fragrances' : form.category;
+      const targetSubcategory = isFragrance ? (form.subcategory || 'fragrances') : form.subcategory;
+      const targetGender = form.category === 'fragrances' ? 'unisex' : (form.category || 'men');
+
       // Add all form fields except sizes and inventory
       Object.entries(form).forEach(([k, v]) => {
         if (v === undefined || v === null) return;
         if (k === 'sizes') return; // handle below
         if (k === 'inventory') {
           fd.append('inventory', String(totalInventory));
+          return;
+        }
+        if (k === 'category') {
+          fd.append('category', targetCategory);
+          return;
+        }
+        if (k === 'subcategory') {
+          fd.append('subcategory', targetSubcategory);
+          return;
+        }
+        if (isFragrance && (k === 'colors' || k === 'stock' || k === 'sizeGuide')) {
           return;
         }
         if (k === 'attributes') {
@@ -639,6 +675,9 @@ const AdminProductCreate: React.FC = () => {
           fd.append(k, String(v));
         }
       });
+      if (isFragrance) {
+        fd.append('gender', targetGender);
+      }
 
       // Build variants payload for ALL colors so backend can map files -> variants consistently.
       // Each variant entry will list existing image URLs and placeholders for files that will be included in the FormData.
@@ -944,7 +983,7 @@ const AdminProductCreate: React.FC = () => {
                   <label htmlFor="inventory" className="block text-sm font-medium text-gray-700 mb-2">
                     Stock Quantity <span className="text-red-500">*</span>
                   </label>
-                  {form.colors && form.colors.length > 0 ? (
+                  {form.colors && form.colors.length > 0 && !isFragrance ? (
                     <div className="space-y-1">
                       <input
                         id="inventory"
@@ -956,6 +995,20 @@ const AdminProductCreate: React.FC = () => {
                       />
                       <p className="text-xs text-gray-500 italic mt-1">
                         (Read Only) Automatically calculated from color variant stock matrix.
+                      </p>
+                    </div>
+                  ) : isFragrance ? (
+                    <div className="space-y-1">
+                      <input
+                        id="inventory"
+                        type="number"
+                        name="inventory"
+                        value={(form.sizes || []).reduce((sum: number, s: any) => sum + (Number(s.quantity) || 0), 0)}
+                        readOnly
+                        className="w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg text-gray-500 cursor-not-allowed focus:outline-none"
+                      />
+                      <p className="text-xs text-amber-700 italic mt-1 font-medium">
+                        (Read Only) Automatically calculated from volume variant stock.
                       </p>
                     </div>
                   ) : (
@@ -985,75 +1038,77 @@ const AdminProductCreate: React.FC = () => {
               </div>
             </div>
 
-            {/* Size Guide */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Size Guide</h2>
-              <div className="space-y-4">
-                <div className="flex gap-6 items-start">
-                  <div className="w-48">
-                    {form.sizeGuide?.image ? (
-                      <div className="border rounded overflow-hidden bg-gray-50">
-                        <img src={form.sizeGuide.image} alt="Size guide" className="object-contain w-full h-48" />
-                      </div>
-                    ) : (
-                      <div className="w-48 h-48 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
-                        <div className="text-sm text-gray-400">No image uploaded</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <ImageUpload
-                      onImageSelect={(url) => {
-                        setForm((s: any) => ({
-                          ...s,
-                          sizeGuide: { ...(s.sizeGuide || {}), image: url },
-                        }));
-                      }}
-                      currentImage={form.sizeGuide?.image}
-                      onRemove={() => {
-                        setForm((s: any) => ({
-                          ...s,
-                          sizeGuide: { ...(s.sizeGuide || {}), image: '' },
-                        }));
-                      }}
-                      label="Upload Size Guide Image"
-                    />
-                    <div className="mt-4">
-                      <label htmlFor="sizeGuideDescription" className="block text-sm font-medium text-gray-700 mb-2">Size Guide Description</label>
-                      <textarea
-                        name="sizeGuide.description"
-                        id="sizeGuideDescription"
-                        value={form.sizeGuide?.description || ''}
-                        onChange={(e) => setForm((s: any) => ({ ...s, sizeGuide: { ...(s.sizeGuide || {}), description: e.target.value } }))}
-                        rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      />
-                    </div>
-                    <div className="mt-4">
-                      <label htmlFor="sizeGuideTableHtml" className="block text-sm font-medium text-gray-700 mb-2">Size Guide Table HTML (optional)</label>
-                      <textarea
-                        name="sizeGuide.tableHtml"
-                        id="sizeGuideTableHtml"
-                        value={form.sizeGuide?.tableHtml || ''}
-                        onChange={(e) => setForm((s: any) => ({ ...s, sizeGuide: { ...(s.sizeGuide || {}), tableHtml: e.target.value } }))}
-                        rows={6}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                        placeholder="Paste an HTML table or plain text here"
-                      />
-                        <div className="mt-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
-                          <div
-                            className="border rounded p-3 bg-white"
-                            style={{ minHeight: '80px' }}
-                            dangerouslySetInnerHTML={{ __html: sanitizePreview(form.sizeGuide?.tableHtml || '') }}
-                          />
-                          <p className="text-xs text-gray-500 mt-2">Preview strips &lt;script&gt; tags for safety.</p>
+            {/* Size Guide - Hidden for Fragrances */}
+            {!isFragrance && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Size Guide</h2>
+                <div className="space-y-4">
+                  <div className="flex gap-6 items-start">
+                    <div className="w-48">
+                      {form.sizeGuide?.image ? (
+                        <div className="border rounded overflow-hidden bg-gray-50">
+                          <img src={form.sizeGuide.image} alt="Size guide" className="object-contain w-full h-48" />
                         </div>
+                      ) : (
+                        <div className="w-48 h-48 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
+                          <div className="text-sm text-gray-400">No image uploaded</div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <ImageUpload
+                        onImageSelect={(url) => {
+                          setForm((s: any) => ({
+                            ...s,
+                            sizeGuide: { ...(s.sizeGuide || {}), image: url },
+                          }));
+                        }}
+                        currentImage={form.sizeGuide?.image}
+                        onRemove={() => {
+                          setForm((s: any) => ({
+                            ...s,
+                            sizeGuide: { ...(s.sizeGuide || {}), image: '' },
+                          }));
+                        }}
+                        label="Upload Size Guide Image"
+                      />
+                      <div className="mt-4">
+                        <label htmlFor="sizeGuideDescription" className="block text-sm font-medium text-gray-700 mb-2">Size Guide Description</label>
+                        <textarea
+                          name="sizeGuide.description"
+                          id="sizeGuideDescription"
+                          value={form.sizeGuide?.description || ''}
+                          onChange={(e) => setForm((s: any) => ({ ...s, sizeGuide: { ...(s.sizeGuide || {}), description: e.target.value } }))}
+                          rows={4}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="mt-4">
+                        <label htmlFor="sizeGuideTableHtml" className="block text-sm font-medium text-gray-700 mb-2">Size Guide Table HTML (optional)</label>
+                        <textarea
+                          name="sizeGuide.tableHtml"
+                          id="sizeGuideTableHtml"
+                          value={form.sizeGuide?.tableHtml || ''}
+                          onChange={(e) => setForm((s: any) => ({ ...s, sizeGuide: { ...(s.sizeGuide || {}), tableHtml: e.target.value } }))}
+                          rows={6}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                          placeholder="Paste an HTML table or plain text here"
+                        />
+                          <div className="mt-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
+                            <div
+                              className="border rounded p-3 bg-white"
+                              style={{ minHeight: '80px' }}
+                              dangerouslySetInnerHTML={{ __html: sanitizePreview(form.sizeGuide?.tableHtml || '') }}
+                            />
+                            <p className="text-xs text-gray-500 mt-2">Preview strips &lt;script&gt; tags for safety.</p>
+                          </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Specifications */}
             <Specifications
@@ -1083,7 +1138,7 @@ const AdminProductCreate: React.FC = () => {
                   <p className="block text-sm font-medium text-gray-700 mb-2">
                     Add Images <span className="text-red-500">*</span>
                   </p>
-                  {form.colors && form.colors.length > 0 ? (
+                  {form.colors && form.colors.length > 0 && !isFragrance ? (
                     <div className="p-4 border rounded-lg bg-gray-50 text-sm text-gray-600">
                       This product has color variants. Upload images per color under each variant section below. General product images are disabled to avoid orphaned images.
                     </div>
@@ -1163,52 +1218,100 @@ const AdminProductCreate: React.FC = () => {
               </div>
             </div>
 
-            {/* Color Variants */}
-            <VariantEditor
-              colors={form.colors}
-              existingVariantImages={existingVariantImages}
-              variantFiles={variantFiles}
-              onAddColor={addColor}
-              onRemoveColor={removeColor}
-              onUpdateColor={updateColor}
-              onExistingImageRemove={(tid, idx) => {
-                setExistingVariantImages(m => {
-                  const copy = { ...(m || {}) };
-                  copy[tid] = (copy[tid] || []).slice();
-                  copy[tid].splice(idx, 1);
-                  return copy;
-                });
-                setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: ((cc.images || []).slice()).filter((_, i) => i !== idx) } : cc) }));
-              }}
-              onExistingImageAdd={(tid, img) => {
-                setExistingVariantImages(m => ({ ...(m || {}), [tid]: [...((m || {})[tid] || []), img] }));
-                const imageEntry = img && (img.url || img.path || img) ? (img.url || img.path || img) : img;
-                setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: [...(cc.images || []), imageEntry] } : cc) }));
-              }}
-              onLocalImageRemove={(tid, idx) => removeVariantLocalImage(tid, idx)}
-              onImagesAdded={(tid, files) => onVariantImagesChange(tid, files)}
-              onSwatchAdded={(tid, file) => {
-                onVariantSwatchChange(tid, file);
-                if (!file) {
-                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: undefined } : cc) }));
-                }
-              }}
-              onSwatchUrlAdd={(tid, url) => setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: { url } } : cc) }))}
-            />
+            {/* Color Variants - Hidden for Fragrances */}
+            {!isFragrance && (
+              <VariantEditor
+                colors={form.colors}
+                existingVariantImages={existingVariantImages}
+                variantFiles={variantFiles}
+                onAddColor={addColor}
+                onRemoveColor={removeColor}
+                onUpdateColor={updateColor}
+                onExistingImageRemove={(tid, idx) => {
+                  setExistingVariantImages(m => {
+                    const copy = { ...(m || {}) };
+                    copy[tid] = (copy[tid] || []).slice();
+                    copy[tid].splice(idx, 1);
+                    return copy;
+                  });
+                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: ((cc.images || []).slice()).filter((_, i) => i !== idx) } : cc) }));
+                }}
+                onExistingImageAdd={(tid, img) => {
+                  setExistingVariantImages(m => ({ ...(m || {}), [tid]: [...((m || {})[tid] || []), img] }));
+                  const imageEntry = img && (img.url || img.path || img) ? (img.url || img.path || img) : img;
+                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: [...(cc.images || []), imageEntry] } : cc) }));
+                }}
+                onLocalImageRemove={(tid, idx) => removeVariantLocalImage(tid, idx)}
+                onImagesAdded={(tid, files) => onVariantImagesChange(tid, files)}
+                onSwatchAdded={(tid, file) => {
+                  onVariantSwatchChange(tid, file);
+                  if (!file) {
+                    setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: undefined } : cc) }));
+                  }
+                }}
+                onSwatchUrlAdd={(tid, url) => setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: { url } } : cc) }))}
+              />
+            )}
 
-            {/* Sizes */}
+            {/* Sizes / Volume Variants */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Sizes</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {isFragrance ? 'Volume Variants (ml)' : 'Sizes'}
+                  </h2>
+                  {isFragrance && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Configure bottle volumes and stock quantity per volume variant.
+                    </p>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={addSize}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Size
+                  {isFragrance ? 'Add Volume' : 'Add Size'}
                 </button>
               </div>
+
+              {isFragrance && (
+                <div className="mb-4">
+                  <span className="text-xs font-medium text-gray-500 block mb-2">Quick Add Volume:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {['30 ml', '50 ml', '75 ml', '100 ml', '150 ml', '200 ml'].map((preset) => {
+                      const alreadyAdded = (form.sizes || []).some(
+                        (s: any) => String(s.value || s).toLowerCase().trim() === preset.toLowerCase()
+                      );
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => {
+                            setForm((s: any) => ({
+                              ...s,
+                              sizes: [
+                                ...(s.sizes || []),
+                                { id: `vol_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, value: preset, inStock: true, quantity: 10 }
+                              ]
+                            }));
+                          }}
+                          className={`px-3 py-1 text-xs rounded-md border font-medium transition-colors ${
+                            alreadyAdded
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                              : 'bg-white text-gray-800 border-gray-300 hover:border-black hover:bg-gray-50 cursor-pointer'
+                          }`}
+                        >
+                          + {preset}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {form.sizes.map((size: any, idx: number) => {
                   const s = typeof size === 'string' ? { id: `size_legacy_${idx}`, value: size, inStock: true, quantity: null } : size;
@@ -1218,7 +1321,7 @@ const AdminProductCreate: React.FC = () => {
                         type="text"
                         value={s.value || ''}
                         onChange={(e) => updateSizeValue(idx, e.target.value)}
-                        placeholder="e.g., S, M, L, XL"
+                        placeholder={isFragrance ? "e.g., 50 ml, 100 ml" : "e.g., S, M, L, XL"}
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       <div className="flex items-center gap-2">
@@ -1251,18 +1354,24 @@ const AdminProductCreate: React.FC = () => {
                   );
                 })}
                 {form.sizes.length === 0 && (
-                  <p className="text-sm text-gray-500">No sizes added. Click "Add Size" to add one.</p>
+                  <p className="text-sm text-gray-500">
+                    {isFragrance
+                      ? "No volume variants added. Click 'Add Volume' or choose a quick preset above."
+                      : "No sizes added. Click 'Add Size' to add one."}
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Per-color size quantities */}
-            <StockMatrix
-              colors={form.colors}
-              sizes={form.sizes}
-              stock={form.stock}
-              onChangeQuantity={setStockQuantity}
-            />
+            {/* Per-color size quantities - Hidden for Fragrances */}
+            {!isFragrance && (
+              <StockMatrix
+                colors={form.colors}
+                sizes={form.sizes}
+                stock={form.stock}
+                onChangeQuantity={setStockQuantity}
+              />
+            )}
 
             {/* Tags */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

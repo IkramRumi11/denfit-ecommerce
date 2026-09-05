@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema({
   // Section / gender — maps to frontend `gender` field used by the Shop page
   gender: {
     type: String,
-    enum: ['men', 'women', 'kids', 'unisex', 'sale', 'accessories'],
+    enum: ['men', 'women', 'kids', 'unisex', 'sale', 'accessories', 'fragrances'],
     default: 'men',
     index: true
   },

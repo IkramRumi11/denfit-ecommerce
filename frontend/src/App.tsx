@@ -34,6 +34,7 @@ import TermsOfService from './pages/TermsOfService';
 import ReturnExchangePolicy from './pages/ReturnExchangePolicy';
 import CategoryPage from './pages/CategoryPage';
 import Brands from './pages/Brands';
+import Fragrances from './pages/Fragrances';
 
 // ✅ Fixed import — now points to the new world-class Admin Layout
 import AdminLayout from './layouts/AdminLayout/AdminLayout';
@@ -172,6 +173,12 @@ function AppContent() {
           <Route path="/accessories/:subcategory" element={<CategoryPage genderOverride="accessories" />} />
           <Route path="/brands" element={<Brands />} />
           <Route path="/brands/:subcategory" element={<CategoryPage genderOverride="brands" />} />
+          <Route path="/fragrances" element={<Fragrances />} />
+          <Route path="/fragrances/:subcategory" element={<Fragrances />} />
+          <Route path="/men/fragrances" element={<Fragrances />} />
+          <Route path="/women/fragrances" element={<Fragrances />} />
+          <Route path="/kids/fragrances" element={<Fragrances />} />
+          <Route path="/accessories/fragrances" element={<Fragrances />} />
 
           {/* Admin routes - Protected with AdminRoute */}
           <Route

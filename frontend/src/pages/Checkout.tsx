@@ -978,7 +978,7 @@ export const Checkout: React.FC = () => {
                       )}
                       <h4 className="text-sm font-medium text-gray-900 line-clamp-2">{String(item.name)}</h4>
                       <div className="text-xs text-gray-500 mt-1">
-                        <div>Size: <span className="font-medium text-gray-700">{String(item.size)}</span></div>
+                        <div>{/ml$/i.test(String(item.size || '').trim()) ? 'Volume:' : 'Size:'} <span className="font-medium text-gray-700">{String(item.size)}</span></div>
                         {(() => {
                           const variantLabel = item.variantName || item.colorName || '';
                           const colorValue = item.variantHex || item.color || '';

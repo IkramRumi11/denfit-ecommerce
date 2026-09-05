@@ -25,7 +25,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     <div className="space-y-4">
       <div>
         <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-          Category <span className="text-red-500">*</span>
+          Category / Department <span className="text-red-500">*</span>
         </label>
         <select
           id="category"
@@ -40,34 +40,46 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           <option value="kids">Kids</option>
           <option value="sale">Sale</option>
           <option value="accessories">Accessories</option>
+          <option value="fragrances">Fragrances</option>
         </select>
       </div>
 
       <div>
         <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700 mb-2">
-          Subcategory <span className="text-gray-400 text-xs font-normal">(from filter configs)</span>
+          Subcategory
         </label>
-        <select
-          id="subcategory"
-          name="subcategory"
-          value={subcategory}
-          onChange={(e) => onSubcategoryChange(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          disabled={availableSubcategories.length === 0}
-        >
-          <option value="">Select a subcategory</option>
-          {availableSubcategories.map((sc) => (
-            <option key={sc} value={sc}>
-              {sc.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-            </option>
-          ))}
-        </select>
-        {availableSubcategories.length === 0 && (
-          <p className="text-xs text-gray-400 mt-1">
-            No filter configs found for this category. Create them in Filter Management.
-          </p>
-        )}
+        {(() => {
+          const allSubs = Array.from(new Set([...availableSubcategories, 'fragrances']));
+          return (
+            <select
+              id="subcategory"
+              name="subcategory"
+              value={subcategory}
+              onChange={(e) => onSubcategoryChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a subcategory</option>
+              {allSubs.map((sc) => (
+                <option key={sc} value={sc}>
+                  {sc === 'fragrances' ? 'Fragrances (Perfumes & Colognes)' : sc.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                </option>
+              ))}
+            </select>
+          );
+        })()}
       </div>
+
+      {(category === 'fragrances' || subcategory === 'fragrances') && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+          <span className="text-base">✨</span>
+          <div>
+            <strong className="font-semibold">Fragrance Product Mode Active</strong>
+            <p className="text-amber-700 mt-0.5">
+              Colors and clothing size guide are disabled. You can configure volume variants (ml) and stock per volume variant below.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ─── Dynamic Attributes (from FilterEngine configs) ─── */}
       {dynamicFilterGroups.length > 0 && (

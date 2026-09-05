@@ -198,6 +198,15 @@ export const getAllProducts = async (req, res) => {
         andClauses.push({
           brand: { $exists: true, $ne: null, $nin: ['', null] }
         });
+      } else if (g === 'fragrances' || g === 'fragrance') {
+        andClauses.push({
+          $or: [
+            { category: { $regex: /fragrance/i } },
+            { categorySlug: { $regex: /fragrance/i } },
+            { subcategory: { $regex: /fragrance/i } },
+            { tags: { $in: [/fragrance/i, /perfume/i] } }
+          ]
+        });
       } else {
         andClauses.push({ gender: new RegExp(`^${escapeRegex(g)}$`, 'i') });
       }
@@ -382,7 +391,8 @@ export const getAllProducts = async (req, res) => {
             { category: { $regex: tokRegex } },
             { categorySlug: { $regex: tokRegex } },
             { subcategory: { $regex: tokRegex } },
-            { tags: { $in: [tokRegex] } }
+            { tags: { $in: [tokRegex] } },
+            { 'sizes.value': { $regex: tokRegex } }
           ]
         });
       });

@@ -21,9 +21,12 @@ export const useCategoryConfigs = (
         const allConfigs = Array.isArray(res?.data || res) ? (res?.data || res) : [];
         const gender = category || '';
         const matching = allConfigs.filter((c: any) =>
-          !c.gender || c.gender === gender || gender === 'sale' || gender === 'accessories'
+          !c.gender || c.gender === gender || gender === 'sale' || gender === 'accessories' || gender === 'fragrances'
         );
         const slugs = [...new Set(matching.map((c: any) => c.categorySlug))];
+        if (gender === 'fragrances' && !slugs.includes('fragrances')) {
+          slugs.push('fragrances');
+        }
         if (mounted) setAvailableSubcategories(slugs.sort());
       } catch (e) {
         console.error('Failed to load subcategories:', e);

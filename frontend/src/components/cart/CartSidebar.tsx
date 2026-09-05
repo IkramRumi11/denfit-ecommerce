@@ -201,7 +201,7 @@ export default function CartSidebar() {
                             </button>
                           </div>
                           <div className="text-gray-500 text-sm">
-                            <div>Size: <span className="font-medium text-gray-700">{safeSize || '—'}</span></div>
+                            <div>{/ml$/i.test(safeSize.trim()) ? 'Volume:' : 'Size:'} <span className="font-medium text-gray-700">{safeSize || '—'}</span></div>
                             {(() => {
                               const label = variantLabel || colorValue;
                               if (!label) return null;
