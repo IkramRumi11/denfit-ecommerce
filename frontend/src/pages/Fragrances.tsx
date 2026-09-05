@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, X, ArrowRight, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, X, ArrowRight, Package } from 'lucide-react';
 
 import { ProductCard } from '../components/ProductCard';
 import { FilterEngine } from '../components/FilterEngine';
@@ -24,39 +24,41 @@ function FragrancesHero() {
   const buttonText = banner?.buttonText || 'Explore Scents';
 
   return (
-    <section className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] mb-8 md:mb-12">
+    <section className="relative w-full h-[450px] md:h-[550px] lg:h-[620px] mb-8 md:mb-12 overflow-hidden">
       <img
         src={imageUrl}
         alt={title}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover scale-105"
         loading="eager"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/30" />
       <div className="absolute inset-0 flex items-center">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 text-xs font-semibold tracking-widest uppercase mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 text-[11px] tracking-[0.28em] uppercase text-neutral-300 mb-4">
+              <span className="h-[1px] w-10 bg-neutral-400" />
               <span>DENFiT Haute Parfumerie</span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4 tracking-[0.2em] uppercase leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light leading-[1.05] tracking-[0.22em] uppercase text-white mb-4">
               {title}
             </h1>
-            <p className="text-lg md:text-xl text-white/90 mb-6 md:mb-8 font-light leading-relaxed">
+            <p className="mt-4 text-base md:text-lg text-neutral-200 max-w-xl font-normal leading-relaxed mb-8">
               {subtitle}
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <a
                 href={buttonLink}
-                className="inline-block bg-white text-black px-6 md:px-8 py-3 md:py-4 font-semibold uppercase text-sm tracking-wider hover:bg-gray-100 transition-colors shadow-sm"
+                className="inline-flex items-center gap-3 rounded-full bg-white text-black px-8 md:px-10 py-3 text-[11px] md:text-xs uppercase tracking-[0.26em] font-semibold hover:bg-neutral-200 transition shadow-sm"
               >
                 {buttonText}
+                <ArrowRight size={15} />
               </a>
               <Link
-                to="/shop?sort=newest"
-                className="inline-block border-2 border-white text-white px-6 md:px-8 py-3 md:py-4 font-semibold uppercase text-sm tracking-wider hover:bg-white hover:text-black transition-colors"
+                to="/shop"
+                className="inline-flex items-center gap-2 text-[11px] md:text-xs uppercase tracking-[0.26em] text-neutral-200 hover:text-white transition"
               >
-                New Arrivals
+                Explore All
+                <span className="h-[1px] w-10 bg-neutral-400" />
               </Link>
             </div>
           </div>
@@ -227,7 +229,7 @@ export default function Fragrances(): JSX.Element {
 
       <div id="fragrances-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Audience / Department Navigation Tabs */}
-        <div className="flex items-center justify-between border-b border-gray-200 pb-4 mb-8 gap-4 overflow-x-auto">
+        <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-8 gap-4 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-2">
             {AUDIENCE_TABS.map((tab) => {
               const isActive = activeTab === tab.value;
@@ -235,10 +237,10 @@ export default function Fragrances(): JSX.Element {
                 <button
                   key={tab.value}
                   onClick={() => handleTabChange(tab.value)}
-                  className={`px-4 py-2 text-xs md:text-sm font-semibold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${
+                  className={`px-5 py-2.5 text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] rounded-full transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-black text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-black'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-black'
                   }`}
                 >
                   {tab.label}
@@ -250,9 +252,9 @@ export default function Fragrances(): JSX.Element {
           {/* Filter Toggle Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-xs md:text-sm font-medium hover:border-black transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-2 px-5 py-2.5 border border-neutral-300 rounded-full text-[11px] md:text-xs font-semibold uppercase tracking-[0.22em] hover:border-black transition-colors whitespace-nowrap"
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>{showFilters ? 'Hide Filters' : 'Filter & Sort'}</span>
           </button>
         </div>
@@ -261,18 +263,18 @@ export default function Fragrances(): JSX.Element {
         {brands.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs uppercase font-bold tracking-wider text-gray-500">
+              <span className="text-[11px] uppercase font-bold tracking-[0.24em] text-neutral-500">
                 Featured Perfume Houses
               </span>
-              <span className="text-xs text-gray-400">{total} Fragrances Available</span>
+              <span className="text-[11px] tracking-[0.16em] uppercase text-neutral-400">{total} Fragrances Available</span>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button
                 onClick={() => handleApplyFilters({ ...currentFilters, brand: undefined })}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase border transition-colors shrink-0 ${
+                className={`px-4 py-2 rounded-full text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.2em] border transition-colors shrink-0 ${
                   !currentFilters.brand
                     ? 'border-black bg-black text-white'
-                    : 'border-gray-200 bg-white hover:border-gray-400 text-gray-700'
+                    : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-700'
                 }`}
               >
                 All Brands
@@ -289,15 +291,15 @@ export default function Fragrances(): JSX.Element {
                         brand: isSelected ? undefined : b,
                       })
                     }
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase border transition-colors shrink-0 flex items-center gap-1.5 ${
+                    className={`px-4 py-2 rounded-full text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.2em] border transition-colors shrink-0 flex items-center gap-1.5 ${
                       isSelected
                         ? 'border-black bg-black text-white'
-                        : 'border-gray-200 bg-white hover:border-gray-400 text-gray-700'
+                        : 'border-neutral-200 bg-white hover:border-neutral-400 text-neutral-700'
                     }`}
                   >
                     <span>{b}</span>
                     {count > 0 && (
-                      <span className={`text-[10px] ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                      <span className={`text-[10px] ${isSelected ? 'text-neutral-300' : 'text-neutral-400'}`}>
                         ({count})
                       </span>
                     )}
@@ -310,12 +312,12 @@ export default function Fragrances(): JSX.Element {
 
         {/* Filter Drawer / Sidebar if open */}
         {showFilters && (
-          <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-200">
+          <div className="mb-8 p-6 bg-neutral-50 rounded-2xl border border-neutral-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-gray-900">Refine Collection</h3>
+              <h3 className="font-semibold text-xs uppercase tracking-[0.22em] text-neutral-900">Refine Collection</h3>
               <button
                 onClick={() => setShowFilters(false)}
-                className="text-gray-400 hover:text-black p-1"
+                className="text-neutral-400 hover:text-black p-1 transition-colors"
                 aria-label="Close filters"
               >
                 <X className="h-4 w-4" />
@@ -334,20 +336,20 @@ export default function Fragrances(): JSX.Element {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 py-12">
             {Array.from({ length: 8 }).map((_, idx) => (
               <div key={idx} className="animate-pulse">
-                <div className="bg-gray-200 rounded-xl aspect-[3/4] mb-3" />
-                <div className="h-3 bg-gray-200 rounded w-1/3 mb-2" />
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                <div className="h-4 bg-gray-200 rounded w-1/4" />
+                <div className="bg-neutral-200 rounded-xl aspect-[3/4] mb-3" />
+                <div className="h-3 bg-neutral-200 rounded w-1/3 mb-2" />
+                <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-neutral-200 rounded w-1/4" />
               </div>
             ))}
           </div>
         ) : products.length === 0 ? (
           <div className="py-20 text-center max-w-md mx-auto">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-              <Sparkles className="w-8 h-8" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400">
+              <Package className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Fragrances Found</h3>
-            <p className="text-sm text-gray-500 mb-6">
+            <h3 className="text-xl font-light tracking-[0.16em] uppercase text-neutral-900 mb-2">No Fragrances Found</h3>
+            <p className="text-sm text-neutral-500 mb-6 font-light">
               {currentFilters.brand || activeTab !== 'all'
                 ? 'Try broadening your search or resetting active filters.'
                 : 'No fragrance products have been published in this collection yet.'}
