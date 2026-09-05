@@ -1,10 +1,11 @@
-﻿import express from 'express';
+import express from 'express';
 
 import {
   getAllProducts,
   getProduct,
   getFeaturedProducts,
   getFilters,
+  getActiveBrands,
   getProductsByCategory,
   searchProducts
 } from '../controllers/productController.js';
@@ -13,6 +14,9 @@ const router = express.Router();
 
 // ✅ GET /api/v1/products
 router.get('/', getAllProducts);
+
+// ✅ GET /api/v1/products/brands
+router.get('/brands', getActiveBrands);
 
 // ✅ GET /api/v1/products/featured
 router.get('/featured', getFeaturedProducts);

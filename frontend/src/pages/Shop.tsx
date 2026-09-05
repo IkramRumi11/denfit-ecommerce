@@ -118,13 +118,13 @@ export const Shop: React.FC = () => {
     const params = new URLSearchParams(location.search);
     const genderParam = params.get('gender');
     const typeParam = params.get('type');
-
+    const brandParam = params.get('brand') || params.get('brandSlug');
     const colorParam = params.get('color');
     const searchParam = params.get('search');
     const sizesParam = params.get('sizes');
     const priceParam = params.get('price');
     const ratingParam = params.get('rating');
-    if (!genderParam && !typeParam && !colorParam && !sizesParam && !priceParam && !ratingParam && !searchParam) return;
+    if (!genderParam && !typeParam && !brandParam && !colorParam && !sizesParam && !priceParam && !ratingParam && !searchParam) return;
 
     let filtered = [...products];
 
@@ -151,12 +151,33 @@ export const Shop: React.FC = () => {
       // Request server-side filtering by gender
       const q: any = { gender: genderParam };
       if (typeParam) q.category = typeParam;
+      if (brandParam) q.brand = brandParam;
       productsAPI.getAll(q).then((res: any) => {
         const items = (res && (res.products || res.data?.products)) || [];
         const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
         setProducts(normalized);
         setFilteredProducts(normalized);
       }).catch((err: any) => console.error('Failed to load products for gender filter', err));
+    } else if (brandParam && !genderParam) {
+      // Request server-side filtering by brand
+      const q: any = { brand: brandParam };
+      if (typeParam) q.category = typeParam;
+      productsAPI.getAll(q).then((res: any) => {
+        const items = (res && (res.products || res.data?.products)) || [];
+        const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
+        setProducts(normalized);
+        setFilteredProducts(normalized);
+      }).catch((err: any) => console.error('Failed to load products for brand filter', err));
+    }
+
+    // Filter by brand client-side as well
+    if (brandParam && String(brandParam).trim()) {
+      const bNorm = normalize(brandParam);
+      filtered = filtered.filter((p: any) => {
+        if (!p.brand) return false;
+        const pbNorm = normalize(p.brand);
+        return pbNorm === bNorm || pbNorm.includes(bNorm) || bNorm.includes(pbNorm) || (p.brandSlug && normalize(p.brandSlug) === bNorm);
+      });
     }
 
     if (typeParam) {
@@ -192,9 +213,6 @@ export const Shop: React.FC = () => {
         const isUpTo = /up[- ]?to|upto/.test(decodedLower);
 
         // extract category text before sale phrase (e.g., "accessories")
-        // replace hyphens with spaces so slugified inputs like
-        // "accessories-up-to-30-off" become easy to parse and don't leave
-        // trailing hyphens (which broke megaMenuData lookups).
         const cleanedForCategory = decodedLower.replace(/-/g, ' ');
         let categoryPart = cleanedForCategory.split(/up[- ]?to|off|%|discount|clearance/)[0].trim();
         if (categoryPart === '') categoryPart = cleanedForCategory;
@@ -216,12 +234,6 @@ export const Shop: React.FC = () => {
         } catch (e) {
           // ignore if megaMenuData isn't present or mapping fails
         }
-
-        // Debug: print sale filter context
-        try {
-          // eslint-disable-next-line no-console
-          console.debug('[Shop] sale filter context', { decodedLower, threshold, isUpTo, catTarget, expandedTargets });
-        } catch (e) {}
 
         filtered = filtered.filter((p: any) => {
           const disc = productDiscount(p);
@@ -271,12 +283,6 @@ export const Shop: React.FC = () => {
           if (normalize(p.name) && expandedTargets.includes(normalize(p.name))) return true;
           return false;
         });
-
-        // Debug: log matched ids
-        try {
-          // eslint-disable-next-line no-console
-          console.debug('[Shop] sale filter matched count', filtered.length, 'ids', filtered.map((x:any) => x.id || x._id).slice(0,200));
-        } catch (e) {}
       } else {
         const target = normalize(decoded);
         const targetSingular = target.endsWith('s') && target.length > 2 ? target.slice(0, -1) : target;
@@ -327,11 +333,6 @@ export const Shop: React.FC = () => {
         const disc = productDiscount(p);
         return disc > 0 || p.isOnSale || p.onSale || p.category === 'sale' || p.gender === 'sale';
       });
-
-      try {
-        // eslint-disable-next-line no-console
-        console.debug('[Shop] gender=sale matched count', filtered.length, 'ids', filtered.map((x:any)=>x.id||x._id).slice(0,200));
-      } catch (e) {}
     }
 
     if (colorParam && String(colorParam).trim() !== '') {
@@ -359,12 +360,13 @@ export const Shop: React.FC = () => {
       };
       filtered = filtered.filter(matchesColor);
     }
-    // Apply text search across name/description/tags when present
+    // Apply text search across name/description/tags/brand when present
     if (searchParam && String(searchParam).trim() !== '') {
       const q = String(searchParam).toLowerCase();
       filtered = filtered.filter((p: any) => {
         try {
           if (p.name && String(p.name).toLowerCase().includes(q)) return true;
+          if (p.brand && String(p.brand).toLowerCase().includes(q)) return true;
           if (p.description && String(p.description).toLowerCase().includes(q)) return true;
           if (Array.isArray(p.tags) && p.tags.map(String).some((t: any) => String(t).toLowerCase().includes(q))) return true;
           if (p.sku && String(p.sku).toLowerCase().includes(q)) return true;
@@ -375,6 +377,7 @@ export const Shop: React.FC = () => {
     // Build parsedFilters to initialize filter UI
     const parsedFilters: any = {};
     if (typeParam) parsedFilters.category = typeParam;
+    if (brandParam) parsedFilters.brand = brandParam;
     if (colorParam) parsedFilters.color = colorParam;
     if (searchParam) parsedFilters.search = searchParam;
     if (sizesParam) parsedFilters.sizes = String(sizesParam).split(',').map(s => s.trim()).filter(Boolean);

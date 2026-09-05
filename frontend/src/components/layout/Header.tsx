@@ -26,6 +26,7 @@ const categories = [
   { name: "Kids", slug: "kids" },
   { name: "Accessories", slug: "accessories" },
   { name: "Sale", slug: "sale" },
+  { name: "Brands", slug: "brands" },
 ];
 
 // ---------------------------------------------
@@ -37,6 +38,7 @@ export default function Header(): JSX.Element {
   const [notifOpen, setNotifOpen] = useState(false);
   const [megaIndex, setMegaIndex] = useState<string | null>(null);
   const [openMobileCat, setOpenMobileCat] = useState<number | null>(null);
+  const [brands, setBrands] = useState<string[]>([]);
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
@@ -47,6 +49,22 @@ export default function Header(): JSX.Element {
   const { notifications, dismissNotification, clearNotifications } = useNotifications();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
+  // Load dynamically active brands from database
+  useEffect(() => {
+    let mounted = true;
+    productsAPI.getBrands()
+      .then((res: any) => {
+        const list = (res && (res.data || res.brands)) || (Array.isArray(res) ? res : []);
+        if (mounted && Array.isArray(list)) {
+          setBrands(list.filter(Boolean));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load active brands for header", err);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   // Suggestions will be fetched from the backend; do not seed with mock products
   // to avoid showing placeholder/mock items in the search overlay.
@@ -214,7 +232,7 @@ export default function Header(): JSX.Element {
             {categories.map((cat) => (
               <div key={cat.slug} onMouseEnter={() => setMegaIndex(cat.slug)}>
                 {(() => {
-                  const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
+                  const path = ['men','women','kids','sale','accessories','brands'].includes(cat.slug)
                     ? `/${cat.slug}`
                     : `/shop?gender=${cat.slug}`;
                   return (
@@ -234,7 +252,7 @@ export default function Header(): JSX.Element {
           </div>
 
           {/* Mega Menu */}
-          <MegaMenu activeCategory={megaIndex} onClose={() => setMegaIndex(null)} />
+          <MegaMenu activeCategory={megaIndex} brands={brands} onClose={() => setMegaIndex(null)} />
 
           {/* Desktop right */}
           <div className="hidden md:flex items-center gap-1 md:gap-1.5 ml-auto">
@@ -377,65 +395,95 @@ export default function Header(): JSX.Element {
                     </button>
                     {openMobileCat === idx && (
                       <div className="pl-4 mt-2 space-y-2">
-                        {(() => {
-                          const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
-                            ? `/${cat.slug}`
-                            : `/shop?gender=${cat.slug}`;
-                          return (
+                        {cat.slug === 'brands' ? (
+                          <>
                             <Link
-                              to={path}
+                              to="/brands"
                               onClick={() => setMobileOpen(false)}
-                              className="block text-sm font-medium text-gray-900"
+                              className="block text-sm font-medium text-gray-900 py-1"
                             >
-                              Shop All {cat.name}
+                              View Brands Hub
                             </Link>
-                          );
-                        })()}
-
-                        {/* Subcategories */}
-                        {(() => {
-                          const menu = megaMenuData[cat.slug as keyof typeof megaMenuData];
-                          if (!menu) return null;
-                          return Object.entries(menu.categories).map(([section, items]) => (
-                            <div key={section}>
-                              <h6 className="text-sm font-bold text-gray-900 underline mt-3 mb-2">
-                                {section}
-                              </h6>
-                              {(items as string[]).map((item) => {
-                                      const sectionSlug = String(slugify(section || '')).toLowerCase();
-                                      const genderForLink = ['men','women','kids'].includes(sectionSlug) ? sectionSlug : cat.slug;
-                                      const path = `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
-                                      return (
-                                        <Link
-                                          key={item}
-                                          to={path}
-                                          onClick={() => setMobileOpen(false)}
-                                          className="block text-sm text-gray-600 py-1 hover:text-black"
-                                        >
-                                          {item}
-                                        </Link>
-                                      );
-                              })}
-                            </div>
-                          ));
-                        })()}
-
-                        {/* Featured Link */}
-                        {(() => {
-                          const menu = megaMenuData[cat.slug as keyof typeof megaMenuData];
-                          if (!menu?.featured) return null;
-                              return (
-                                <div className="pt-3 mt-3 border-t border-gray-200">
+                            {brands.length === 0 ? (
+                              <p className="text-xs text-gray-400 py-1">No brands available</p>
+                            ) : (
+                              <div className="space-y-1 mt-1">
+                                {brands.map((brand) => (
                                   <Link
-                                    to={String(menu.featured.link || '/')}
+                                    key={brand}
+                                    to={`/shop?brand=${encodeURIComponent(brand)}`}
                                     onClick={() => setMobileOpen(false)}
-                                    className="block text-sm font-medium text-blue-600 hover:underline"
+                                    className="block text-sm text-gray-600 py-1 hover:text-black"
                                   >
-                                    {menu.featured.title}
+                                    {brand}
                                   </Link>
-                                </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {(() => {
+                              const path = ['men','women','kids','sale','accessories'].includes(cat.slug)
+                                ? `/${cat.slug}`
+                                : `/shop?gender=${cat.slug}`;
+                              return (
+                                <Link
+                                  to={path}
+                                  onClick={() => setMobileOpen(false)}
+                                  className="block text-sm font-medium text-gray-900"
+                                >
+                                  Shop All {cat.name}
+                                </Link>
                               );
-                        })()}
+                            })()}
+
+                            {/* Subcategories */}
+                            {(() => {
+                              const menu = megaMenuData[cat.slug as keyof typeof megaMenuData];
+                              if (!menu) return null;
+                              return Object.entries(menu.categories).map(([section, items]) => (
+                                <div key={section}>
+                                  <h6 className="text-sm font-bold text-gray-900 underline mt-3 mb-2">
+                                    {section}
+                                  </h6>
+                                  {(items as string[]).map((item) => {
+                                          const sectionSlug = String(slugify(section || '')).toLowerCase();
+                                          const genderForLink = ['men','women','kids'].includes(sectionSlug) ? sectionSlug : cat.slug;
+                                          const path = `/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`;
+                                          return (
+                                            <Link
+                                              key={item}
+                                              to={path}
+                                              onClick={() => setMobileOpen(false)}
+                                              className="block text-sm text-gray-600 py-1 hover:text-black"
+                                            >
+                                              {item}
+                                            </Link>
+                                          );
+                                  })}
+                                </div>
+                              ));
+                            })()}
+
+                            {/* Featured Link */}
+                            {(() => {
+                              const menu = megaMenuData[cat.slug as keyof typeof megaMenuData];
+                              if (!menu?.featured) return null;
+                                  return (
+                                    <div className="pt-3 mt-3 border-t border-gray-200">
+                                      <Link
+                                        to={String(menu.featured.link || '/')}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="block text-sm font-medium text-blue-600 hover:underline"
+                                      >
+                                        {menu.featured.title}
+                                      </Link>
+                                    </div>
+                                  );
+                            })()}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

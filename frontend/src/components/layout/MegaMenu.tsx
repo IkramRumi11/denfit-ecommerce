@@ -1,5 +1,4 @@
-﻿// src/components/layout/MegaMenu.tsx
-// No default React import required here (using modern JSX transform)
+// src/components/layout/MegaMenu.tsx
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { megaMenuData } from "../../data/megaMenuData";
@@ -7,6 +6,7 @@ import { slugify } from '../../utils/productHelpers';
 
 type Props = {
   activeCategory: string | null;
+  brands?: string[];
   onClose: () => void;
 };
 
@@ -20,12 +20,22 @@ const panelVariant = {
   visible: { opacity: 1, y: 0 },
 };
 
-export default function MegaMenu({ activeCategory, onClose }: Props) {
+export default function MegaMenu({ activeCategory, brands = [], onClose }: Props) {
   if (!activeCategory) return null;
-  const data = (megaMenuData as any)[activeCategory];
-  if (!data) return null;
 
-  // Use react-router `Link` in callers for SPA navigation; no absolute URL needed here.
+  const isBrandsCategory = activeCategory === 'brands';
+  const data = (megaMenuData as any)[activeCategory];
+
+  if (!isBrandsCategory && !data) return null;
+
+  // Split brands into 3 columns for even layout
+  const numBrandCols = 3;
+  const brandCols: string[][] = Array.from({ length: numBrandCols }, () => []);
+  if (isBrandsCategory && Array.isArray(brands)) {
+    brands.forEach((brand, idx) => {
+      brandCols[idx % numBrandCols].push(brand);
+    });
+  }
 
   return (
     <AnimatePresence>
@@ -38,10 +48,9 @@ export default function MegaMenu({ activeCategory, onClose }: Props) {
         variants={backdropVariant}
         transition={{ duration: 0.18 }}
         className="absolute inset-x-0 top-full z-40 pointer-events-auto"
-        style={{ top: "4rem" }} // make sure menu sits below header (header height = h-16)
+        style={{ top: "4rem" }}
         onClick={onClose}
       >
-        {/* backdrop that blurs the content under the menu */}
         <div className="absolute inset-0 bg-black/10 backdrop-blur-sm" />
       </motion.div>
 
@@ -57,49 +66,97 @@ export default function MegaMenu({ activeCategory, onClose }: Props) {
         onMouseLeave={onClose}
       >
         <div className="max-w-7xl mx-auto px-6 py-8 bg-white shadow-md rounded-b-md">
-          <div className="grid grid-cols-4 gap-8">
-            {/* columns of categories */}
-            {Object.entries(data.categories).map(([section, items]) => (
-              <div key={section}>
-                <h4 className="text-lg font-semibold text-gray-900 mb-3">{section}</h4>
-                <ul className="space-y-2">
-                  {(items as string[]).map((item) => {
-                    const sectionSlug = String(slugify(section || ''))?.toLowerCase();
-                    // If the section is an explicit gender (Men/Women/Kids), use that as gender param
-                    const genderForLink = ['men', 'women', 'kids'].includes(sectionSlug) ? sectionSlug : String(activeCategory);
-                    return (
-                      <li key={item}>
-                        <Link
-                          to={`/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`}
-                          className="text-gray-600 hover:text-black transition-colors"
-                          onClick={onClose}
-                        >
-                          {item}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+          {isBrandsCategory ? (
+            <div className="grid grid-cols-4 gap-8">
+              {brands.length === 0 ? (
+                <div className="col-span-3 py-6 text-gray-500">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Brands Catalog</h4>
+                  <p className="text-sm">No branded products are currently available.</p>
+                </div>
+              ) : (
+                brandCols.map((colBrands, cIdx) => (
+                  <div key={`brand-col-${cIdx}`}>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                      {cIdx === 0 ? 'Featured Brands' : cIdx === 1 ? 'Popular Brands' : 'All Brands'}
+                    </h4>
+                    <ul className="space-y-2">
+                      {colBrands.map((brand) => (
+                        <li key={brand}>
+                          <Link
+                            to={`/shop?brand=${encodeURIComponent(brand)}`}
+                            className="text-gray-600 hover:text-black hover:font-medium transition-colors"
+                            onClick={onClose}
+                          >
+                            {brand}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
 
-            {/* featured card */}
-            <div className="col-span-1 flex flex-col items-center justify-center text-center border-l pl-6">
-              <img
-                src={data.featured.image}
-                alt={data.featured.title}
-                className="w-full rounded-lg object-cover mb-4 h-40"
-              />
-              <h5 className="font-semibold text-gray-800 mb-2">{data.featured.title}</h5>
-              <Link
-                to={String(data.featured.link || '/')}
-                onClick={onClose}
-                className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
-              >
-                Shop Now
-              </Link>
+              {/* Brands Hub card */}
+              <div className="col-span-1 flex flex-col items-center justify-center text-center border-l pl-6">
+                <img
+                  src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop"
+                  alt="Explore Brands"
+                  className="w-full rounded-lg object-cover mb-4 h-40"
+                />
+                <h5 className="font-semibold text-gray-800 mb-2">Explore All Brands</h5>
+                <Link
+                  to="/brands"
+                  onClick={onClose}
+                  className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
+                >
+                  View Brands Hub
+                </Link>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-8">
+              {/* columns of categories */}
+              {Object.entries(data.categories).map(([section, items]) => (
+                <div key={section}>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">{section}</h4>
+                  <ul className="space-y-2">
+                    {(items as string[]).map((item) => {
+                      const sectionSlug = String(slugify(section || ''))?.toLowerCase();
+                      const genderForLink = ['men', 'women', 'kids'].includes(sectionSlug) ? sectionSlug : String(activeCategory);
+                      return (
+                        <li key={item}>
+                          <Link
+                            to={`/shop?gender=${genderForLink}&type=${encodeURIComponent(slugify(item))}`}
+                            className="text-gray-600 hover:text-black transition-colors"
+                            onClick={onClose}
+                          >
+                            {item}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+
+              {/* featured card */}
+              <div className="col-span-1 flex flex-col items-center justify-center text-center border-l pl-6">
+                <img
+                  src={data.featured.image}
+                  alt={data.featured.title}
+                  className="w-full rounded-lg object-cover mb-4 h-40"
+                />
+                <h5 className="font-semibold text-gray-800 mb-2">{data.featured.title}</h5>
+                <Link
+                  to={String(data.featured.link || '/')}
+                  onClick={onClose}
+                  className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
+                >
+                  Shop Now
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </AnimatePresence>

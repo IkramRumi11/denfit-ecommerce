@@ -265,6 +265,7 @@ export const productsAPI = {
     });
     return handleRequest<{ products: Product[]; total: number }>(`/products${query.toString() ? "?" + query.toString() : ""}`);
   },
+  getBrands: () => handleRequest<string[]>(`/products/brands`),
   getFilters: () => handleRequest<any>(`/products/filters`),
   getById: (id: string) => handleRequest<Product>(`/products/${id}`),
   getBySlug: (slug: string) => handleRequest<Product>(`/products/slug/${slug}`),

@@ -179,16 +179,60 @@ export const getAllProducts = async (req, res) => {
             { discountTags: { $in: ['sale', 'clearance', 'discount'] } }
           ]
         });
+      } else if (g === 'brands' || g === 'brand') {
+        // If gender is passed as 'brands', match all branded products
+        andClauses.push({
+          brand: { $exists: true, $ne: null, $nin: ['', null] }
+        });
       } else {
         andClauses.push({ gender: new RegExp(`^${escapeRegex(g)}$`, 'i') });
       }
     }
 
-    // Brand — support multi-select (comma-separated)
+    // Brand — support single, multi-select (comma-separated), or slug
     const brandArr = parseArray(brand);
-    if (brandArr.length === 1) mongoQuery.brand = brandArr[0];
-    else if (brandArr.length > 1) mongoQuery.brand = { $in: brandArr };
-    if (brandSlug) mongoQuery.brandSlug = String(brandSlug).toLowerCase();
+    if (brandArr.length === 1) {
+      const b = brandArr[0];
+      const safeB = escapeRegex(b);
+      andClauses.push({
+        $or: [
+          { brand: new RegExp(`^${safeB}$`, 'i') },
+          { brandSlug: String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-') }
+        ]
+      });
+    } else if (brandArr.length > 1) {
+      const bRegexes = brandArr.map(b => new RegExp(`^${escapeRegex(b)}$`, 'i'));
+      andClauses.push({
+        $or: [
+          { brand: { $in: bRegexes } },
+          { brandSlug: { $in: brandArr.map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-')) } }
+        ]
+      });
+    }
+    if (brandSlug) {
+      const slugStr = String(brandSlug).trim().toLowerCase();
+      const slugName = slugStr.replace(/-/g, ' ');
+      andClauses.push({
+        $or: [
+          { brandSlug: slugStr },
+          { brand: new RegExp(`^${escapeRegex(slugName)}$`, 'i') }
+        ]
+      });
+    }
+
+    // Trending filter — for Homepage and Search suggestions
+    const { trending } = req.query || {};
+    if (trending === 'true' || trending === true || trending === '1') {
+      andClauses.push({
+        $or: [
+          { trending: true },
+          { isTrending: true },
+          { discountTags: 'trending' },
+          { 'ratings.average': { $gte: 4.5 } }
+        ]
+      });
+    }
+
     if (collection) mongoQuery.collectionName = String(collection);
     if (collectionSlug) mongoQuery.collectionSlug = String(collectionSlug).toLowerCase();
     if (featured === 'true' || featured === true) mongoQuery.featured = true;
@@ -258,21 +302,36 @@ export const getAllProducts = async (req, res) => {
       andClauses.push({ discountTags: { $in: discountTagArr } });
     }
 
-    // Simple search across name/description/category/brand
-    if (search && String(search).trim()) {
-      const q = String(search).trim();
-      const safeQ = escapeRegex(q);
-      andClauses.push({ $or: [{ name: { $regex: safeQ, $options: 'i' } }, { description: { $regex: safeQ, $options: 'i' } }, { category: { $regex: safeQ, $options: 'i' } }, { brand: { $regex: safeQ, $options: 'i' } }] });
+    // Multi-token intelligent search across name, brand, description, category, tags
+    const searchVal = search || req.query.q;
+    if (searchVal && String(searchVal).trim()) {
+      const qStr = String(searchVal).trim();
+      const tokens = qStr.split(/\s+/).filter(Boolean);
+      tokens.forEach(tok => {
+        const safeTok = escapeRegex(tok);
+        const tokRegex = new RegExp(safeTok, 'i');
+        andClauses.push({
+          $or: [
+            { name: { $regex: tokRegex } },
+            { brand: { $regex: tokRegex } },
+            { brandSlug: { $regex: tokRegex } },
+            { description: { $regex: tokRegex } },
+            { category: { $regex: tokRegex } },
+            { categorySlug: { $regex: tokRegex } },
+            { subcategory: { $regex: tokRegex } },
+            { tags: { $in: [tokRegex] } }
+          ]
+        });
+      });
     }
 
     // If we collected any $and clauses, combine them with base mongoQuery
     // Support dynamic attribute-based filters passed as query params.
     // Any query param not in the known list will be treated as an attribute filter
-    // against the `attributes` map on the Product document. This preserves
-    // the existing schema and avoids adding new APIs or fields.
+    // against the `attributes` map on the Product document.
     const knownParams = new Set([
       'category', 'subcategory', 'brand', 'brandSlug', 'collection', 'collectionSlug', 'featured', 'minPrice', 'maxPrice', 'tags', 'search', 'sort', 'page', 'limit', 'gender', 'sizes', 'colors', 'inStock', 'q',
-      'availability', 'ageGroup', 'minRating', 'discount', 'discountTags'
+      'availability', 'ageGroup', 'minRating', 'discount', 'discountTags', 'trending'
     ]);
 
     const attributeAndClauses = [];
@@ -441,9 +500,29 @@ export const getFeaturedProducts = async (req, res) => {
 export const searchProducts = async (req, res) => {
   try {
     const { q, limit = 10 } = req.query || {};
-    if (!q) return res.status(400).json({ success: false, message: 'Search query is required' });
-    const re = new RegExp(escapeRegex(String(q)), 'i');
-    const products = await Product.find({ $or: [{ name: re }, { description: re }, { category: re }] }).limit(Math.max(1, Math.min(200, Number(limit) || 10))).lean();
+    if (!q || !String(q).trim()) return res.status(400).json({ success: false, message: 'Search query is required' });
+    
+    const tokens = String(q).trim().split(/\s+/).filter(Boolean);
+    const andClauses = [];
+    tokens.forEach(tok => {
+      const safeTok = escapeRegex(tok);
+      const tokRegex = new RegExp(safeTok, 'i');
+      andClauses.push({
+        $or: [
+          { name: { $regex: tokRegex } },
+          { brand: { $regex: tokRegex } },
+          { brandSlug: { $regex: tokRegex } },
+          { description: { $regex: tokRegex } },
+          { category: { $regex: tokRegex } },
+          { categorySlug: { $regex: tokRegex } },
+          { subcategory: { $regex: tokRegex } },
+          { tags: { $in: [tokRegex] } }
+        ]
+      });
+    });
+
+    const searchQuery = andClauses.length > 1 ? { $and: andClauses } : andClauses[0];
+    const products = await Product.find(searchQuery).limit(Math.max(1, Math.min(200, Number(limit) || 10))).lean();
     const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
     const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
     const normalized = products.map(p => normalizeProductForClient(p));
@@ -452,6 +531,37 @@ export const searchProducts = async (req, res) => {
   } catch (error) {
     console.error('searchProducts error:', error && (error.stack || error));
     res.status(500).json({ success: false, message: 'Error searching products' });
+  }
+};
+
+export const getActiveBrands = async (req, res) => {
+  try {
+    const rawBrands = await Product.distinct('brand', {
+      brand: { $exists: true, $ne: null, $nin: ['', null] }
+    }).catch(() => []);
+
+    // Filter, clean, trim, deduplicate (case-insensitive deduplication while preserving nice display casing)
+    const brandMap = new Map();
+    (rawBrands || []).forEach(b => {
+      if (!b) return;
+      const trimmed = String(b).trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (!brandMap.has(key)) {
+        brandMap.set(key, trimmed);
+      }
+    });
+
+    const sortedBrands = Array.from(brandMap.values()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+    return res.status(200).json({
+      success: true,
+      data: sortedBrands,
+      count: sortedBrands.length
+    });
+  } catch (err) {
+    console.error('getActiveBrands error', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch active brands' });
   }
 };
 

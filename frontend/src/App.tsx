@@ -33,6 +33,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import ReturnExchangePolicy from './pages/ReturnExchangePolicy';
 import CategoryPage from './pages/CategoryPage';
+import Brands from './pages/Brands';
 
 // ✅ Fixed import — now points to the new world-class Admin Layout
 import AdminLayout from './layouts/AdminLayout/AdminLayout';
@@ -169,6 +170,8 @@ function AppContent() {
           <Route path="/sale/:subcategory" element={<CategoryPage genderOverride="sale" />} />
           <Route path="/accessories" element={<Accessories />} />
           <Route path="/accessories/:subcategory" element={<CategoryPage genderOverride="accessories" />} />
+          <Route path="/brands" element={<Brands />} />
+          <Route path="/brands/:subcategory" element={<CategoryPage genderOverride="brands" />} />
 
           {/* Admin routes - Protected with AdminRoute */}
           <Route
