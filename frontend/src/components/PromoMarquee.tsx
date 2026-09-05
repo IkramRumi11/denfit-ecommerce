@@ -1,17 +1,25 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { contentAPI } from '../api';
+import { useShipping } from '../context/ShippingContext';
+import { interpolateShippingMessage } from '../utils/shippingHelpers';
 
-const DEFAULT_MESSAGES = ['📢 Free shipping on orders over ₨5,000'];
+const DEFAULT_MESSAGES = ['📢 Free shipping on orders over Rs. 5,000'];
 
 type PromoMarqueeProps = {
   text?: string;
 };
 
 export default function PromoMarquee({ text }: PromoMarqueeProps): JSX.Element | null {
-  const [messages, setMessages] = useState<string[]>(() => (text ? [text] : DEFAULT_MESSAGES));
+  const { shippingConfig } = useShipping();
+  const [rawMessages, setRawMessages] = useState<string[]>(() => (text ? [text] : DEFAULT_MESSAGES));
   const [enabled, setEnabled] = useState<boolean>(true);
   const [intervalSeconds, setIntervalSeconds] = useState<number>(4);
   const [activeMsgIndex, setActiveMsgIndex] = useState<number>(0);
+
+  // Dynamically interpolate only shipping-related messages while leaving unrelated messages untouched
+  const messages = useMemo(() => {
+    return rawMessages.map((msg) => interpolateShippingMessage(msg, shippingConfig));
+  }, [rawMessages, shippingConfig]);
 
   const textRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -45,7 +53,7 @@ export default function PromoMarquee({ text }: PromoMarqueeProps): JSX.Element |
           if (Array.isArray(data.messages) && data.messages.length > 0) {
             const valid = data.messages.map((m: any) => String(m || '').trim()).filter(Boolean);
             if (valid.length > 0) {
-              setMessages(valid);
+              setRawMessages(valid);
             }
           }
           if (typeof data.intervalSeconds === 'number' && data.intervalSeconds >= 2) {

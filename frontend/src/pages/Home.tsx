@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useWishlist } from "../context/WishlistContext";
+import { useShipping } from "../context/ShippingContext";
 import { api } from "../api";
 import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from "../utils/productHelpers";
 import {
@@ -160,6 +161,7 @@ const LuxuryHomePage = () => {
 
   const { addItem, getItemQuantity, items } = useCart();
   const { showToast } = useToast();
+  const { freeShippingText } = useShipping();
   const { banner: homeTopBanner } = usePageBanner('home_top');
   const { banner: homeHeroBanner } = usePageBanner('home_hero');
   const navigate = useNavigate();
@@ -785,7 +787,7 @@ const LuxuryHomePage = () => {
           </span>
           <span className="flex items-center gap-2">
             <span className="h-[1px] w-6 bg-neutral-500" />
-            Free shipping over ₨5,000
+            {freeShippingText}
           </span>
           <span className="flex items-center gap-2">
             <span className="h-[1px] w-6 bg-neutral-500" />

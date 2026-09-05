@@ -18,21 +18,25 @@ import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from
 import { normalizeAttributesInput } from '../utils/attributes.js';
 import { normalizeProductInput, mapFilesToVariants, safeParse } from '../utils/adminProductHelper.js';
 import { getColorName } from '../utils/colorHelper.js';
+import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
 
   // Recalculate and persist monetary totals on an Order document.
   // Honors server-side TAX_FEATURE_ENABLED (env). If disabled, preserve legacy fields
   // and avoid re-introducing tax values into the database.
-  const recalcTotals = (order) => {
+  const recalcTotals = async (order) => {
     const subtotal = (order.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
-    const shippingCost = subtotal < 5000 ? 300 : 0;
+    const discountAmount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const shippingConfig = await getShippingConfig();
+    const shippingCost = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
 
     const TAX_RATE = Number(process.env.TAX_RATE) || 0.13;
     const TAX_FEATURE_ENABLED = String(process.env.TAX_FEATURE_ENABLED || '').toLowerCase() === 'true';
-    const computedTax = Math.round(subtotal * TAX_RATE * 100) / 100;
+    const computedTax = Math.round(discountedSubtotal * TAX_RATE * 100) / 100;
 
     if (TAX_FEATURE_ENABLED) {
       const taxAmount = computedTax;
-      const total = Math.round((subtotal + taxAmount + shippingCost) * 100) / 100;
+      const total = Math.round((discountedSubtotal + taxAmount + shippingCost) * 100) / 100;
       order.subtotal = subtotal;
       order.taxAmount = taxAmount;
       order.shippingCost = shippingCost;
@@ -49,7 +53,7 @@ import { getColorName } from '../utils/colorHelper.js';
       } catch (e) { /* ignore preservation errors */ }
 
       const taxAmount = 0;
-      const total = Math.round((subtotal + shippingCost) * 100) / 100;
+      const total = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
       order.subtotal = subtotal;
       order.taxAmount = taxAmount;
       order.shippingCost = shippingCost;
@@ -66,7 +70,8 @@ const transformOrderForDisplay = (orderDoc) => {
   const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
   const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-  const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+  // Preserve historical stored shippingCost if present; otherwise fallback via calculateShippingFee
+  const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal);
   const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
   ord.customerTotal = customerTotal;
   // For API responses, hide tax values and ensure displayed totals exclude tax.
@@ -307,8 +312,9 @@ export const getRecentActivities = async (req, res) => {
       .lean();
 
     // Transform recent activities to expose customer-facing total while preserving storedTax in metadata
+    const shippingConfig = await getShippingConfig();
     const transformed = recentActivities.map(ord => {
-      const shipping = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((ord.subtotal < 5000) ? 300 : 0);
+      const shipping = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(ord.subtotal, shippingConfig);
       const customerTotal = Math.round((Number(ord.subtotal || 0) + shipping) * 100) / 100;
       const o = Object.assign({}, ord, { total: customerTotal, customerTotal });
       // Hide tax-related fields in the API response

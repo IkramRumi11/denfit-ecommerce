@@ -4,6 +4,7 @@ import fs from 'fs';
 
 import Order from '../models/Order.js';
 import { getColorName, resolveColorHex } from '../utils/colorHelper.js';
+import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
 
 function formatPaymentMethod(key) {
   if (!key) return '';
@@ -61,8 +62,9 @@ export const getInvoice = async (req, res, next) => {
     // Promotional discount calculation
     const discount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
     const discountedSubtotal = Math.max(0, subtotal - discount);
-    // Shipping cost: use stored shippingCost if present; otherwise apply rule: discountedSubtotal < 5000 => 300 fixed, else 0
-    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+    // Shipping cost: use stored shippingCost if present; otherwise fallback to centralized calculation
+    const shippingConfig = await getShippingConfig();
+    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
     // Preserve original total calculation in variable for future use (not used in customer invoice)
     const originalTotal = Math.round((discountedSubtotal + storedTax + shipping) * 100) / 100;
     // Customer-facing invoice excludes tax: discountedSubtotal + shipping
@@ -192,8 +194,9 @@ export const getInvoicePdf = async (req, res, next) => {
     // Promotional discount calculation
     const discount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
     const discountedSubtotal = Math.max(0, subtotal - discount);
-    // Shipping cost: use stored shippingCost if present; otherwise apply rule: discountedSubtotal < 5000 => 300 fixed, else 0
-    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+    // Shipping cost: use stored shippingCost if present; otherwise fallback to centralized calculation
+    const shippingConfig = await getShippingConfig();
+    const shipping = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
     const originalTotal = Math.round((discountedSubtotal + storedTax + shipping) * 100) / 100;
     const total = Math.round((discountedSubtotal + shipping) * 100) / 100;
     const amount = (String(order.paymentStatus || '').toLowerCase() === 'paid') ? 0 : total;

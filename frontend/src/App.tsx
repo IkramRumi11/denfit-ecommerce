@@ -58,6 +58,7 @@ import EmailMarketingHistory from './pages/admin/EmailMarketingHistory';
 import AdminFilters from './pages/admin/AdminFilters';
 import AdminContentController from './pages/admin/AdminContentController';
 import AdminPromoCodes from './pages/admin/AdminPromoCodes';
+import AdminShipping from './pages/admin/AdminShipping';
 
 // Context Providers
 // NOTE: AuthProvider and SearchProvider are in main.tsx — do not re-import here
@@ -186,6 +187,7 @@ function AppContent() {
             <Route path="products/:id/edit" element={<AdminProductEdit />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:id" element={<AdminOrderDetail />} />
+            <Route path="shipping" element={<AdminShipping />} />
             <Route path="promo-codes" element={<AdminPromoCodes />} />
             <Route path="audits" element={<AdminAudits />} />
             <Route path="filters" element={/* Filters management */ <AdminFilters />} />

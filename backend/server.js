@@ -37,6 +37,7 @@ import notificationJob from './jobs/notification.job.js';
 import { startReservationSweeper } from './jobs/reservationSweeper.job.js';
 import paymentsRoutes from './routes/payments.js';
 import contentRoutes from './routes/content.js';
+import shippingRoutes from './routes/shipping.js';
 import Order from './models/Order.js';
 import errorHandler, { notFound } from "./middleware/errorHandler.js";
 
@@ -218,6 +219,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/admin/notifications', adminNotificationRoutes);
 app.use('/api/v1/payments', paymentsRoutes);
 app.use('/api/v1/content', contentRoutes);
+app.use('/api/v1/shipping', shippingRoutes);
 
 // Lightweight collections endpoint to satisfy frontend calls that expect /api/v1/collections
 // Returns an empty list by default; replace with real implementation when collection data exists.

@@ -7,6 +7,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
+import { useShipping } from '../context/ShippingContext';
 // NOTE: Ensure this path is correct for your project, or replace with your actual Auth context
 import { useAuth } from '../context/AuthContext'; 
 import SizeGuide from '../components/SizeGuide';
@@ -69,6 +70,7 @@ export const ProductDetail: React.FC = () => {
   const { addItem, getItemQuantity } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
+  const { shippingConfig, freeShippingShortText, deliveryPolicyText } = useShipping();
   
   // Safe access to auth context
   const authContext = useAuth();
@@ -1051,10 +1053,14 @@ export const ProductDetail: React.FC = () => {
                     <div className="mt-2.5 pt-2.5 border-t border-neutral-200/60 flex flex-col gap-0.5">
                       <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Free
+                        {shippingConfig.isShippingEnabled === false || shippingConfig.shippingFee <= 0 ? 'Free Shipping' : 'Free'}
                       </div>
                       <p className="text-xs text-neutral-500 font-normal leading-relaxed">
-                        shipping on orders over ₨5,000 • 14-day complimentary returns
+                        {shippingConfig.isShippingEnabled === false || shippingConfig.shippingFee <= 0
+                          ? 'Complimentary free shipping on all orders • 14-day returns'
+                          : shippingConfig.isFreeShippingEnabled
+                          ? `shipping on orders over Rs. ${shippingConfig.freeShippingThreshold.toLocaleString()} • 14-day complimentary returns`
+                          : `standard delivery Rs. ${shippingConfig.shippingFee.toLocaleString()} • 14-day complimentary returns`}
                       </p>
                     </div>
                   </div>
@@ -1463,11 +1469,9 @@ export const ProductDetail: React.FC = () => {
             onClick={() => toggleSection('shipping')}
           >
             <div className="space-y-2">
+              <p>{deliveryPolicyText}</p>
               <p>
-                A standard delivery fee of <span className="font-medium text-gray-900">Rs. 300</span> applies to all orders under Rs. 5,000. Orders of <span className="font-medium text-gray-900">Rs. 5,000 and above qualify for FREE delivery</span>.
-              </p>
-              <p>
-                Standard delivery time is consistently <span className="font-medium text-gray-900">5–7 working days</span> across Pakistan. For <span className="font-medium text-gray-900">Sale items</span>, delivery time may vary and can be <span className="font-medium text-gray-900">7–9 working days</span> depending on order volume.
+                Standard delivery time is consistently <span className="font-medium text-gray-900">{shippingConfig.estimatedDeliveryDays || '5–7 working days'}</span> across Pakistan. For <span className="font-medium text-gray-900">Sale items</span>, delivery time may vary and can be <span className="font-medium text-gray-900">7–9 working days</span> depending on order volume.
               </p>
               <p>
                 All Lahore orders are typically delivered within <span className="font-medium text-gray-900">48 hours</span> of dispatch.

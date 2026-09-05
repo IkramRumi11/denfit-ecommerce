@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -10,6 +10,7 @@ import { AuthProvider } from './context/AuthContext'
 import { SearchProvider } from './context/SearchContext'
 import { ToastProvider } from './context/ToastContext'
 import { NotificationProvider } from './context/NotificationContext'
+import { ShippingProvider } from './context/ShippingContext'
 
 // Error Boundary for production
 class ErrorBoundary extends React.Component<
@@ -67,17 +68,19 @@ globalWin.__REACT_ROOT__.render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <SearchProvider>
-              <ToastProvider>
-                <NotificationProvider>
-                  <App />
-                </NotificationProvider>
-              </ToastProvider>
-            </SearchProvider>
-          </WishlistProvider>
-        </CartProvider>
+        <ShippingProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <SearchProvider>
+                <ToastProvider>
+                  <NotificationProvider>
+                    <App />
+                  </NotificationProvider>
+                </ToastProvider>
+              </SearchProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </ShippingProvider>
       </AuthProvider>
     </ErrorBoundary>
   </React.StrictMode>

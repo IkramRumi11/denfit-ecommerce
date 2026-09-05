@@ -8,6 +8,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
+import { useShipping } from '../context/ShippingContext';
 import { primaryImage, productId, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
@@ -52,6 +53,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   const { addItem, getItemQuantity } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
+  const { shippingConfig } = useShipping();
 
   // Normalize color list across variants or colors array
   const colorList = useMemo(() => {
@@ -736,10 +738,14 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                             <div className="mt-2 pt-2 border-t border-neutral-200/60 flex flex-col gap-0.5">
                               <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 tracking-wide uppercase">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                Free
+                                {shippingConfig.isShippingEnabled === false || shippingConfig.shippingFee <= 0 ? 'Free Shipping' : 'Free'}
                               </div>
                               <p className="text-[11px] text-neutral-500 font-normal leading-normal">
-                                shipping on orders over ₨5,000 • 14-day complimentary returns
+                                {shippingConfig.isShippingEnabled === false || shippingConfig.shippingFee <= 0
+                                  ? 'complimentary free shipping on all orders • 14-day returns'
+                                  : shippingConfig.isFreeShippingEnabled
+                                  ? `shipping on orders over Rs. ${shippingConfig.freeShippingThreshold.toLocaleString()} • 14-day complimentary returns`
+                                  : `standard delivery Rs. ${shippingConfig.shippingFee.toLocaleString()} • 14-day complimentary returns`}
                               </p>
                             </div>
                           </div>

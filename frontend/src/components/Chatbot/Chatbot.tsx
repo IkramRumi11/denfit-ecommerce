@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useShipping } from '../../context/ShippingContext';
 
 type Message = { 
   role: 'bot' | 'user'; 
@@ -278,6 +279,7 @@ const SIZE_GUIDE = {
 const CITIES_PAKISTAN = ['Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala'];
 
 export default function PremiumFashionChatbot() {
+  const { shippingConfig } = useShipping();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -776,12 +778,18 @@ Or are you looking for something specific?`;
     if (lower.includes('delivery') || lower.includes('ship') || lower.includes('dispatch') || lower.includes('charges') || lower.includes('fee')) {
       let cityInfo = '';
       if (currentContext.city) {
-        cityInfo = `\n\n📍 For ${currentContext.city}: Delivery usually takes 5-7 working days (7-9 days for Sale items).`;
+        cityInfo = `\n\n📍 For ${currentContext.city}: Delivery usually takes ${shippingConfig.estimatedDeliveryDays || '5-7 working days'} (7-9 days for Sale items).`;
       } else {
         cityInfo = '\n\nPlease share your city for more accurate delivery estimates.';
       }
       
-      return `🚚 Delivery Information:\n\n⏱️ Standard Delivery: 5-7 working days across Pakistan\n⚡ Sale Items Delivery: 7-9 working days\n\n💰 Delivery Charges:\n• Orders below Rs 5,000: Flat Rs 300 delivery fee\n• Orders Rs 5,000 and above: FREE delivery\n\n📦 We use reliable courier services across all major cities.${cityInfo}\n\n⚠️ Note: Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.`;
+      const feeText = (shippingConfig.isShippingEnabled === false || shippingConfig.shippingFee <= 0)
+        ? '• Complimentary FREE delivery on ALL orders across Pakistan'
+        : shippingConfig.isFreeShippingEnabled
+        ? `• Orders below Rs ${shippingConfig.freeShippingThreshold.toLocaleString()}: Flat Rs ${shippingConfig.shippingFee.toLocaleString()} delivery fee\n• Orders Rs ${shippingConfig.freeShippingThreshold.toLocaleString()} and above: FREE delivery`
+        : `• Flat Rs ${shippingConfig.shippingFee.toLocaleString()} delivery fee across Pakistan`;
+
+      return `🚚 Delivery Information:\n\n⏱️ Standard Delivery: ${shippingConfig.estimatedDeliveryDays || '5-7 working days'} across Pakistan\n⚡ Sale Items Delivery: 7-9 working days\n\n💰 Delivery Charges:\n${feeText}\n\n📦 We use reliable courier services across all major cities.${cityInfo}\n\n⚠️ Note: Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.`;
     }
 
     // Return / exchange / warranty

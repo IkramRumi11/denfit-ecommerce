@@ -2,11 +2,12 @@ import express from 'express';
 import SystemSetting from '../models/SystemSetting.js';
 import AuditLog from '../models/AuditLog.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { getShippingConfig, interpolateShippingMessage } from '../utils/shippingHelper.js';
 
 const router = express.Router();
 
 const DEFAULT_ANNOUNCEMENTS = {
-  messages: ['Free shipping on orders over ₨5,000'],
+  messages: ['Free shipping on orders over Rs. 5,000'],
   enabled: true,
   intervalSeconds: 4,
 };
@@ -18,17 +19,28 @@ const DEFAULT_BANNERS = {};
 // ==========================================
 router.get('/public', async (req, res) => {
   try {
-    const settings = await SystemSetting.find({
-      key: { $in: ['announcements', 'banners'] },
-    }).lean();
+    const [settings, shippingConfig] = await Promise.all([
+      SystemSetting.find({ key: { $in: ['announcements', 'banners'] } }).lean(),
+      getShippingConfig().catch(() => null)
+    ]);
 
     const settingMap = {};
     for (const s of settings) {
       settingMap[s.key] = s.value;
     }
 
-    const announcements = settingMap.announcements || DEFAULT_ANNOUNCEMENTS;
+    const rawAnnouncements = settingMap.announcements || DEFAULT_ANNOUNCEMENTS;
     const banners = settingMap.banners || DEFAULT_BANNERS;
+
+    // Synchronize any shipping-related announcement messages with active shipping configuration
+    const syncedMessages = Array.isArray(rawAnnouncements.messages)
+      ? rawAnnouncements.messages.map(m => shippingConfig ? interpolateShippingMessage(m, shippingConfig) : m)
+      : rawAnnouncements.messages;
+
+    const announcements = {
+      ...rawAnnouncements,
+      messages: syncedMessages
+    };
 
     return res.status(200).json({
       success: true,
@@ -94,7 +106,7 @@ router.put('/admin/announcements', protect, authorize('admin'), async (req, res)
     }
 
     if (cleanedMessages.length === 0) {
-      cleanedMessages = ['Free shipping on orders over ₨5,000'];
+      cleanedMessages = ['Free shipping on orders over Rs. 5,000'];
     }
 
     const payload = {

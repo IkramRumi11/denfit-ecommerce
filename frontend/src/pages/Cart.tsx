@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, Sparkles, ShieldCheck, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useShipping } from '../context/ShippingContext';
 import { TAX_FEATURE } from '../config/taxFeatureFlag';
 import { useToast } from '../context/ToastContext';
 import { getColorName } from '../utils/colorNames';
@@ -12,6 +13,7 @@ import { productsAPI } from '../api';
 
 export const Cart: React.FC = () => {
   const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, clearCart } = useCart();
+  const { freeShippingText } = useShipping();
   const { showToast } = useToast();
 
   const [productStocks, setProductStocks] = useState<Record<string, any>>({});
@@ -167,7 +169,7 @@ export const Cart: React.FC = () => {
           <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4 text-left">
             <div className="flex items-center text-xs text-neutral-500">
               <Truck className="h-4 w-4 mr-2 text-amber-600 shrink-0" />
-              <span>Free delivery over Rs 5,000</span>
+              <span>{freeShippingText}</span>
             </div>
             <div className="flex items-center text-xs text-neutral-500">
               <ShieldCheck className="h-4 w-4 mr-2 text-amber-600 shrink-0" />

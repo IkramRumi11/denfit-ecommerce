@@ -27,13 +27,15 @@ import { getColorName } from '../utils/colorNames';
 import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useShipping } from '../context/ShippingContext';
 
 type PaymentMethod = 'cod';
 
 export const Checkout: React.FC = () => {
-  const { items, subtotal, shipping, tax, total, clearCart, updateQuantity, removeItem } = useCart();
+  const { items, subtotal, tax, clearCart, updateQuantity, removeItem } = useCart();
   const { showToast } = useToast();
   const { addNotification } = useNotifications();
+  const { calculateShippingFee } = useShipping();
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -51,7 +53,7 @@ export const Checkout: React.FC = () => {
   const [promoError, setPromoError] = useState<string | null>(null);
 
   const effectiveSubtotal = Math.max(0, (subtotal || 0) - promoDiscount);
-  const calculatedShipping = effectiveSubtotal >= 5000 ? 0 : 300;
+  const calculatedShipping = calculateShippingFee(effectiveSubtotal);
   const calculatedTotal = effectiveSubtotal + calculatedShipping + (tax || 0);
 
   const handleApplyPromo = async () => {
@@ -899,7 +901,7 @@ export const Checkout: React.FC = () => {
                              Pay in cash upon delivery. Our courier will collect the payment.
                            </p>
                            <div className="text-xs text-gray-600 bg-white/80 rounded-lg p-3 border border-orange-200/60 text-left space-y-1">
-                             <div className="font-medium text-gray-800">🚚 Standard Delivery: <span className="font-semibold text-gray-900">5–7 working days</span></div>
+                             <div className="font-medium text-gray-800">🚚 Standard Delivery: <span className="font-semibold text-gray-900">{shippingConfig.estimatedDeliveryDays || '5–7 working days'}</span></div>
                              <div>⚡ Sale Items Delivery: <span className="font-semibold text-gray-900">7–9 working days</span> (depending on sale volume)</div>
                              <div className="text-[11px] text-gray-500 pt-1 border-t border-orange-100">
                                Note: Delivery may be affected by weather conditions, disasters, local restrictions, service unavailability, or other circumstances beyond our control.
@@ -1088,8 +1090,13 @@ export const Checkout: React.FC = () => {
                 <div className="flex justify-between text-sm text-gray-600">
                   <div className="flex flex-col">
                     <span>Shipping</span>
-                    {promoDiscount > 0 && effectiveSubtotal < 5000 && (subtotal || 0) >= 5000 && (
-                      <span className="text-[11px] text-amber-600">Subtotal after discount &lt; Rs. 5,000</span>
+                    {promoDiscount > 0 &&
+                      shippingConfig.isFreeShippingEnabled &&
+                      effectiveSubtotal < shippingConfig.freeShippingThreshold &&
+                      (subtotal || 0) >= shippingConfig.freeShippingThreshold && (
+                        <span className="text-[11px] text-amber-600">
+                          Subtotal after discount &lt; {formatCurrency(shippingConfig.freeShippingThreshold)}
+                        </span>
                     )}
                   </div>
                   <span className={calculatedShipping === 0 ? "text-green-600 font-medium" : "font-medium text-gray-900"}>

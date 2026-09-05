@@ -811,6 +811,55 @@ export const contentAPI = {
     }),
 };
 
+// ======================
+// SHIPPING API
+// ======================
+export const shippingAPI = {
+  getPublicConfig: () =>
+    handleRequest<{
+      shippingConfig: {
+        shippingFee: number;
+        freeShippingThreshold: number;
+        isFreeShippingEnabled: boolean;
+        isShippingEnabled: boolean;
+        estimatedDeliveryDays: string;
+      };
+    }>("/shipping/config"),
+
+  getAdminConfig: () =>
+    handleRequest<{
+      shippingConfig: {
+        shippingFee: number;
+        freeShippingThreshold: number;
+        isFreeShippingEnabled: boolean;
+        isShippingEnabled: boolean;
+        estimatedDeliveryDays: string;
+      };
+      lastUpdated?: string;
+      updatedBy?: any;
+    }>("/shipping/admin/config"),
+
+  updateAdminConfig: (payload: {
+    shippingFee: number;
+    freeShippingThreshold: number;
+    isFreeShippingEnabled: boolean;
+    isShippingEnabled: boolean;
+    estimatedDeliveryDays?: string;
+  }) =>
+    handleRequest<{
+      shippingConfig: {
+        shippingFee: number;
+        freeShippingThreshold: number;
+        isFreeShippingEnabled: boolean;
+        isShippingEnabled: boolean;
+        estimatedDeliveryDays: string;
+      };
+    }>("/shipping/admin/config", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+};
+
 // Root export
 export const api = {
   auth: authAPI,
@@ -822,6 +871,7 @@ export const api = {
   collections: collectionsAPI,
   system: systemAPI,
   content: contentAPI,
+  shipping: shippingAPI,
   healthCheck: () => handleRequest("/health"),
 };
 

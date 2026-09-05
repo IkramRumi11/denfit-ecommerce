@@ -28,6 +28,13 @@ export interface AddItemResult {
   reason?: 'FULL_ADD' | 'PARTIAL_ADD' | 'MAX_REACHED' | 'OUT_OF_STOCK';
 }
 
+import {
+  calculateShipping,
+  DEFAULT_SHIPPING_CONFIG,
+  ShippingConfig,
+} from '../utils/shippingHelpers';
+import { useShipping } from './ShippingContext';
+
 interface CartState {
   items: CartItem[];
   subtotal: number;
@@ -48,11 +55,10 @@ interface CartContextType extends CartState {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// 🔢 Calculate totals
-const calculateTotals = (items: CartItem[]) => {
+// 🔢 Calculate totals dynamically using centralized shipping configuration
+export const calculateTotals = (items: CartItem[], config: Partial<ShippingConfig> = DEFAULT_SHIPPING_CONFIG) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  // Shipping: free for orders >= 5000, otherwise flat Rs.300
-  const shipping = subtotal >= 5000 ? 0 : 300;
+  const shipping = calculateShipping(subtotal, config);
   // TAX SYSTEM FORCED OFF: always set tax to zero for customer-facing totals
   const tax = 0;
   const total = subtotal + shipping + tax;
@@ -60,11 +66,12 @@ const calculateTotals = (items: CartItem[]) => {
 };
 
 type CartAction =
-  | { type: "ADD_ITEM"; payload: { item: CartItem; maxStock?: number } }
-  | { type: "REMOVE_ITEM"; payload: { productId: string; size: string; color?: string } }
-  | { type: "UPDATE_QUANTITY"; payload: { productId: string; size: string; color?: string; quantity: number; maxStock?: number } }
+  | { type: "ADD_ITEM"; payload: { item: CartItem; maxStock?: number }; config?: Partial<ShippingConfig> }
+  | { type: "REMOVE_ITEM"; payload: { productId: string; size: string; color?: string }; config?: Partial<ShippingConfig> }
+  | { type: "UPDATE_QUANTITY"; payload: { productId: string; size: string; color?: string; quantity: number; maxStock?: number }; config?: Partial<ShippingConfig> }
   | { type: "CLEAR_CART" }
-  | { type: "LOAD_CART"; payload: CartItem[] };
+  | { type: "LOAD_CART"; payload: CartItem[]; config?: Partial<ShippingConfig> }
+  | { type: "RECALCULATE_SHIPPING"; config: Partial<ShippingConfig> };
 
 const normalizeStr = (v?: string | null) => String(v || '').trim().toLowerCase();
 
@@ -197,13 +204,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           newItems = [...state.items];
         }
       }
-      const totals = calculateTotals(newItems);
+      const totals = calculateTotals(newItems, action.config);
       return { ...state, ...totals, items: newItems };
     }
 
     case "REMOVE_ITEM": {
       const newItems = state.items.filter((item) => !areCartItemsEqual(item, action.payload));
-      const totals = calculateTotals(newItems);
+      const totals = calculateTotals(newItems, action.config);
       return { ...state, ...totals, items: newItems };
     }
 
@@ -221,7 +228,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           return item;
         })
         .filter((item) => item.quantity > 0);
-      const totals = calculateTotals(newItems);
+      const totals = calculateTotals(newItems, action.config);
       return { ...state, ...totals, items: newItems };
     }
 
@@ -244,8 +251,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
           merged.push(item);
         }
       }
-      const totals = calculateTotals(merged);
+      const totals = calculateTotals(merged, action.config);
       return { ...state, ...totals, items: merged };
+    }
+
+    case "RECALCULATE_SHIPPING": {
+      const totals = calculateTotals(state.items, action.config);
+      return { ...state, ...totals };
     }
 
     default:
@@ -301,6 +313,17 @@ const initialState: CartState = {
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
 
+  // Safely obtain shipping config from ShippingProvider (with graceful fallback if tested standalone)
+  let activeShippingConfig = DEFAULT_SHIPPING_CONFIG;
+  try {
+    const shippingCtx = useShipping();
+    if (shippingCtx?.shippingConfig) {
+      activeShippingConfig = shippingCtx.shippingConfig;
+    }
+  } catch (e) {
+    // Standalone / test fallback
+  }
+
   // ✅ Load cart from localStorage once
   useEffect(() => {
     const savedCart = localStorage.getItem("denfit-cart");
@@ -308,12 +331,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const raw = JSON.parse(savedCart);
         const items = Array.isArray(raw) ? raw.map(sanitizeCartItem) : [];
-        dispatch({ type: "LOAD_CART", payload: items });
+        dispatch({ type: "LOAD_CART", payload: items, config: activeShippingConfig });
       } catch (error) {
         console.error("Error parsing cart:", error);
       }
     }
   }, []);
+
+  // Recalculate when shipping configuration updates
+  useEffect(() => {
+    dispatch({ type: "RECALCULATE_SHIPPING", config: activeShippingConfig });
+  }, [activeShippingConfig]);
 
   // ✅ Save cart with debounce
   useEffect(() => {
@@ -365,7 +393,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
       const allowedToAdd = Math.min(item.quantity, effectiveMaxStock - currentQty);
-      dispatch({ type: "ADD_ITEM", payload: { item: { ...item, quantity: allowedToAdd }, maxStock: effectiveMaxStock } });
+      dispatch({
+        type: "ADD_ITEM",
+        payload: { item: { ...item, quantity: allowedToAdd }, maxStock: effectiveMaxStock },
+        config: activeShippingConfig
+      });
       return {
         success: true,
         addedQuantity: allowedToAdd,
@@ -375,7 +407,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
-    dispatch({ type: "ADD_ITEM", payload: { item, maxStock: undefined } });
+    dispatch({
+      type: "ADD_ITEM",
+      payload: { item, maxStock: undefined },
+      config: activeShippingConfig
+    });
     return {
       success: true,
       addedQuantity: item.quantity,
@@ -385,10 +421,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeItem = (productId: string, size: string, color?: string) =>
-    dispatch({ type: "REMOVE_ITEM", payload: { productId, size, color } });
+    dispatch({ type: "REMOVE_ITEM", payload: { productId, size, color }, config: activeShippingConfig });
 
   const updateQuantity = (productId: string, size: string, quantity: number, color?: string, maxStock?: number) =>
-    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, size, color, quantity, maxStock } });
+    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, size, color, quantity, maxStock }, config: activeShippingConfig });
 
   const adjustItemToMaxStock = (productId: string, size: string, maxStock: number, color?: string) => {
     if (maxStock <= 0) {

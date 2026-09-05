@@ -11,6 +11,7 @@ import { supportsTransactions } from '../utils/dbUtils.js';
 import bus from '../events/index.js';
 import User from '../models/User.js';
 import PromoCode from '../models/PromoCode.js';
+import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
 
 export const createOrder = async (req, res) => {
   console.log('Entered createOrder');
@@ -220,7 +221,8 @@ export const createOrder = async (req, res) => {
 
     // Requirement 7: Promo discount MUST be applied BEFORE determining final shipping eligibility
     const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-    const shippingCost = discountedSubtotal < 5000 ? 300 : 0;
+    const shippingConfig = await getShippingConfig();
+    const shippingCost = calculateShippingFee(discountedSubtotal, shippingConfig);
     // Customer-facing total includes discounted subtotal + shippingCost
     const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
     const originalTotal = customerTotal;
@@ -522,13 +524,16 @@ export const getOrders = async (req, res) => {
     const orders = await Order.find({ customer: req.user.id })
       .sort({ createdAt: -1 });
 
+    const shippingConfig = await getShippingConfig();
+
     // Transform orders for customer-facing responses: override `total` to exclude tax and deduct discounts
     const customerOrders = (orders || []).map(o => {
       const ord = o && o.toObject ? o.toObject() : JSON.parse(JSON.stringify(o || {}));
       const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
       const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
       const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-      const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+      // Preserve historical stored shippingCost if present; otherwise use centralized fallback
+      const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
       const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
       // Present tax-excluded total to customer and hide tax fields
       ord.customerTotal = customerTotal;
@@ -568,12 +573,15 @@ export const getOrder = async (req, res) => {
       });
     }
 
+    const shippingConfig = await getShippingConfig();
+
     // Prepare a customer-facing snapshot: compute subtotal/shipping/discount and override total
     const ord = order && order.toObject ? order.toObject() : JSON.parse(JSON.stringify(order || {}));
     const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
     const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
     const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-    const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : ((discountedSubtotal < 5000) ? 300 : 0);
+    // Preserve historical stored shippingCost if present; otherwise use centralized fallback
+    const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
     const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
     ord.customerTotal = customerTotal;
     ord.originalTotal = customerTotal;
