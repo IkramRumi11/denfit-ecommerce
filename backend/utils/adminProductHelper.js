@@ -58,7 +58,11 @@ export const normalizeTags = (input) => {
 // Slugify helper
 export const slugify = (input) => {
   if (!input) return '';
-  return String(input)
+  const unescaped = String(input)
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"');
+  return unescaped
     .toLowerCase()
     .trim()
     .replace(/&/g, 'and')

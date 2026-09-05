@@ -7,13 +7,25 @@ import { getColorName } from '../utils/colorHelper.js';
 import { normalizeBrandName } from '../utils/brandHelper.js';
 import { slugify } from '../utils/adminProductHelper.js';
 
-const parseArray = (val) => {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.filter(Boolean);
-  return String(val).split(',').map(s => s.trim()).filter(Boolean);
+const unescapeHtml = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
 };
 
-const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const parseArray = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(unescapeHtml).filter(Boolean);
+  return String(val).split(',').map(s => unescapeHtml(s.trim())).filter(Boolean);
+};
+
+const escapeRegex = (str) => String(unescapeHtml(str)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Normalize a product document or plain object for client consumption.
 // Keeps sizes simple, normalizes colors to objects when possible, and computes a `primaryImage`.
@@ -119,7 +131,7 @@ export const getAllProducts = async (req, res) => {
     const andClauses = [];
 
     // Category / Subcategory matching: check category, categorySlug, subcategory, tags, and product name
-    const catSearch = subcategory || category;
+    const catSearch = unescapeHtml(subcategory || category);
     if (catSearch) {
       const catStr = String(catSearch).trim();
       const escaped = escapeRegex(catStr);
@@ -139,7 +151,7 @@ export const getAllProducts = async (req, res) => {
 
     // Gender / Collection matching: include unisex and accessories flexibly
     if (gender) {
-      const g = String(gender).toLowerCase().trim();
+      const g = unescapeHtml(String(gender).toLowerCase().trim());
       if (g === 'men') {
         andClauses.push({
           $or: [
@@ -192,7 +204,7 @@ export const getAllProducts = async (req, res) => {
     }
 
     // Brand — support single, multi-select (comma-separated), or slug
-    let reqBrand = brand;
+    let reqBrand = unescapeHtml(brand);
     if (!reqBrand && req.query.H !== undefined && req.query.M !== undefined) {
       reqBrand = 'H&M';
     } else if (reqBrand === 'H' && req.query.M !== undefined) {
@@ -201,7 +213,7 @@ export const getAllProducts = async (req, res) => {
 
     const brandArr = parseArray(reqBrand);
     if (brandArr.length === 1) {
-      const b = brandArr[0];
+      const b = unescapeHtml(brandArr[0]);
       const safeB = escapeRegex(b);
       const canonical = normalizeBrandName(b);
       const bSlug = slugify(b);
@@ -248,7 +260,7 @@ export const getAllProducts = async (req, res) => {
       });
     }
     if (brandSlug) {
-      const slugStr = String(brandSlug).trim().toLowerCase();
+      const slugStr = unescapeHtml(String(brandSlug).trim().toLowerCase());
       const slugName = slugStr.replace(/-/g, ' ');
       const canonical = normalizeBrandName(slugName);
       const slugClauses = [
