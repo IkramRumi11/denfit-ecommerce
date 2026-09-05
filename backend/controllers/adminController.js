@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import Product from '../models/Product.js';
 import RecommendationMapping from '../models/RecommendationMapping.js';
 import Order from '../models/Order.js';
+import StoreCredit from '../models/StoreCredit.js';
 import StockReservation from '../models/StockReservation.js';
 import stockService from '../services/stockService.js';
 import Category from '../models/Category.js';
@@ -19,6 +20,16 @@ import { normalizeAttributesInput } from '../utils/attributes.js';
 import { normalizeProductInput, mapFilesToVariants, safeParse } from '../utils/adminProductHelper.js';
 import { getColorName } from '../utils/colorHelper.js';
 import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
+import {
+  getRecognizedRevenueMatch,
+  getPipelineRevenueMatch,
+  getCancelledOrdersMatch,
+  ORDER_NET_REVENUE_EXPR,
+  ORDER_GROSS_REVENUE_EXPR,
+  isRevenueRecognized,
+  calculateOrderFinancials,
+  issueStoreCredit
+} from '../utils/financialHelper.js';
 
   // Recalculate and persist monetary totals on an Order document.
   // Honors server-side TAX_FEATURE_ENABLED (env). If disabled, preserve legacy fields
@@ -26,7 +37,8 @@ import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper
   const recalcTotals = async (order) => {
     const subtotal = (order.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
     const discountAmount = (typeof order.discountAmount === 'number' && !Number.isNaN(order.discountAmount)) ? Number(order.discountAmount) : 0;
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const storeCreditAmount = (typeof order.storeCreditAmount === 'number' && !Number.isNaN(order.storeCreditAmount)) ? Number(order.storeCreditAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount - storeCreditAmount);
     const shippingConfig = await getShippingConfig();
     const shippingCost = (typeof order.shippingCost === 'number' && !Number.isNaN(order.shippingCost)) ? Number(order.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
 
@@ -69,7 +81,8 @@ const transformOrderForDisplay = (orderDoc) => {
   const ord = orderDoc && orderDoc.toObject ? orderDoc.toObject() : JSON.parse(JSON.stringify(orderDoc || {}));
   const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
   const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
-  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const storeCreditAmount = (typeof ord.storeCreditAmount === 'number' && !Number.isNaN(ord.storeCreditAmount)) ? Number(ord.storeCreditAmount) : 0;
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount - storeCreditAmount);
   // Preserve historical stored shippingCost if present; otherwise fallback via calculateShippingFee
   const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal);
   const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
@@ -79,6 +92,9 @@ const transformOrderForDisplay = (orderDoc) => {
   ord.originalTotal = customerTotal;
   ord.taxAmount = 0;
   ord.discountAmount = discountAmount;
+  ord.storeCreditAmount = storeCreditAmount;
+  // Financial recognition metadata
+  ord.isRevenueRecognized = isRevenueRecognized(ord);
   // Remove any legacy tax fields from the response object so UIs don't display them
   if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
   if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
@@ -122,62 +138,78 @@ export const getDashboardStats = async (req, res) => {
     const previousMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const previousMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
 
-    // Parallel database queries for performance
+    // Parallel database queries for performance using centralized single source of truth
     const [
       totalUsers,
       totalProducts,
       totalOrders,
-      totalRevenue,
+      totalRevenueAgg,
+      pipelineRevenueAgg,
+      deliveredOrdersCount,
       todayOrders,
-      monthlyRevenue,
-      yearlyRevenue,
+      monthlyRevenueAgg,
+      yearlyRevenueAgg,
       lowStockProducts,
       pendingOrders,
-      currentMonthOrders,
-      previousMonthOrders,
-      currentMonthRevenue,
-      previousMonthRevenue,
+      currentMonthDeliveredOrders,
+      previousMonthDeliveredOrders,
+      currentMonthRevenueAgg,
+      previousMonthRevenueAgg,
       currentMonthUsers,
       previousMonthUsers,
       currentMonthProducts,
-      previousMonthProducts
+      previousMonthProducts,
+      storeCreditsAgg
     ] = await Promise.all([
       // Total counts
       User.countDocuments(),
       Product.countDocuments(),
       Order.countDocuments(),
       
-      // Revenue calculations — use discounted subtotal + shipping to exclude stored tax and deduct discounts
+      // RECOGNIZED REVENUE: strictly orders with status: 'delivered' AND paymentStatus: 'paid'
       Order.aggregate([
-        { $match: { paymentStatus: 'paid' } },
-        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $match: getRecognizedRevenueMatch() },
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR } } }
       ]),
+
+      // PIPELINE REVENUE: active non-delivered orders (pending, confirmed, processing, shipped)
+      Order.aggregate([
+        { $match: getPipelineRevenueMatch() },
+        { $group: { _id: null, total: { $sum: ORDER_GROSS_REVENUE_EXPR } } }
+      ]),
+
+      // Delivered Orders Count
+      Order.countDocuments(getRecognizedRevenueMatch()),
       
-      // Today's orders
+      // Today's placed orders
       Order.countDocuments({ 
         createdAt: { $gte: startOfToday } 
       }),
       
-      // Monthly revenue (discounted subtotal + shipping)
+      // Monthly recognized revenue (based on deliveredAt, fallback createdAt)
       Order.aggregate([
         { 
-          $match: { 
-            paymentStatus: 'paid',
-            createdAt: { $gte: startOfMonth }
-          } 
+          $match: getRecognizedRevenueMatch({ 
+            $or: [
+              { deliveredAt: { $gte: startOfMonth } },
+              { deliveredAt: null, createdAt: { $gte: startOfMonth } }
+            ]
+          }) 
         },
-        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR } } }
       ]),
       
-      // Yearly revenue (discounted subtotal + shipping)
+      // Yearly recognized revenue
       Order.aggregate([
         { 
-          $match: { 
-            paymentStatus: 'paid',
-            createdAt: { $gte: startOfYear }
-          } 
+          $match: getRecognizedRevenueMatch({ 
+            $or: [
+              { deliveredAt: { $gte: startOfYear } },
+              { deliveredAt: null, createdAt: { $gte: startOfYear } }
+            ]
+          }) 
         },
-        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR } } }
       ]),
       
       // Low stock products — compute availableQuantity server-side and count those <= threshold
@@ -216,28 +248,36 @@ export const getDashboardStats = async (req, res) => {
       // Pending orders
       Order.countDocuments({ status: 'pending' }),
 
-      // Orders this month vs previous month
-      Order.countDocuments({ createdAt: { $gte: startOfMonth } }),
-      Order.countDocuments({ createdAt: { $gte: previousMonthStart, $lt: startOfMonth } }),
+      // Delivered Orders this month vs previous month
+      Order.countDocuments(getRecognizedRevenueMatch({
+        $or: [{ deliveredAt: { $gte: startOfMonth } }, { deliveredAt: null, createdAt: { $gte: startOfMonth } }]
+      })),
+      Order.countDocuments(getRecognizedRevenueMatch({
+        $or: [
+          { deliveredAt: { $gte: previousMonthStart, $lt: startOfMonth } },
+          { deliveredAt: null, createdAt: { $gte: previousMonthStart, $lt: startOfMonth } }
+        ]
+      })),
 
-      // Revenue this month vs previous month (paid orders only)
+      // Revenue this month vs previous month (Recognized delivered orders only)
       Order.aggregate([
         {
-          $match: {
-            paymentStatus: 'paid',
-            createdAt: { $gte: startOfMonth }
-          }
+          $match: getRecognizedRevenueMatch({
+            $or: [{ deliveredAt: { $gte: startOfMonth } }, { deliveredAt: null, createdAt: { $gte: startOfMonth } }]
+          })
         },
-        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR } } }
       ]),
       Order.aggregate([
         {
-          $match: {
-            paymentStatus: 'paid',
-            createdAt: { $gte: previousMonthStart, $lt: startOfMonth }
-          }
+          $match: getRecognizedRevenueMatch({
+            $or: [
+              { deliveredAt: { $gte: previousMonthStart, $lt: startOfMonth } },
+              { deliveredAt: null, createdAt: { $gte: previousMonthStart, $lt: startOfMonth } }
+            ]
+          })
         },
-        { $group: { _id: null, total: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } } } }
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR } } }
       ]),
 
       // New users this month vs previous month
@@ -246,32 +286,44 @@ export const getDashboardStats = async (req, res) => {
 
       // New products this month vs previous month
       Product.countDocuments({ createdAt: { $gte: startOfMonth } }),
-      Product.countDocuments({ createdAt: { $gte: previousMonthStart, $lt: startOfMonth } })
+      Product.countDocuments({ createdAt: { $gte: previousMonthStart, $lt: startOfMonth } }),
+
+      // Active store credits issued summary
+      StoreCredit.aggregate([
+        { $group: { _id: null, totalIssued: { $sum: '$initialAmount' }, totalRemaining: { $sum: '$remainingBalance' } } }
+      ])
     ]);
 
-    const currentMonthRevenueValue = currentMonthRevenue[0]?.total || 0;
-    const previousMonthRevenueValue = previousMonthRevenue[0]?.total || 0;
+    const totalRevenueValue = totalRevenueAgg[0]?.total || 0;
+    const pipelineRevenueValue = pipelineRevenueAgg[0]?.total || 0;
+    const currentMonthRevenueValue = currentMonthRevenueAgg[0]?.total || 0;
+    const previousMonthRevenueValue = previousMonthRevenueAgg[0]?.total || 0;
 
     const stats = {
       overview: {
         totalUsers,
         totalProducts,
         totalOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
+        totalRevenue: Math.round(totalRevenueValue * 100) / 100, // Recognized Revenue
+        recognizedRevenue: Math.round(totalRevenueValue * 100) / 100,
+        pipelineRevenue: Math.round(pipelineRevenueValue * 100) / 100,
+        deliveredOrders: deliveredOrdersCount,
         todayOrders,
-        monthlyRevenue: monthlyRevenue[0]?.total || 0,
-        yearlyRevenue: yearlyRevenue[0]?.total || 0,
+        monthlyRevenue: Math.round((monthlyRevenueAgg[0]?.total || 0) * 100) / 100,
+        yearlyRevenue: Math.round((yearlyRevenueAgg[0]?.total || 0) * 100) / 100,
         lowStockProducts,
         pendingOrders,
+        storeCreditTotalIssued: storeCreditsAgg[0]?.totalIssued || 0,
+        storeCreditTotalRemaining: storeCreditsAgg[0]?.totalRemaining || 0,
         growth: {
           users: calculateGrowthPercentage(currentMonthUsers, previousMonthUsers),
           products: calculateGrowthPercentage(currentMonthProducts, previousMonthProducts),
-          orders: calculateGrowthPercentage(currentMonthOrders, previousMonthOrders),
+          orders: calculateGrowthPercentage(currentMonthDeliveredOrders, previousMonthDeliveredOrders),
           revenue: calculateGrowthPercentage(currentMonthRevenueValue, previousMonthRevenueValue)
         }
       },
       charts: {
-        // Recent sales data for charts
+        // Sales data for charts based on recognized delivered sales
         weeklySales: await getWeeklySalesData(),
         topProducts: await getTopProducts(),
         userGrowth: await getUserGrowthData()
@@ -1280,14 +1332,23 @@ export const getAllOrders = async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
-    // Calculate totals for summary — exclude stored tax and deduct discounts from displayed revenue
-    const revenueStats = await Order.aggregate([
-      { $match: query },
-      { $group: {
-        _id: null,
-        totalRevenue: { $sum: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } },
-        averageOrder: { $avg: { $add: [{ $max: [0, { $subtract: ['$subtotal', { $ifNull: ['$discountAmount', 0] }] }] }, { $ifNull: ['$shippingCost', 0] }] } }
-      } }
+    // Calculate totals for summary — calculate Recognized Revenue specifically (delivered and paid)
+    const [recognizedStats, pipelineStats, totalDelivered] = await Promise.all([
+      Order.aggregate([
+        { $match: getRecognizedRevenueMatch(query) },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: ORDER_NET_REVENUE_EXPR },
+            averageOrder: { $avg: ORDER_NET_REVENUE_EXPR }
+          }
+        }
+      ]),
+      Order.aggregate([
+        { $match: getPipelineRevenueMatch() },
+        { $group: { _id: null, totalPipeline: { $sum: ORDER_GROSS_REVENUE_EXPR } } }
+      ]),
+      Order.countDocuments(getRecognizedRevenueMatch(query))
     ]);
 
     const customerOrders = (orders || []).map(o => transformOrderForDisplay(o));
@@ -1297,8 +1358,10 @@ export const getAllOrders = async (req, res) => {
       data: {
         orders: customerOrders,
         summary: {
-          totalRevenue: revenueStats[0]?.totalRevenue || 0,
-          averageOrder: revenueStats[0]?.averageOrder || 0,
+          totalRevenue: Math.round((recognizedStats[0]?.totalRevenue || 0) * 100) / 100,
+          averageOrder: Math.round((recognizedStats[0]?.averageOrder || 0) * 100) / 100,
+          pipelineRevenue: Math.round((pipelineStats[0]?.totalPipeline || 0) * 100) / 100,
+          deliveredOrders: totalDelivered,
           totalOrders: total
         },
         pagination: {
@@ -1428,7 +1491,14 @@ export const updateOrderStatus = async (req, res) => {
     if (to === 'confirmed' && !order.confirmedAt) order.confirmedAt = now;
     if (to === 'processing' && !order.processingAt) order.processingAt = now;
     if (to === 'shipped' && !order.shippedAt) order.shippedAt = now;
-    if (to === 'delivered' && !order.deliveredAt) order.deliveredAt = now;
+    if (to === 'delivered') {
+      if (!order.deliveredAt) order.deliveredAt = now;
+      if (!order.recognizedRevenueAt) order.recognizedRevenueAt = now;
+      // For Cash on Delivery, physical delivery acknowledges payment collected by courier
+      if (order.paymentMethod === 'cash_on_delivery' && order.paymentStatus !== 'paid') {
+        order.paymentStatus = 'paid';
+      }
+    }
     if (to === 'cancelled' && !order.cancelledAt) order.cancelledAt = now;
     // Record per-order history and global audit log
     try {
@@ -1950,25 +2020,35 @@ export const getSalesAnalytics = async (req, res) => {
         startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
+    // Strictly analyze recognized revenue (delivered and paid)
     const salesData = await Order.aggregate([
       {
-        $match: {
-          createdAt: { $gte: startDate },
-          paymentStatus: 'paid'
-        }
+        $match: getRecognizedRevenueMatch({
+          $or: [
+            { deliveredAt: { $gte: startDate } },
+            { deliveredAt: null, createdAt: { $gte: startDate } }
+          ]
+        })
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: { $ifNull: ['$deliveredAt', '$createdAt'] }
+            }
           },
-              totalSales: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } },
-              orderCount: { $sum: 1 },
-              averageOrder: { $avg: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } }
+          totalSales: { $sum: ORDER_NET_REVENUE_EXPR },
+          orderCount: { $sum: 1 },
+          averageOrder: { $avg: ORDER_NET_REVENUE_EXPR }
         }
       },
       { $sort: { _id: 1 } }
     ]);
+
+    const totalRevenue = salesData.reduce((sum, day) => sum + (day.totalSales || 0), 0);
+    const totalOrders = salesData.reduce((sum, day) => sum + (day.orderCount || 0), 0);
+    const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     res.status(200).json({
       success: true,
@@ -1976,17 +2056,447 @@ export const getSalesAnalytics = async (req, res) => {
         period,
         salesData,
         summary: {
-          totalRevenue: salesData.reduce((sum, day) => sum + day.totalSales, 0),
-          totalOrders: salesData.reduce((sum, day) => sum + day.orderCount, 0),
-          averageOrder: salesData.reduce((sum, day) => sum + day.averageOrder, 0) / salesData.length
+          totalRevenue: Math.round(totalRevenue * 100) / 100,
+          totalOrders,
+          averageOrder: Math.round(avgOrder * 100) / 100
         }
       }
     });
   } catch (error) {
+    console.error('getSalesAnalytics error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching sales analytics'
     });
+  }
+};
+
+/**
+ * Comprehensive Financial Analytics for Admin Panel
+ * GET /api/v1/admin/analytics/financials
+ */
+export const getFinancialAnalytics = async (req, res) => {
+  try {
+    const { period = '30d', startDate: customStart, endDate: customEnd } = req.query;
+    let startDate;
+    let endDate = new Date();
+
+    if (customStart) {
+      startDate = new Date(customStart);
+      if (customEnd) endDate = new Date(customEnd);
+    } else {
+      switch (period) {
+        case '7d':
+          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case '30d':
+          startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'this_month':
+          startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+          break;
+        case 'this_year':
+          startDate = new Date(new Date().getFullYear(), 0, 1);
+          break;
+        case 'all':
+        default:
+          startDate = new Date(0);
+      }
+    }
+
+    const dateFilter = {
+      $or: [
+        { deliveredAt: { $gte: startDate, $lte: endDate } },
+        { deliveredAt: null, createdAt: { $gte: startDate, $lte: endDate } }
+      ]
+    };
+
+    const placedDateFilter = {
+      createdAt: { $gte: startDate, $lte: endDate }
+    };
+
+    // Parallel calculations
+    const [
+      recognizedRevenueAgg,
+      pipelineRevenueAgg,
+      grossPlacedAgg,
+      deliveredCount,
+      pipelineCount,
+      cancelledCountAgg,
+      cashRefundsAgg,
+      storeCreditsAgg,
+      paymentMethodStats,
+      dailyTrends,
+      recentRecognized
+    ] = await Promise.all([
+      // 1. Net Recognized Revenue in period
+      Order.aggregate([
+        { $match: getRecognizedRevenueMatch(dateFilter) },
+        { $group: { _id: null, total: { $sum: ORDER_NET_REVENUE_EXPR }, gross: { $sum: ORDER_GROSS_REVENUE_EXPR } } }
+      ]),
+
+      // 2. Active Pipeline Revenue (unfulfilled)
+      Order.aggregate([
+        { $match: getPipelineRevenueMatch() },
+        { $group: { _id: null, total: { $sum: ORDER_GROSS_REVENUE_EXPR } } }
+      ]),
+
+      // 3. Gross Placed Merchandise Value (GMV) in period
+      Order.aggregate([
+        { $match: placedDateFilter },
+        { $group: { _id: null, total: { $sum: ORDER_GROSS_REVENUE_EXPR }, count: { $sum: 1 } } }
+      ]),
+
+      // 4. Delivered orders count
+      Order.countDocuments(getRecognizedRevenueMatch(dateFilter)),
+
+      // 5. Active Pipeline orders count
+      Order.countDocuments(getPipelineRevenueMatch()),
+
+      // 6. Cancelled orders count and value
+      Order.aggregate([
+        { $match: { status: 'cancelled', createdAt: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: null, total: { $sum: ORDER_GROSS_REVENUE_EXPR }, count: { $sum: 1 } } }
+      ]),
+
+      // 7. Cash refunds issued in period
+      Order.aggregate([
+        { $match: { refundAmount: { $gt: 0 }, updatedAt: { $gte: startDate, $lte: endDate } } },
+        { $group: { _id: null, total: { $sum: '$refundAmount' } } }
+      ]),
+
+      // 8. Store Credits issued & redeemed
+      StoreCredit.aggregate([
+        { $match: { createdAt: { $gte: startDate, $lte: endDate } } },
+        {
+          $group: {
+            _id: null,
+            totalIssued: { $sum: '$initialAmount' },
+            totalRemaining: { $sum: '$remainingBalance' },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // 9. Payment method breakdown for recognized revenue
+      Order.aggregate([
+        { $match: getRecognizedRevenueMatch(dateFilter) },
+        {
+          $group: {
+            _id: '$paymentMethod',
+            total: { $sum: ORDER_NET_REVENUE_EXPR },
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // 10. Daily trends for recognized revenue
+      Order.aggregate([
+        { $match: getRecognizedRevenueMatch(dateFilter) },
+        {
+          $group: {
+            _id: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: { $ifNull: ['$deliveredAt', '$createdAt'] }
+              }
+            },
+            revenue: { $sum: ORDER_NET_REVENUE_EXPR },
+            orders: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+
+      // 11. Recent 10 recognized transactions
+      Order.find(getRecognizedRevenueMatch())
+        .sort({ deliveredAt: -1, createdAt: -1 })
+        .limit(10)
+        .populate('customer', 'name email')
+        .select('orderNumber items customer subtotal discountAmount shippingCost refundAmount total paymentMethod paymentStatus deliveredAt createdAt')
+        .lean()
+    ]);
+
+    const netRecognizedRevenue = Math.round((recognizedRevenueAgg[0]?.total || 0) * 100) / 100;
+    const grossRecognized = Math.round((recognizedRevenueAgg[0]?.gross || 0) * 100) / 100;
+    const pipelineRevenue = Math.round((pipelineRevenueAgg[0]?.total || 0) * 100) / 100;
+    const grossPlacedValue = Math.round((grossPlacedAgg[0]?.total || 0) * 100) / 100;
+    const totalPlacedOrders = grossPlacedAgg[0]?.count || 0;
+    const cancelledCount = cancelledCountAgg[0]?.count || 0;
+    const cancelledOrderValue = Math.round((cancelledCountAgg[0]?.total || 0) * 100) / 100;
+    const cashRefunds = Math.round((cashRefundsAgg[0]?.total || 0) * 100) / 100;
+    const storeCreditIssued = Math.round((storeCreditsAgg[0]?.totalIssued || 0) * 100) / 100;
+    const storeCreditRemaining = Math.round((storeCreditsAgg[0]?.totalRemaining || 0) * 100) / 100;
+    const storeCreditRedeemed = Math.round((storeCreditIssued - storeCreditRemaining) * 100) / 100;
+    const avgDeliveredOrder = deliveredCount > 0 ? Math.round((netRecognizedRevenue / deliveredCount) * 100) / 100 : 0;
+
+    const payload = {
+      period,
+      dateRange: { startDate, endDate },
+      kpis: {
+        recognizedRevenue: grossRecognized,
+        grossRecognized,
+        netRecognizedRevenue,
+        pipelineRevenue,
+        grossPlacedValue,
+        grossOrderValue: grossPlacedValue,
+        totalPlacedOrders,
+        totalOrdersCount: totalPlacedOrders,
+        deliveredOrders: deliveredCount,
+        deliveredOrdersCount: deliveredCount,
+        pipelineOrders: pipelineCount,
+        pipelineOrdersCount: pipelineCount,
+        cancelledOrders: cancelledCount,
+        cancelledOrdersCount: cancelledCount,
+        cancelledOrderValue,
+        cashRefunds,
+        totalCashRefunds: cashRefunds,
+        storeCreditIssued,
+        totalStoreCreditsIssued: storeCreditIssued,
+        storeCreditRedeemed,
+        totalStoreCreditsRedeemed: storeCreditRedeemed,
+        storeCreditRemaining,
+        activeStoreCreditLiability: storeCreditRemaining,
+        avgDeliveredOrder
+      },
+      breakdowns: {
+        paymentMethodSplit: paymentMethodStats.map(p => ({
+          _id: p._id || 'cash_on_delivery',
+          method: p._id || 'cash_on_delivery',
+          recognizedRevenue: Math.round((p.total || 0) * 100) / 100,
+          ordersCount: p.count,
+          pipelineRevenue: 0
+        }))
+      },
+      paymentMethods: paymentMethodStats.map(p => ({
+        method: p._id || 'cash_on_delivery',
+        revenue: Math.round((p.total || 0) * 100) / 100,
+        orders: p.count
+      })),
+      trends: {
+        recognizedRevenueByDay: dailyTrends.map(t => ({
+          _id: t._id,
+          date: t._id,
+          recognizedRevenue: Math.round((t.revenue || 0) * 100) / 100,
+          orderCount: t.orders
+        }))
+      },
+      recentTransactions: recentRecognized.map(o => transformOrderForDisplay(o))
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...payload,
+        financialAnalytics: payload
+      }
+    });
+  } catch (error) {
+    console.error('getFinancialAnalytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching financial analytics'
+    });
+  }
+};
+
+/**
+ * Process an item-level exchange request (Admin)
+ * PATCH /api/v1/admin/orders/:id/items/:itemId/exchange
+ */
+export const processItemExchange = async (req, res) => {
+  try {
+    const { id: orderId, itemId } = req.params;
+    const { action, adminNote, resolution } = req.body;
+
+    const order = await Order.findById(orderId).populate('customer', 'name email');
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Order item not found' });
+    }
+
+    if (!item.exchange) {
+      item.exchange = { status: 'none' };
+    }
+
+    const validActions = ['approve', 'reject', 'dispatch_replacement', 'complete'];
+    if (!validActions.includes(action)) {
+      return res.status(400).json({ success: false, message: `Invalid action. Must be one of: ${validActions.join(', ')}` });
+    }
+
+    const now = new Date();
+    if (action === 'approve') {
+      item.exchange.status = 'approved';
+      item.exchange.resolution = resolution || 'replacement_dispatched';
+    } else if (action === 'reject') {
+      item.exchange.status = 'rejected';
+      item.exchange.resolution = 'rejected';
+      item.exchange.resolvedAt = now;
+    } else if (action === 'dispatch_replacement') {
+      item.exchange.status = 'approved';
+      item.exchange.resolution = 'replacement_dispatched';
+    } else if (action === 'complete') {
+      item.exchange.status = 'completed';
+      item.exchange.resolvedAt = now;
+    }
+
+    if (adminNote) {
+      item.exchange.adminNote = adminNote;
+    }
+
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      from: order.status,
+      to: order.status,
+      by: req.user ? req.user._id : undefined,
+      byName: req.user ? req.user.name : undefined,
+      note: `Item '${item.name}' exchange ${action}: ${adminNote || ''}`,
+      at: now
+    });
+
+    await order.save();
+
+    // Create Audit Log
+    try {
+      await AuditLog.create({
+        type: 'item_exchange_update',
+        actor: req.user ? req.user._id : undefined,
+        actorName: req.user ? req.user.name : undefined,
+        targetOrder: order._id,
+        action: `exchange_${action}`,
+        payload: { orderId: order._id, itemId, itemName: item.name, action, adminNote },
+        message: `Exchange for item '${item.name}' marked ${action} by ${req.user ? req.user.name : 'admin'}`
+      });
+    } catch (e) {
+      console.warn('AuditLog failed:', e?.message || e);
+    }
+
+    // In-app notification for customer
+    try {
+      if (order.customer && order.customer._id) {
+        await notificationService.createNotification({
+          userId: order.customer._id,
+          title: `Exchange update for Order ${order.orderNumber || order._id}`,
+          message: `Your exchange request for '${item.name}' has been ${action}${adminNote ? `: ${adminNote}` : ''}.`,
+          type: 'order',
+          metadata: { orderId: order._id.toString(), itemId, action }
+        });
+      }
+    } catch (e) {
+      console.warn('Notification failed:', e?.message || e);
+    }
+
+    const respOrder = transformOrderForDisplay(order);
+    res.status(200).json({
+      success: true,
+      message: `Item exchange updated to ${action}`,
+      data: { order: respOrder, item }
+    });
+  } catch (error) {
+    console.error('processItemExchange error:', error);
+    res.status(500).json({ success: false, message: 'Error processing item exchange' });
+  }
+};
+
+/**
+ * Issue a dedicated Store Credit voucher for an order item
+ * POST /api/v1/admin/orders/:id/items/:itemId/store-credit
+ */
+export const issueItemStoreCredit = async (req, res) => {
+  try {
+    const { id: orderId, itemId } = req.params;
+    const { amount, reason } = req.body;
+
+    const order = await Order.findById(orderId).populate('customer', 'name email');
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Order item not found' });
+    }
+
+    const creditAmount = Number(amount) || ((Number(item.price) || 0) * (Number(item.quantity) || 1));
+    if (creditAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid store credit amount' });
+    }
+
+    const creditDoc = await issueStoreCredit({
+      order,
+      orderItemId: item._id,
+      amount: creditAmount,
+      reason: reason || `Store credit for exchange on item: ${item.name}`,
+      adminUser: req.user
+    });
+
+    // Update item exchange resolution
+    item.exchange = item.exchange || {};
+    item.exchange.status = 'completed';
+    item.exchange.resolution = 'store_credit_issued';
+    item.exchange.storeCreditCode = creditDoc.code;
+    item.exchange.storeCreditAmount = creditDoc.initialAmount;
+    item.exchange.resolvedAt = new Date();
+    if (reason) item.exchange.adminNote = reason;
+
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      from: order.status,
+      to: order.status,
+      by: req.user ? req.user._id : undefined,
+      byName: req.user ? req.user.name : undefined,
+      note: `Store credit voucher issued (${creditDoc.code} for Rs. ${creditAmount.toLocaleString()}) on item: ${item.name}`,
+      at: new Date()
+    });
+
+    await order.save();
+
+    // Audit Log
+    try {
+      await AuditLog.create({
+        type: 'store_credit_issued',
+        actor: req.user ? req.user._id : undefined,
+        actorName: req.user ? req.user.name : undefined,
+        targetOrder: order._id,
+        action: 'issueStoreCredit',
+        payload: { orderId: order._id, itemId, code: creditDoc.code, amount: creditDoc.initialAmount },
+        message: `Store credit voucher ${creditDoc.code} (Rs. ${creditAmount.toLocaleString()}) issued by ${req.user ? req.user.name : 'admin'}`
+      });
+    } catch (e) {
+      console.warn('AuditLog failed:', e?.message || e);
+    }
+
+    // Customer in-app notification
+    try {
+      if (order.customer && order.customer._id) {
+        await notificationService.createNotification({
+          userId: order.customer._id,
+          title: `Store Credit Issued: ${creditDoc.code}`,
+          message: `A store credit voucher of Rs. ${creditAmount.toLocaleString()} has been issued for your item '${item.name}'. Use code ${creditDoc.code} at checkout.`,
+          type: 'order',
+          metadata: { orderId: order._id.toString(), storeCreditCode: creditDoc.code, amount: creditAmount }
+        });
+      }
+    } catch (e) {
+      console.warn('Notification failed:', e?.message || e);
+    }
+
+    const respOrder = transformOrderForDisplay(order);
+    res.status(200).json({
+      success: true,
+      message: `Store credit voucher ${creditDoc.code} issued successfully`,
+      data: {
+        storeCredit: creditDoc,
+        order: respOrder
+      }
+    });
+  } catch (error) {
+    console.error('issueItemStoreCredit error:', error);
+    res.status(500).json({ success: false, message: 'Error issuing store credit' });
   }
 };
 
@@ -2035,7 +2545,9 @@ export const getUserAnalytics = async (req, res) => {
 
 export const getProductAnalytics = async (req, res) => {
   try {
+    // Top products strictly from recognized delivered sales
     const topProducts = await Order.aggregate([
+      { $match: getRecognizedRevenueMatch() },
       { $unwind: '$items' },
       {
         $group: {
@@ -2117,7 +2629,7 @@ export const getSystemHealth = async (req, res) => {
         platform: process.platform
       },
       services: {
-        email: 'active', // You can add actual checks here
+        email: 'active',
         storage: 'active',
         cache: 'active'
       }
@@ -2137,9 +2649,6 @@ export const getSystemHealth = async (req, res) => {
 
 export const clearCache = async (req, res) => {
   try {
-    // Implement cache clearing logic here
-    // This would depend on your caching solution (Redis, etc.)
-    
     res.status(200).json({
       success: true,
       message: 'Cache cleared successfully'
@@ -2154,9 +2663,6 @@ export const clearCache = async (req, res) => {
 
 export const backupDatabase = async (req, res) => {
   try {
-    // Implement database backup logic here
-    // This would typically involve mongodump or similar
-    
     res.status(200).json({
       success: true,
       message: 'Backup initiated successfully'
@@ -2185,17 +2691,22 @@ const getWeeklySalesData = async () => {
   
   return await Order.aggregate([
     {
-      $match: {
-        createdAt: { $gte: startOfWeek },
-        paymentStatus: 'paid'
-      }
+      $match: getRecognizedRevenueMatch({
+        $or: [
+          { deliveredAt: { $gte: startOfWeek } },
+          { deliveredAt: null, createdAt: { $gte: startOfWeek } }
+        ]
+      })
     },
     {
       $group: {
         _id: {
-          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: { $ifNull: ['$deliveredAt', '$createdAt'] }
+          }
         },
-        sales: { $sum: { $add: ['$subtotal', { $ifNull: ['$shippingCost', 0] }] } },
+        sales: { $sum: ORDER_NET_REVENUE_EXPR },
         orders: { $sum: 1 }
       }
     },
@@ -2205,6 +2716,7 @@ const getWeeklySalesData = async () => {
 
 const getTopProducts = async () => {
   return await Order.aggregate([
+    { $match: getRecognizedRevenueMatch() },
     { $unwind: '$items' },
     {
       $group: {

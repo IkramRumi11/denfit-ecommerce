@@ -57,15 +57,30 @@ export const Checkout: React.FC = () => {
   const calculatedTotal = effectiveSubtotal + calculatedShipping + (tax || 0);
 
   const handleApplyPromo = async () => {
-    const code = promoCodeInput.trim();
+    const code = promoCodeInput.trim().toUpperCase();
     if (!code) return;
     setIsApplyingPromo(true);
     setPromoError(null);
     try {
+      if (code.startsWith('DF-CREDIT-')) {
+        const res: any = await ordersAPI.validateStoreCredit(code, subtotal || 0);
+        const isValid = Boolean(res?.valid || res?.data?.valid || res?.success);
+        if (isValid) {
+          const discount = Number(res?.discountAmount ?? res?.data?.discountAmount ?? 0);
+          setAppliedPromo({ code, isStoreCredit: true, remainingBalance: res?.storeCredit?.remainingBalance || res?.data?.storeCredit?.remainingBalance });
+          setPromoDiscount(discount);
+          showToast(`Store credit voucher "${code}" applied (Rs ${discount.toLocaleString()})!`, 'success');
+          return;
+        } else {
+          setPromoError(res?.message || 'Invalid or expired store credit voucher');
+          return;
+        }
+      }
+
       const res: any = await ordersAPI.validatePromo(code, subtotal || 0);
       const isSuccess = Boolean(res?.valid || res?.success || res?.data?.valid);
       if (isSuccess) {
-        const promo = res?.data?.promoCode || res?.promoCode || res?.data || { code: code.toUpperCase() };
+        const promo = res?.data?.promoCode || res?.promoCode || res?.data || { code };
         const discount = Number(
           res?.data?.calculatedDiscount ??
           res?.data?.discountAmount ??
@@ -75,12 +90,22 @@ export const Checkout: React.FC = () => {
         );
         setAppliedPromo(promo);
         setPromoDiscount(discount);
-        showToast(`Promo code "${code.toUpperCase()}" applied!`, 'success');
+        showToast(`Promo code "${code}" applied!`, 'success');
       } else {
-        setPromoError(res?.message || 'Invalid promo code');
+        // Fallback: try store credit validation in case prefix differs
+        const creditRes: any = await ordersAPI.validateStoreCredit(code, subtotal || 0);
+        const isCreditValid = Boolean(creditRes?.valid || creditRes?.data?.valid || creditRes?.success);
+        if (isCreditValid) {
+          const discount = Number(creditRes?.discountAmount ?? creditRes?.data?.discountAmount ?? 0);
+          setAppliedPromo({ code, isStoreCredit: true });
+          setPromoDiscount(discount);
+          showToast(`Store credit voucher "${code}" applied!`, 'success');
+        } else {
+          setPromoError(res?.message || 'Invalid promo code or store credit voucher');
+        }
       }
     } catch (err: any) {
-      setPromoError(err?.message || 'Failed to apply promo code');
+      setPromoError(err?.message || 'Failed to apply promo or voucher code');
     } finally {
       setIsApplyingPromo(false);
     }
@@ -91,7 +116,7 @@ export const Checkout: React.FC = () => {
     setPromoDiscount(0);
     setPromoCodeInput('');
     setPromoError(null);
-    showToast('Promo code removed', 'info');
+    showToast('Code removed', 'info');
   };
 
   // Safe array access with fallbacks
@@ -403,7 +428,8 @@ export const Checkout: React.FC = () => {
           country: shippingInfo.country,
           phone: shippingInfo.phone
         },
-        promoCode: appliedPromo?.code ? appliedPromo.code.toUpperCase() : undefined,
+        promoCode: appliedPromo?.code && !appliedPromo?.isStoreCredit ? appliedPromo.code.toUpperCase() : undefined,
+        storeCreditCode: appliedPromo?.code && appliedPromo?.isStoreCredit ? appliedPromo.code.toUpperCase() : undefined,
         // Explicit customer identity fields to help backend distinguish guest vs account orders
         customerEmail: shippingInfo.email || null,
         userId: user?.id || user?._id || null,

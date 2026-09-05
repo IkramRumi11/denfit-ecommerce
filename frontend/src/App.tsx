@@ -59,6 +59,7 @@ import AdminFilters from './pages/admin/AdminFilters';
 import AdminContentController from './pages/admin/AdminContentController';
 import AdminPromoCodes from './pages/admin/AdminPromoCodes';
 import AdminShipping from './pages/admin/AdminShipping';
+import AdminFinancials from './pages/admin/AdminFinancials';
 
 // Context Providers
 // NOTE: AuthProvider and SearchProvider are in main.tsx — do not re-import here
@@ -180,6 +181,7 @@ function AppContent() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="financials" element={<AdminFinancials />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="reviews" element={<AdminReviews />} />
             <Route path="products" element={<AdminProducts />} />

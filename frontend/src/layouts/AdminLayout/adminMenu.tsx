@@ -11,7 +11,8 @@ import {
   Zap,
   Megaphone,
   Tag,
-  Truck
+  Truck,
+  TrendingUp
 } from 'lucide-react';
 
 export type AdminMenuItem = {
@@ -24,6 +25,7 @@ export type AdminMenuItem = {
 // ✅ Real-world enterprise menu — ordered by usage frequency
 const adminMenu: AdminMenuItem[] = [
   { to: '/admin', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
+  { to: '/admin/financials', label: 'Financials & Revenue', icon: <TrendingUp className="w-5 h-5" />, permission: 'orders.view' },
   { to: '/admin/orders', label: 'Orders', icon: <ShoppingCart className="w-5 h-5" />, permission: 'orders.view' },
   { to: '/admin/shipping', label: 'Shipping Settings', icon: <Truck className="w-5 h-5" />, permission: 'settings.view' },
   { to: '/admin/promo-codes', label: 'Promo Codes', icon: <Tag className="w-5 h-5" />, permission: 'products.view' },

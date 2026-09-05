@@ -11,6 +11,7 @@ import { supportsTransactions } from '../utils/dbUtils.js';
 import bus from '../events/index.js';
 import User from '../models/User.js';
 import PromoCode from '../models/PromoCode.js';
+import StoreCredit from '../models/StoreCredit.js';
 import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
 
 export const createOrder = async (req, res) => {
@@ -216,11 +217,30 @@ export const createOrder = async (req, res) => {
       discountAmount = promoVal.calculatedDiscount;
     }
 
+    // Validate and apply store credit voucher if provided
+    let appliedStoreCreditCode = null;
+    let storeCreditAmount = 0;
+    let storeCreditDoc = null;
+    const requestedCredit = String(req.body?.storeCreditCode || '').trim().toUpperCase();
+    if (requestedCredit) {
+      storeCreditDoc = await StoreCredit.findOne({ code: requestedCredit, status: { $in: ['active', 'partially_used'] } });
+      if (!storeCreditDoc) {
+        return res.status(400).json({ success: false, message: `Store credit voucher "${requestedCredit}" is invalid, expired, or fully used.` });
+      }
+      const creditVal = storeCreditDoc.validateForCheckout(req.user || guestEmail);
+      if (!creditVal.valid) {
+        return res.status(400).json({ success: false, message: creditVal.message });
+      }
+      appliedStoreCreditCode = storeCreditDoc.code;
+      const remainingAfterPromo = Math.max(0, subtotal - discountAmount);
+      storeCreditAmount = Math.min(remainingAfterPromo, storeCreditDoc.remainingBalance);
+    }
+
     // TAX system disabled: preserve fields but set taxAmount to 0
     const taxAmount = 0; // disabled
 
-    // Requirement 7: Promo discount MUST be applied BEFORE determining final shipping eligibility
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    // Requirement: Deductions applied BEFORE determining final shipping eligibility
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount - storeCreditAmount);
     const shippingConfig = await getShippingConfig();
     const shippingCost = calculateShippingFee(discountedSubtotal, shippingConfig);
     // Customer-facing total includes discounted subtotal + shippingCost
@@ -326,6 +346,8 @@ export const createOrder = async (req, res) => {
         subtotal,
         promoCode: appliedPromoCode || undefined,
         discountAmount: discountAmount || 0,
+        storeCreditCode: appliedStoreCreditCode || undefined,
+        storeCreditAmount: storeCreditAmount || 0,
         taxAmount,
         shippingCost,
         total: customerTotal
@@ -446,6 +468,24 @@ export const createOrder = async (req, res) => {
       }
     }
 
+    // Deduct store credit balance if applied
+    if (storeCreditDoc && storeCreditAmount > 0) {
+      try {
+        storeCreditDoc.remainingBalance = Math.max(0, Math.round((storeCreditDoc.remainingBalance - storeCreditAmount) * 100) / 100);
+        storeCreditDoc.status = storeCreditDoc.remainingBalance <= 0 ? 'fully_redeemed' : 'partially_used';
+        storeCreditDoc.redeemedOrders = storeCreditDoc.redeemedOrders || [];
+        storeCreditDoc.redeemedOrders.push({
+          order: order._id,
+          orderNumber: order.orderNumber,
+          amountDeducted: storeCreditAmount,
+          redeemedAt: new Date()
+        });
+        await storeCreditDoc.save();
+      } catch (e) {
+        console.warn('Failed to deduct store credit balance:', e?.message || e);
+      }
+    }
+
     // Enqueue order confirmation email (best-effort)
     try {
       const { addEmailJob } = await import('../queues/emailQueue.js');
@@ -531,7 +571,8 @@ export const getOrders = async (req, res) => {
       const ord = o && o.toObject ? o.toObject() : JSON.parse(JSON.stringify(o || {}));
       const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
       const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
-      const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+      const storeCreditAmount = (typeof ord.storeCreditAmount === 'number' && !Number.isNaN(ord.storeCreditAmount)) ? Number(ord.storeCreditAmount) : 0;
+      const discountedSubtotal = Math.max(0, subtotal - discountAmount - storeCreditAmount);
       // Preserve historical stored shippingCost if present; otherwise use centralized fallback
       const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
       const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
@@ -540,6 +581,7 @@ export const getOrders = async (req, res) => {
       ord.originalTotal = customerTotal;
       ord.taxAmount = 0;
       ord.discountAmount = discountAmount;
+      ord.storeCreditAmount = storeCreditAmount;
       if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
       if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
       if (typeof ord.storedTax !== 'undefined') delete ord.storedTax;
@@ -579,7 +621,8 @@ export const getOrder = async (req, res) => {
     const ord = order && order.toObject ? order.toObject() : JSON.parse(JSON.stringify(order || {}));
     const subtotal = (typeof ord.subtotal === 'number' && !Number.isNaN(ord.subtotal)) ? Number(ord.subtotal) : (ord.items || []).reduce((s, it) => s + ((Number(it.price) || 0) * (Number(it.quantity) || 0)), 0);
     const discountAmount = (typeof ord.discountAmount === 'number' && !Number.isNaN(ord.discountAmount)) ? Number(ord.discountAmount) : 0;
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const storeCreditAmount = (typeof ord.storeCreditAmount === 'number' && !Number.isNaN(ord.storeCreditAmount)) ? Number(ord.storeCreditAmount) : 0;
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount - storeCreditAmount);
     // Preserve historical stored shippingCost if present; otherwise use centralized fallback
     const shippingCost = (typeof ord.shippingCost === 'number' && !Number.isNaN(ord.shippingCost)) ? Number(ord.shippingCost) : calculateShippingFee(discountedSubtotal, shippingConfig);
     const customerTotal = Math.round((discountedSubtotal + shippingCost) * 100) / 100;
@@ -587,6 +630,7 @@ export const getOrder = async (req, res) => {
     ord.originalTotal = customerTotal;
     ord.taxAmount = 0;
     ord.discountAmount = discountAmount;
+    ord.storeCreditAmount = storeCreditAmount;
     if (typeof ord.legacyTax !== 'undefined') delete ord.legacyTax;
     if (typeof ord.legacyTotal !== 'undefined') delete ord.legacyTotal;
     if (typeof ord.storedTax !== 'undefined') delete ord.storedTax;
@@ -665,5 +709,128 @@ export const cancelOrder = async (req, res) => {
       success: false,
       message: 'Error cancelling order'
     });
+  }
+};
+
+/**
+ * Validate Store Credit Voucher for Customer Checkout
+ * POST /api/v1/orders/validate-store-credit
+ */
+export const validateStoreCredit = async (req, res) => {
+  try {
+    const rawCode = String(req.body?.code || '').trim().toUpperCase();
+    if (!rawCode) {
+      return res.status(400).json({ success: false, valid: false, message: 'Please provide a store credit code.' });
+    }
+
+    const credit = await StoreCredit.findOne({ code: rawCode });
+    if (!credit) {
+      return res.status(404).json({ success: false, valid: false, message: 'Invalid store credit voucher code.' });
+    }
+
+    const validation = credit.validateForCheckout(req.user || req.body?.email);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, valid: false, message: validation.message });
+    }
+
+    res.status(200).json({
+      success: true,
+      valid: true,
+      data: {
+        code: credit.code,
+        remainingBalance: credit.remainingBalance,
+        initialAmount: credit.initialAmount,
+        expiresAt: credit.expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('validateStoreCredit error:', error);
+    res.status(500).json({ success: false, valid: false, message: 'Failed to validate store credit voucher.' });
+  }
+};
+
+/**
+ * Customer Item-Level Exchange Request per DENFiT 14-Day Policy
+ * POST /api/v1/orders/:id/items/:itemId/request-exchange
+ */
+export const requestItemExchange = async (req, res) => {
+  try {
+    const { id: orderId, itemId } = req.params;
+    const { reason, requestedSize, requestedColor, requestedQuantity = 1, customerNote } = req.body;
+
+    // Find order by ID & verify ownership (or guest checkout match)
+    const query = { _id: orderId };
+    if (req.user) {
+      query.customer = req.user.id;
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Rule: Order must be delivered
+    if (order.status !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: 'Exchange requests can only be submitted for delivered orders.'
+      });
+    }
+
+    // Rule: Must be within 14 calendar days of delivery per DENFiT policy
+    const deliveryDate = order.deliveredAt || order.updatedAt || order.createdAt;
+    const daysSinceDelivery = (Date.now() - new Date(deliveryDate).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceDelivery > 14) {
+      return res.status(400).json({
+        success: false,
+        message: 'The 14-day exchange window for this order has expired per DENFiT Return & Exchange Policy.'
+      });
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Product item not found in this order.' });
+    }
+
+    if (item.exchange && item.exchange.status === 'requested') {
+      return res.status(400).json({ success: false, message: 'An exchange request for this item is already under review.' });
+    }
+
+    if (item.exchange && item.exchange.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'An exchange has already been completed for this item.' });
+    }
+
+    const now = new Date();
+    item.exchange = {
+      status: 'requested',
+      reason: reason || 'Size/Color Exchange',
+      requestedSize: requestedSize || item.size,
+      requestedColor: requestedColor || (typeof item.color === 'object' ? item.color?.name : item.color),
+      requestedQuantity: Number(requestedQuantity) || 1,
+      customerNote: customerNote || '',
+      requestedAt: now,
+      resolution: 'none'
+    };
+
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({
+      from: order.status,
+      to: order.status,
+      by: req.user ? req.user._id : undefined,
+      byName: req.user ? req.user.name : (order.shippingAddress?.name || 'Customer'),
+      note: `Customer submitted exchange request for item '${item.name}' (Reason: ${reason || 'Size/Color'})`,
+      at: now
+    });
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Exchange request submitted successfully. Our customer care team will review it within 24 hours.',
+      data: { order }
+    });
+  } catch (error) {
+    console.error('requestItemExchange error:', error);
+    res.status(500).json({ success: false, message: 'Error submitting exchange request' });
   }
 };

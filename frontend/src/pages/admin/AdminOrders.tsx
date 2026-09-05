@@ -229,31 +229,40 @@ const AdminOrders: React.FC = () => {
                           const displayLabel = getColorName(label);
 
                           return (
-                            <div key={item._id || idx} className="flex items-center gap-2">
-                              {item.image && (
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="w-10 h-10 object-cover rounded border border-gray-200"
-                                  onError={(e: any) => { e.target.onerror = null; e.target.src = '/denfit-logo.jpg'; }}
-                                />
-                              )}
-                              <div className="text-xs leading-tight">
-                                <div className="font-medium text-gray-900">{item.name}</div>
-                                <div className="text-gray-500 flex flex-wrap items-center gap-1 mt-0.5">
-                                  <span>Qty: {item.quantity}</span>
-                                  {item.size ? <span>• Size: {item.size}</span> : null}
-                                  {displayLabel ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      • Color: 
-                                      {colorValue ? (
-                                        <span className="w-2.5 h-2.5 rounded-full border inline-block" style={{ backgroundColor: String(colorValue) }} />
-                                      ) : null}
-                                      <span className="capitalize">{displayLabel}</span>
-                                    </span>
-                                  ) : null}
+                            <div key={item._id || idx} className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                {item.image && (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="w-10 h-10 object-cover rounded border border-gray-200"
+                                    onError={(e: any) => { e.target.onerror = null; e.target.src = '/denfit-logo.jpg'; }}
+                                  />
+                                )}
+                                <div className="text-xs leading-tight">
+                                  <div className="font-medium text-gray-900">{item.name}</div>
+                                  <div className="text-gray-500 flex flex-wrap items-center gap-1 mt-0.5">
+                                    <span>Qty: {item.quantity}</span>
+                                    {item.size ? <span>• Size: {item.size}</span> : null}
+                                    {displayLabel ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        • Color: 
+                                        {colorValue ? (
+                                          <span className="w-2.5 h-2.5 rounded-full border inline-block" style={{ backgroundColor: String(colorValue) }} />
+                                        ) : null}
+                                        <span className="capitalize">{displayLabel}</span>
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </div>
                               </div>
+                              {item.exchange && item.exchange.status && item.exchange.status !== 'none' && (
+                                <div className="mt-1">
+                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    Exchange: {item.exchange.status.replace('_', ' ')}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -267,13 +276,29 @@ const AdminOrders: React.FC = () => {
                             Discount {o.promoCode ? `(${o.promoCode})` : ''}: -Rs {Number(o.discountAmount).toFixed(2)}
                           </div>
                         )}
+                        {Number(o.storeCreditAmount || 0) > 0 && (
+                          <div className="text-purple-600 font-medium">
+                            Store Credit {o.storeCreditCode ? `(${o.storeCreditCode})` : ''}: -Rs {Number(o.storeCreditAmount).toFixed(2)}
+                          </div>
+                        )}
                         <div>Shipping: Rs {Number(o.shippingCost || 0).toFixed(2)}</div>
                         {typeof o.taxAmount === 'number' && o.taxAmount > 0 && (
                           <div>Tax: Rs {o.taxAmount.toFixed(2)}</div>
                         )}
                       </div>
                       <div className="text-sm font-bold text-blue-600 mt-1">
-                        Rs {Number(o.customerTotal != null ? o.customerTotal : (o.total != null ? o.total : Math.max(0, Number(o.subtotal || 0) - Number(o.discountAmount || 0)) + Number(o.shippingCost || 0))).toFixed(2)}
+                        Rs {Number(o.customerTotal != null ? o.customerTotal : (o.total != null ? o.total : Math.max(0, Number(o.subtotal || 0) - Number(o.discountAmount || 0) - Number(o.storeCreditAmount || 0)) + Number(o.shippingCost || 0))).toFixed(2)}
+                      </div>
+                      <div className="mt-1">
+                        {o.status === 'delivered' && o.paymentStatus === 'paid' ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            ✓ Recognized Revenue
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            ⏳ Pipeline (Unearned)
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 align-top">

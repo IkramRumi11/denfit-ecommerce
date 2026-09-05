@@ -106,23 +106,107 @@ export interface CartItem {
   variantImage?: string;
 }
 
+export interface OrderItemExchange {
+  status: 'none' | 'requested' | 'approved' | 'rejected' | 'replacement_dispatched' | 'completed' | 'store_credited';
+  reason?: string;
+  desiredSize?: string;
+  desiredColor?: string;
+  customerNote?: string;
+  adminNote?: string;
+  replacementOrderId?: string;
+  replacementTrackingNumber?: string;
+  storeCreditIssued?: number;
+  storeCreditCode?: string;
+  requestedAt?: string;
+  processedAt?: string;
+}
+
+export interface OrderItem {
+  _id?: string;
+  product: Product;
+  quantity: number;
+  price: number;
+  size: string;
+  color?: string;
+  exchange?: OrderItemExchange;
+}
+
 export interface Order {
   _id: string;
   orderNumber: string;
-  user: string;
+  user: string | any;
   items: OrderItem[];
   subtotal: number;
   promoCode?: string;
   discountAmount?: number;
+  storeCreditCode?: string;
+  storeCreditAmount?: number;
   shippingCost: number;
   taxAmount: number;
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
   shippingAddress: Address;
   paymentMethod: string;
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
+  refundedAmount?: number;
+  refundReason?: string;
+  recognizedRevenueAt?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StoreCredit {
+  _id: string;
+  code: string;
+  customer?: string | any;
+  guestEmail?: string;
+  originalOrder?: string | any;
+  orderItemId?: string;
+  initialAmount: number;
+  remainingBalance: number;
+  status: 'active' | 'fully_redeemed' | 'expired' | 'revoked';
+  expiresAt?: string;
+  redeemedOrders?: Array<{
+    orderId: string;
+    amountUsed: number;
+    redeemedAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancialAnalytics {
+  kpis: {
+    recognizedRevenue: number;
+    deliveredOrdersCount: number;
+    pipelineRevenue: number;
+    pipelineOrdersCount: number;
+    cancelledOrderValue: number;
+    cancelledOrdersCount: number;
+    grossOrderValue: number;
+    totalOrdersCount: number;
+    totalCashRefunds: number;
+    totalStoreCreditsIssued: number;
+    totalStoreCreditsRedeemed: number;
+    activeStoreCreditLiability: number;
+    netRecognizedRevenue: number;
+  };
+  breakdowns: {
+    paymentMethodSplit: Array<{
+      _id: string;
+      recognizedRevenue: number;
+      ordersCount: number;
+      pipelineRevenue: number;
+    }>;
+  };
+  trends: {
+    recognizedRevenueByDay: Array<{
+      _id: string;
+      recognizedRevenue: number;
+      orderCount: number;
+    }>;
+  };
 }
 
 export interface PromoCode {
@@ -141,14 +225,6 @@ export interface PromoCode {
   isExpired?: boolean;
   createdAt?: string;
   updatedAt?: string;
-}
-
-export interface OrderItem {
-  product: Product;
-  quantity: number;
-  price: number;
-  size: string;
-  color: string;
 }
 
 export interface ApiResponse<T = any> {

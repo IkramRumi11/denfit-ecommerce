@@ -5,7 +5,9 @@ import {
   createOrder,
   getOrders,
   getOrder,
-  cancelOrder
+  cancelOrder,
+  validateStoreCredit,
+  requestItemExchange
 } from '../controllers/orderController.js';
 import { validatePromoCode } from '../controllers/promoCodeController.js';
 
@@ -14,6 +16,9 @@ const router = express.Router();
 
 // Validate promotional code at checkout
 router.post('/validate-promo', validatePromoCode);
+
+// Validate store credit voucher at checkout
+router.post('/validate-store-credit', optionalAuth, validateStoreCredit);
 
 // Public endpoints are intentionally omitted: orders are user-specific and require auth
 // Create an order (allow guest checkout — accept optional auth so req.user is set when present)
@@ -30,5 +35,8 @@ router.get('/:id', protect, getOrder);
 
 // Cancel an order (user-scoped)
 router.patch('/:id/cancel', protect, cancelOrder);
+
+// Customer item-level exchange request
+router.post('/:id/items/:itemId/request-exchange', optionalAuth, requestItemExchange);
 
 export default router;

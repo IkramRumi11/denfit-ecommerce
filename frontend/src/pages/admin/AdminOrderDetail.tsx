@@ -18,6 +18,10 @@ import {
   RefreshCw,
   XCircle,
   Zap,
+  Gift,
+  ArrowRightLeft,
+  CheckCircle2,
+  Tag,
 } from "lucide-react";
 
 /**
@@ -30,7 +34,7 @@ import {
  */
 
 /* ---------- constants ---------- */
-const STATUS_OPTIONS = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] as const;
+const STATUS_OPTIONS = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned", "refunded"] as const;
 type Status = typeof STATUS_OPTIONS[number];
 
 type OrderType = {
@@ -38,19 +42,29 @@ type OrderType = {
   orderNumber?: string;
   items?: Array<any>;
   subtotal?: number;
+  discountAmount?: number;
+  promoCode?: string;
+  storeCreditCode?: string;
+  storeCreditAmount?: number;
   shippingCost?: number;
   total?: number;
+  customerTotal?: number;
   status?: Status;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  recognizedRevenueAt?: string;
+  deliveredAt?: string;
+  refundedAmount?: number;
+  refundReason?: string;
   trackingNumber?: string;
   carrier?: string;
+  trackingUrl?: string;
   estimatedDelivery?: string;
   shippingAddress?: any;
   createdAt?: string;
   updatedAt?: string;
   statusHistory?: any[];
   customerNote?: string;
-  paymentStatus?: string;
-  // extend as needed
 };
 
 /* ---------- small helpers ---------- */
@@ -126,6 +140,22 @@ const AdminOrderDetail: React.FC = () => {
   const [confirmStatus, setConfirmStatus] = useState<{ open: boolean; value?: Status; busy?: boolean }>({ open: false });
   const [quickActionBusy, setQuickActionBusy] = useState(false);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+
+  // Exchange & Store credit states
+  const [exchangeModal, setExchangeModal] = useState<{
+    open: boolean;
+    itemId?: string;
+    itemName?: string;
+    itemPrice?: number;
+    currentStatus?: string;
+    actionType?: 'status_update' | 'issue_credit';
+  }>({ open: false });
+  const [exchangeStatus, setExchangeStatus] = useState<string>('approved');
+  const [exchangeAdminNote, setExchangeAdminNote] = useState<string>('');
+  const [replacementTrackingNumber, setReplacementTrackingNumber] = useState<string>('');
+  const [replacementOrderId, setReplacementOrderId] = useState<string>('');
+  const [creditAmount, setCreditAmount] = useState<number>(0);
+  const [exchangeBusy, setExchangeBusy] = useState<boolean>(false);
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -312,15 +342,54 @@ const AdminOrderDetail: React.FC = () => {
     }
   };
 
+  const handleProcessExchange = async () => {
+    if (!order || !exchangeModal.itemId) return;
+    setExchangeBusy(true);
+    try {
+      if (exchangeModal.actionType === 'issue_credit') {
+        const res = await api.admin.issueItemStoreCredit(order._id, exchangeModal.itemId, {
+          amount: creditAmount > 0 ? creditAmount : undefined,
+          adminNote: exchangeAdminNote,
+        });
+        if (res?.data?.order) {
+          setOrder(res.data.order);
+          showToast(`Store credit voucher ${res.data.storeCredit?.code || ''} issued successfully`, 'success');
+          setExchangeModal({ open: false });
+        }
+      } else {
+        const res = await api.admin.processItemExchange(order._id, exchangeModal.itemId, {
+          status: exchangeStatus,
+          adminNote: exchangeAdminNote,
+          replacementOrderId: replacementOrderId || undefined,
+          replacementTrackingNumber: replacementTrackingNumber || undefined,
+        });
+        if (res?.data?.order) {
+          setOrder(res.data.order);
+          showToast('Exchange status updated successfully', 'success');
+          setExchangeModal({ open: false });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to process item exchange:', err);
+      showToast(err?.message || 'Failed to process exchange', 'error');
+    } finally {
+      setExchangeBusy(false);
+    }
+  };
+
   /* ---------- helpers ---------- */
   const subtotal = order?.subtotal ?? 0;
   const discountAmount = order?.discountAmount ?? 0;
   const promoCode = order?.promoCode;
+  const storeCreditAmount = order?.storeCreditAmount ?? 0;
+  const storeCreditCode = order?.storeCreditCode;
   const shippingCost = order?.shippingCost ?? 0;
   // Admin UI should display tax-excluded, discount-deducted totals only
   const displayedTotal = order?.customerTotal != null
     ? Number(order.customerTotal)
-    : Math.round((Math.max(0, subtotal - discountAmount) + shippingCost) * 100) / 100;
+    : Math.round((Math.max(0, subtotal - discountAmount - storeCreditAmount) + shippingCost) * 100) / 100;
+  
+  const isRevenueRecognized = order?.status === 'delivered' && order?.paymentStatus === 'paid';
 
   /* ---------- render ---------- */
   if (loading) {
@@ -389,40 +458,130 @@ const AdminOrderDetail: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
             <h3 className="font-semibold mb-4">Items</h3>
             <div className="space-y-4">
-              {order.items?.map((it: any) => (
-                <div key={it._id || it.product} className="flex items-center gap-4">
-                  <img src={it.image || "/placeholder.png"} alt={it.name} className="w-16 h-16 rounded-lg object-cover border" />
-                      <div className="flex-1">
-                        <div className="font-semibold">{it.name}</div>
-                        <div className="text-sm text-slate-500">
-                          Qty {it.quantity} • {it.size ?? "—"}
-                          {(() => {
-                            const variantLabel = it.variantName || it.colorName || '';
-                            const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
-                            const colorHex = it.variantHex || (colorObj ? (colorObj.hex || '') : (typeof it.color === 'string' ? it.color : ''));
-                            const label = variantLabel || (colorObj ? (colorObj.name || '') : (typeof it.color === 'string' ? it.color : ''));
-                            if (!label) return null;
-                            const displayLabel = getColorName(label);
-                            return (
-                              <span className="ml-1">
-                                • Color: {colorHex ? (
-                                  <span className="inline-flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: String(colorHex) }} />
-                                    <span className="font-medium text-slate-700 capitalize">{displayLabel}</span>
-                                  </span>
-                                ) : (
+              {order.items?.map((it: any, idx: number) => (
+                <div key={it._id || it.product || idx} className="p-3 border border-slate-100 rounded-xl space-y-3">
+                  <div className="flex items-center gap-4">
+                    <img src={it.image || "/placeholder.png"} alt={it.name} className="w-16 h-16 rounded-lg object-cover border" />
+                    <div className="flex-1">
+                      <div className="font-semibold">{it.name}</div>
+                      <div className="text-sm text-slate-500">
+                        Qty {it.quantity} • {it.size ?? "—"}
+                        {(() => {
+                          const variantLabel = it.variantName || it.colorName || '';
+                          const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
+                          const colorHex = it.variantHex || (colorObj ? (colorObj.hex || '') : (typeof it.color === 'string' ? it.color : ''));
+                          const label = variantLabel || (colorObj ? (colorObj.name || '') : (typeof it.color === 'string' ? it.color : ''));
+                          if (!label) return null;
+                          const displayLabel = getColorName(label);
+                          return (
+                            <span className="ml-1">
+                              • Color: {colorHex ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: String(colorHex) }} />
                                   <span className="font-medium text-slate-700 capitalize">{displayLabel}</span>
-                                )}
-                              </span>
-                            );
-                          })()}
+                                </span>
+                              ) : (
+                                <span className="font-medium text-slate-700 capitalize">{displayLabel}</span>
+                              )}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">{it.sku ? `SKU: ${it.sku}` : null}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold">{formatCurrency(it.price)}</div>
+                      <div className="text-sm text-slate-500">Subtotal: {formatCurrency((it.price ?? 0) * (it.quantity ?? 1))}</div>
+                    </div>
+                  </div>
+
+                  {/* Item-level Exchange info */}
+                  {it.exchange && it.exchange.status && it.exchange.status !== 'none' && (
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <span>Exchange Request:</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            it.exchange.status === 'requested'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              : it.exchange.status === 'approved'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                              : it.exchange.status === 'replacement_dispatched'
+                              ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                              : it.exchange.status === 'store_credited'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              : it.exchange.status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                          }`}>
+                            {it.exchange.status.replace('_', ' ')}
+                          </span>
                         </div>
-                    <div className="text-xs text-slate-400 mt-1">{it.sku ? `SKU: ${it.sku}` : null}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">{formatCurrency(it.price)}</div>
-                    <div className="text-sm text-slate-500">Subtotal: {formatCurrency((it.price ?? 0) * (it.quantity ?? 1))}</div>
-                  </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setExchangeModal({
+                                open: true,
+                                itemId: it._id,
+                                itemName: it.name,
+                                itemPrice: it.price,
+                                currentStatus: it.exchange.status,
+                                actionType: 'status_update',
+                              });
+                              setExchangeStatus(it.exchange.status === 'requested' ? 'approved' : it.exchange.status);
+                              setExchangeAdminNote(it.exchange.adminNote || '');
+                              setReplacementTrackingNumber(it.exchange.replacementTrackingNumber || '');
+                              setReplacementOrderId(it.exchange.replacementOrderId || '');
+                            }}
+                            className="px-2.5 py-1 rounded bg-slate-800 text-white text-[11px] font-medium hover:bg-slate-900"
+                          >
+                            Manage
+                          </button>
+                          {it.exchange.status !== 'store_credited' && (
+                            <button
+                              onClick={() => {
+                                setExchangeModal({
+                                  open: true,
+                                  itemId: it._id,
+                                  itemName: it.name,
+                                  itemPrice: it.price,
+                                  currentStatus: it.exchange.status,
+                                  actionType: 'issue_credit',
+                                });
+                                setCreditAmount(it.price * (it.quantity || 1));
+                                setExchangeAdminNote(`Store credit issued for exchanged item ${it.name}`);
+                              }}
+                              className="px-2.5 py-1 rounded bg-purple-600 text-white text-[11px] font-medium hover:bg-purple-700 flex items-center gap-1"
+                            >
+                              <Gift className="w-3 h-3" />
+                              Credit
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-1.5 text-slate-600 dark:text-slate-400 space-y-0.5">
+                        {it.exchange.reason && <div><strong>Reason:</strong> {it.exchange.reason}</div>}
+                        {(it.exchange.desiredSize || it.exchange.desiredColor) && (
+                          <div>
+                            <strong>Desired Variant:</strong> {it.exchange.desiredSize ? `Size ${it.exchange.desiredSize}` : ''} {it.exchange.desiredColor ? `Color ${it.exchange.desiredColor}` : ''}
+                          </div>
+                        )}
+                        {it.exchange.customerNote && <div><strong>Customer Note:</strong> {it.exchange.customerNote}</div>}
+                        {it.exchange.adminNote && <div><strong>Admin Note:</strong> {it.exchange.adminNote}</div>}
+                        {it.exchange.storeCreditCode && (
+                          <div className="text-purple-700 dark:text-purple-400 font-semibold mt-1">
+                            Store Credit Voucher: <code className="px-1.5 py-0.5 bg-purple-50 dark:bg-purple-950 rounded border border-purple-200 dark:border-purple-800">{it.exchange.storeCreditCode}</code> (Rs {it.exchange.storeCreditIssued})
+                          </div>
+                        )}
+                        {it.exchange.replacementTrackingNumber && (
+                          <div className="text-indigo-700 dark:text-indigo-400 mt-1">
+                            <strong>Replacement Tracking:</strong> {it.exchange.replacementTrackingNumber}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -493,8 +652,35 @@ const AdminOrderDetail: React.FC = () => {
                   <div>-{formatCurrency(discountAmount)}</div>
                 </div>
               )}
+              {storeCreditAmount > 0 && (
+                <div className="flex justify-between text-sm text-purple-600 font-medium">
+                  <div>Store Credit Voucher {storeCreditCode ? `(${storeCreditCode})` : ''}</div>
+                  <div>-{formatCurrency(storeCreditAmount)}</div>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-slate-600"><div>Shipping</div><div>{formatCurrency(shippingCost)}</div></div>
               <div className="flex justify-between text-lg font-semibold"><div>Total</div><div>{formatCurrency(displayedTotal)}</div></div>
+
+              {/* Revenue Accounting Status */}
+              <div className="mt-3 pt-3 border-t border-slate-100">
+                {isRevenueRecognized ? (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Recognized Revenue</div>
+                      <div className="text-[11px] opacity-90 mt-0.5">Earned & settled upon confirmed delivery</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold">Pipeline Revenue (Deferred)</div>
+                      <div className="text-[11px] opacity-90 mt-0.5">Materializes strictly upon delivery & verified payment</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Status select with confirm flow */}
@@ -563,7 +749,7 @@ const AdminOrderDetail: React.FC = () => {
             <div className="mt-2 text-sm text-slate-700 space-y-1">
               <div>Placed: {formatDateLong(order.createdAt)}</div>
               <div>Updated: {formatDateLong(order.updatedAt)}</div>
-              <div>Payment: {order.paymentStatus || "—"}</div>
+              <div>Payment: <span className="font-medium capitalize">{order.paymentStatus || "—"}</span> ({order.paymentMethod || 'COD'})</div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button onClick={() => showToast("Open customer profile (placeholder)", "info")} className="px-3 py-2 rounded border text-sm">Customer</button>
@@ -584,6 +770,152 @@ const AdminOrderDetail: React.FC = () => {
           }}
         />
       )}
+
+      {/* Exchange Action Modal */}
+      <AnimatePresence>
+        {exchangeModal.open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 10 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-4"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="font-bold text-slate-900 dark:text-white">
+                    {exchangeModal.actionType === 'issue_credit' ? 'Issue Store Credit Voucher' : 'Manage Item Exchange'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setExchangeModal({ open: false })}
+                  className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Target Item</div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">{exchangeModal.itemName}</div>
+              </div>
+
+              {exchangeModal.actionType === 'issue_credit' ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Store Credit Voucher Amount (PKR)
+                    </label>
+                    <input
+                      type="number"
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(Number(e.target.value))}
+                      className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      placeholder="e.g. 2500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Internal Admin Note
+                    </label>
+                    <textarea
+                      value={exchangeAdminNote}
+                      onChange={(e) => setExchangeAdminNote(e.target.value)}
+                      rows={2}
+                      className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      placeholder="Reason for issuing store credit..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Exchange Workflow Status
+                    </label>
+                    <select
+                      value={exchangeStatus}
+                      onChange={(e) => setExchangeStatus(e.target.value)}
+                      className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    >
+                      <option value="approved">Approve Exchange Request</option>
+                      <option value="replacement_dispatched">Replacement Dispatched</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Reject Exchange</option>
+                    </select>
+                  </div>
+
+                  {exchangeStatus === 'replacement_dispatched' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Replacement Tracking Number
+                        </label>
+                        <input
+                          type="text"
+                          value={replacementTrackingNumber}
+                          onChange={(e) => setReplacementTrackingNumber(e.target.value)}
+                          className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          placeholder="e.g. TCS-99881122"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Replacement Order ID / Reference (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={replacementOrderId}
+                          onChange={(e) => setReplacementOrderId(e.target.value)}
+                          className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          placeholder="e.g. ORD-EXCH-001"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Admin Note
+                    </label>
+                    <textarea
+                      value={exchangeAdminNote}
+                      onChange={(e) => setExchangeAdminNote(e.target.value)}
+                      rows={2}
+                      className="w-full p-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      placeholder="Note to customer or internal staff..."
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setExchangeModal({ open: false })}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={exchangeBusy}
+                  onClick={handleProcessExchange}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {exchangeBusy ? 'Processing...' : 'Confirm Action'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ConfirmModal
         open={confirmStatus.open}

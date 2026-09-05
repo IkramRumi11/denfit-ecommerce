@@ -32,6 +32,29 @@ const orderItemSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 1
+  },
+  // Item-level exchange tracking per DENFiT 14-day policy
+  exchange: {
+    status: {
+      type: String,
+      enum: ['none', 'requested', 'approved', 'rejected', 'completed'],
+      default: 'none'
+    },
+    reason: { type: String },
+    requestedSize: { type: String },
+    requestedColor: { type: String },
+    requestedQuantity: { type: Number, default: 1 },
+    customerNote: { type: String },
+    adminNote: { type: String },
+    requestedAt: { type: Date },
+    resolvedAt: { type: Date },
+    resolution: {
+      type: String,
+      enum: ['none', 'replacement_dispatched', 'store_credit_issued', 'rejected'],
+      default: 'none'
+    },
+    storeCreditCode: { type: String },
+    storeCreditAmount: { type: Number }
   }
 });
 
@@ -99,13 +122,17 @@ const orderSchema = new mongoose.Schema({
   shippedAt: { type: Date },
   deliveredAt: { type: Date },
   cancelledAt: { type: Date },
+  recognizedRevenueAt: { type: Date },
   // Shipment/tracking info
   trackingNumber: { type: String },
   trackingUrl: { type: String },
   carrier: { type: String },
   estimatedDelivery: { type: Date },
   adminNote: { type: String },
-  refundAmount: { type: Number },
+  refundAmount: { type: Number, default: 0 },
+  // Store Credit redemption applied on this order
+  storeCreditCode: { type: String, uppercase: true, trim: true },
+  storeCreditAmount: { type: Number, default: 0 },
   // Mark orders whose customer account has been anonymized/deleted
   customerDeleted: { type: Boolean, default: false },
   subtotal: {

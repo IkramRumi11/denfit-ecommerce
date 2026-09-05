@@ -37,6 +37,8 @@ import {
   updateOrderTracking,
   cancelOrder,
   refundOrder,
+  processItemExchange,
+  issueItemStoreCredit,
   getAudits,
   
   // Category Management
@@ -47,6 +49,7 @@ import {
   
   // Analytics
   getSalesAnalytics,
+  getFinancialAnalytics,
   getUserAnalytics,
   getProductAnalytics,
   
@@ -190,6 +193,8 @@ router.get('/orders/:id/invoice/pdf', getInvoicePdf);
 router.patch('/orders/:id/tracking', updateOrderTracking);
 router.patch('/orders/:id/cancel', cancelOrder);
 router.patch('/orders/:id/refund', refundOrder);
+router.patch('/orders/:id/items/:itemId/exchange', processItemExchange);
+router.post('/orders/:id/items/:itemId/store-credit', issueItemStoreCredit);
 
 // ========================
 // EMAIL MARKETING (ADMIN)
@@ -489,6 +494,7 @@ router.route('/categories/:id')
 // ANALYTICS ROUTES
 // ========================
 router.get('/analytics/sales', getSalesAnalytics);
+router.get('/analytics/financials', getFinancialAnalytics);
 router.get('/analytics/users', getUserAnalytics);
 router.get('/analytics/products', getProductAnalytics);
 

@@ -1,5 +1,5 @@
 // frontend/src/api.ts
-import { Product, User, CartItem, Order, PromoCode, ApiResponse } from "./types";
+import { Product, User, CartItem, Order, PromoCode, StoreCredit, FinancialAnalytics, ApiResponse } from "./types";
 
 const env = (import.meta as any).env;
 const defaultApiUrl = env?.PROD ? '' : 'http://localhost:3002';
@@ -400,6 +400,31 @@ export const ordersAPI = {
       method: "POST",
       body: JSON.stringify({ code, subtotal }),
     }),
+  validateStoreCredit: (code: string, subtotal: number) =>
+    handleRequest<{
+      valid: boolean;
+      storeCredit: StoreCredit;
+      discountAmount: number;
+      discountedSubtotal: number;
+      finalTotal: number;
+    }>("/orders/validate-store-credit", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotal }),
+    }),
+  requestItemExchange: (
+    orderId: string,
+    itemId: string,
+    payload: {
+      reason: string;
+      desiredSize?: string;
+      desiredColor?: string;
+      customerNote?: string;
+    }
+  ) =>
+    handleRequest<{ order: Order }>(`/orders/${orderId}/items/${itemId}/request-exchange`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ======================
@@ -638,6 +663,43 @@ export const adminAPI = {
       method: "PATCH",
       body: JSON.stringify({ amount, reason }),
     }),
+
+  processItemExchange: (
+    orderId: string,
+    itemId: string,
+    payload: {
+      status: string;
+      adminNote?: string;
+      replacementOrderId?: string;
+      replacementTrackingNumber?: string;
+    }
+  ) =>
+    handleRequest<{ order: Order }>(`/admin/orders/${orderId}/items/${itemId}/exchange`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  issueItemStoreCredit: (
+    orderId: string,
+    itemId: string,
+    payload?: {
+      amount?: number;
+      expiresDays?: number;
+      adminNote?: string;
+    }
+  ) =>
+    handleRequest<{ order: Order; storeCredit: StoreCredit }>(`/admin/orders/${orderId}/items/${itemId}/store-credit`, {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    }),
+
+  getFinancialAnalytics: (params?: { startDate?: string; endDate?: string; timeframe?: string }) => {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => v && query.append(k, String(v)));
+    return handleRequest<{ financialAnalytics: FinancialAnalytics }>(
+      `/admin/analytics/financials${query.size ? "?" + query.toString() : ""}`
+    );
+  },
 
   // Audits
   getAudits: (params?: {
