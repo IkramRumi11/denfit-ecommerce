@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 interface SizeGuideProps {
   open: boolean;
@@ -45,7 +46,7 @@ const SizeGuide: React.FC<SizeGuideProps> = ({ open, onClose, image, description
             )}
 
             {description ? (
-              <div className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: description }} />
+              <div className="text-sm text-gray-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />
             ) : (
               <p className="text-sm text-gray-500">Sizes are based on our size chart. Minor variations may occur due to manual measurement or product design.</p>
             )}
@@ -53,7 +54,7 @@ const SizeGuide: React.FC<SizeGuideProps> = ({ open, onClose, image, description
 
           <div className="overflow-auto">
             {tableHtml ? (
-              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: tableHtml }} />
+              <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(tableHtml) }} />
             ) : (
               // If no tableHtml is provided, do not render any default size rows - admin must supply the data
               <div className="text-sm text-gray-500">No additional size guidance provided for this product.</div>

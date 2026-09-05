@@ -4,6 +4,7 @@ import { getColorName, resolveColorHex } from '../../utils/colorNames';
 import { useNavigate } from 'react-router-dom';
 import { api, filtersAPI } from '../../api';
 import { useToast } from '../../context/ToastContext';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { ArrowLeft, Save, X, Upload, Image as ImageIcon, Trash2, Plus, Package } from 'lucide-react';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { CategorySelector } from '../../components/admin/CategorySelector';
@@ -61,8 +62,7 @@ const AdminProductCreate: React.FC = () => {
   const [existingVariantImages, setExistingVariantImages] = useState<Record<string, Array<any>>>({});
 
   const sanitizePreview = (html: string) => {
-    if (!html) return '';
-    return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+    return sanitizeHtml(html);
   };
   // Defensive parse for values that may be JSON strings
   const safeParse = (v: any) => {

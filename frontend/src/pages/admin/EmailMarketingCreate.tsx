@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { adminAPI } from '../../api';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { useToast } from '../../context/ToastContext';
 
 const EmailMarketingCreate: React.FC = () => {
@@ -178,7 +179,7 @@ const EmailMarketingCreate: React.FC = () => {
                 <button className="px-3 py-1 border rounded" onClick={() => setPreviewOpen(false)}>Close</button>
               </div>
               <div className="p-4">
-                <div className="border p-4" dangerouslySetInnerHTML={{ __html: content }} />
+                <div className="border p-4" dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }} />
               </div>
             </div>
           </div>

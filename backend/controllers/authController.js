@@ -40,6 +40,10 @@ const createSendToken = (user, statusCode, req, res) => {
   // - Development: different localhost ports are "same-site" (same registrable domain)
   //   so SameSite=Lax works correctly. Using SameSite=None without Secure is
   //   silently rejected by modern browsers, breaking auth completely.
+  const isLocalhostRequest = Boolean(
+    req.headers.host && (req.headers.host.includes('localhost') || req.headers.host.includes('127.0.0.1'))
+  );
+
   const sameSite = process.env.NODE_ENV === 'production'
     ? process.env.COOKIE_SAMESITE || 'lax'
     : (isCrossOrigin && !isLocalhostRequest ? 'none' : 'lax');

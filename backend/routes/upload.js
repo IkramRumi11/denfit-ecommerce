@@ -27,8 +27,9 @@ const memUpload = multer({
   }
 });
 
-// Protect all routes
+// Protect all upload routes: require authenticated admin user
 router.use(protect);
+router.use(authorize('admin', 'super_admin'));
 
 // Upload routes
 router.post('/image', memUpload.single('image'), validateUploadedFilesBuffer, uploadImage);

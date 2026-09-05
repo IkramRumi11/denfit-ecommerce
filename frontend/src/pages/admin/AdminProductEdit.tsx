@@ -4,6 +4,7 @@ import { getColorName, resolveColorHex } from '../../utils/colorNames';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useToast } from '../../context/ToastContext';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { ArrowLeft, Save, X, Image as ImageIcon, Trash2, Plus, Package } from 'lucide-react';
 import { ImageUpload } from '../../components/admin/ImageUpload';
@@ -63,8 +64,7 @@ const AdminProductEdit: React.FC = () => {
   const [existingVariantImages, setExistingVariantImages] = useState<Record<string, Array<any>>>({});
 
   const sanitizePreview = (html: string) => {
-    if (!html) return '';
-    return html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+    return sanitizeHtml(html);
   };
 
   const displayAvailableQuantity = (product: any) => {

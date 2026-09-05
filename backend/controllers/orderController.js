@@ -759,7 +759,7 @@ export const requestItemExchange = async (req, res) => {
     const { id: orderId, itemId } = req.params;
     const { reason, requestedSize, requestedColor, requestedQuantity = 1, customerNote } = req.body;
 
-    // Find order by ID & verify ownership (or guest checkout match)
+    // Find order by ID & verify ownership (or guest checkout email match)
     const query = { _id: orderId };
     if (req.user) {
       query.customer = req.user.id;
@@ -768,6 +768,18 @@ export const requestItemExchange = async (req, res) => {
     const order = await Order.findOne(query);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // IDOR protection: for guest checkout exchanges, verify caller provided matching email
+    if (!req.user) {
+      const providedEmail = String(req.body?.email || '').trim().toLowerCase();
+      const orderGuestEmail = String(order.guestEmail || order.shippingAddress?.email || '').trim().toLowerCase();
+      if (!providedEmail || !orderGuestEmail || providedEmail !== orderGuestEmail) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Valid order email address is required for guest exchange requests.'
+        });
+      }
     }
 
     // Rule: Order must be delivered
