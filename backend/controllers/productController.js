@@ -400,6 +400,7 @@ export const getAllProducts = async (req, res) => {
 
     const allAnds = [].concat(andClauses || [], attributeAndClauses || []);
     const finalQuery = (allAnds.length ? { $and: [mongoQuery, ...allAnds] } : mongoQuery);
+    console.log('getAllProducts finalQuery:', JSON.stringify(finalQuery));
 
     const total = await Product.countDocuments(finalQuery);
     let sortSpec = { createdAt: -1 };
