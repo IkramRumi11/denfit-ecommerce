@@ -67,7 +67,7 @@ const AccordionItem: React.FC<{
 export const ProductDetail: React.FC = () => {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
-  const { addItem, getItemQuantity } = useCart();
+  const { addItem, getItemQuantity, openCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
   const { shippingConfig, freeShippingShortText, deliveryPolicyText } = useShipping();
@@ -205,7 +205,23 @@ export const ProductDetail: React.FC = () => {
       if (hex) setSelectedColor(hex);
       if (name) setSelectedColorName(name);
     }
-  }, [product, selectedVariantId, selectedColor, setSelectedVariantId]);
+    // Auto-select first in-stock size (or first available size) on initial load
+    if (product && !selectedSize) {
+      const allSizes = getDisplaySizesForProduct(product);
+      if (allSizes && allSizes.length > 0) {
+        const firstInStockSize = allSizes.find((s: string) => {
+          const stock = getAvailableStockForItem(product, {
+            size: s,
+            color: selectedColor,
+            colorName: selectedColorName,
+            variantId: selectedVariantId
+          });
+          return stock > 0;
+        }) || allSizes[0] || '';
+        if (firstInStockSize) setSelectedSize(firstInStockSize);
+      }
+    }
+  }, [product, selectedVariantId, selectedColor, selectedColorName, selectedSize, setSelectedVariantId]);
 
   // hook-based gallery
   const gallery = useLuxuryGallery({ length: galleryImages.length, initialIndex: initialImageFromQuery || 0, allowLoop: true, onIndexChange: (i) => setInitialImageFromQuery(i) });
@@ -634,17 +650,17 @@ export const ProductDetail: React.FC = () => {
     });
   }, [product, selectedVariantId, selectedSize, selectedColor, selectedColorName]);
 
-  const displayAvailableQuantity = typeof (product as any)?.availableQuantity === 'number' ? (product as any).availableQuantity : itemsAvailable;
+  const displayAvailableQuantity = itemsAvailable;
 
   const canonicalPid = String(product?.id || product?._id || productId || '');
 
   const inCartQty = useMemo(() => {
     if (!product || !selectedSize) return 0;
-    return getItemQuantity(canonicalPid, selectedSize, selectedColor || selectedVariantId);
+    return getItemQuantity(canonicalPid, selectedSize, selectedColor || selectedVariantId, selectedVariantId);
   }, [product, selectedSize, selectedColor, selectedVariantId, canonicalPid, getItemQuantity]);
 
   const remainingStockAllowed = Math.max(0, displayAvailableQuantity - inCartQty);
-  const isAllInCart = Boolean(selectedSize && (selectedColor || selectedVariantId) && displayAvailableQuantity > 0 && inCartQty >= displayAvailableQuantity);
+  const isAllInCart = Boolean(selectedSize && displayAvailableQuantity > 0 && inCartQty >= displayAvailableQuantity);
 
   // --- Reset selected size if it is not available in the newly selected color ---
   useEffect(() => {
@@ -660,12 +676,14 @@ export const ProductDetail: React.FC = () => {
     }
   }, [selectedVariantId, selectedColor, product, selectedSize]);
 
-  // --- Automatically adjust quantity down if it exceeds the displayAvailableQuantity ---
+  // --- Automatically adjust quantity down if it exceeds remainingStockAllowed ---
   useEffect(() => {
-    if (selectedSize && (selectedVariantId || selectedColor) && quantity > displayAvailableQuantity) {
-      setQuantity(Math.max(1, displayAvailableQuantity));
+    if (remainingStockAllowed > 0 && quantity > remainingStockAllowed) {
+      setQuantity(remainingStockAllowed);
+    } else if (remainingStockAllowed === 0 && quantity > 1) {
+      setQuantity(1);
     }
-  }, [displayAvailableQuantity, quantity, selectedSize, selectedVariantId, selectedColor]);
+  }, [remainingStockAllowed, quantity]);
 
   // --- Safe to return conditionally now that all hooks are called ---
   if (loading) {
@@ -791,9 +809,7 @@ export const ProductDetail: React.FC = () => {
   const handleBuyNow = async () => {
     const success = await handleAddToCart();
     if (success) {
-      setTimeout(() => {
-        navigate('/cart');
-      }, 300);
+      openCart();
     }
   };
 
@@ -1226,27 +1242,45 @@ export const ProductDetail: React.FC = () => {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex border border-gray-300 rounded-lg">
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1 || isAllInCart}
-                    className="px-4 py-2 hover:bg-gray-100 rounded-l-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    disabled={quantity <= 1 || isAllInCart || remainingStockAllowed <= 0}
+                    className="px-3.5 py-2 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Decrease quantity"
                   >
                     -
                   </button>
-                  <span className="px-4 py-2 min-w-12 text-center font-medium">
-                    {quantity}
-                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={remainingStockAllowed > 0 ? remainingStockAllowed : 1}
+                    value={remainingStockAllowed <= 0 ? 0 : quantity}
+                    disabled={remainingStockAllowed <= 0 || isAllInCart}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) {
+                        setQuantity(Math.max(1, Math.min(val, remainingStockAllowed > 0 ? remainingStockAllowed : 1)));
+                      }
+                    }}
+                    onBlur={() => {
+                      if (quantity < 1) setQuantity(1);
+                      if (remainingStockAllowed > 0 && quantity > remainingStockAllowed) setQuantity(remainingStockAllowed);
+                    }}
+                    className="w-12 text-center font-medium border-x border-gray-300 py-2 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:bg-gray-50"
+                    aria-label="Quantity"
+                  />
                   <button
                     onClick={() => setQuantity(Math.min(remainingStockAllowed > 0 ? remainingStockAllowed : 1, quantity + 1))}
-                    disabled={quantity >= remainingStockAllowed || isAllInCart}
-                    className="px-4 py-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    disabled={quantity >= remainingStockAllowed || isAllInCart || remainingStockAllowed <= 0}
+                    className="px-3.5 py-2 hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Increase quantity"
                   >
                     +
                   </button>
                 </div>
                 <span className="text-sm text-gray-500">
-                  {isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) ? 'Out of stock' : `${displayAvailableQuantity} items available`}
+                  {displayAvailableQuantity <= 0 ? 'Out of stock' : `${displayAvailableQuantity} items available`}
                 </span>
               </div>
 
@@ -1278,19 +1312,19 @@ export const ProductDetail: React.FC = () => {
             <div className="flex gap-2.5 relative">
               <button
                 onClick={handleAddToCart}
-                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || isAllInCart}
+                disabled={displayAvailableQuantity <= 0 || !selectedSize || isAdding || isAllInCart}
                 aria-busy={isAdding}
                 className="flex-1 bg-black text-white py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
                 {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : null}
-                {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Add to Cart'}
+                {isAdding ? 'Adding...' : displayAvailableQuantity <= 0 ? 'Sold Out' : isAllInCart ? 'All in Cart' : 'Add to Cart'}
               </button>
               <button
                 onClick={handleBuyNow}
-                disabled={isOutOfStock(product, selectedSize, selectedColor || selectedVariantId) || !selectedSize || isAdding || (isAllInCart && inCartQty === 0)}
+                disabled={displayAvailableQuantity <= 0 || !selectedSize || isAdding || isAllInCart}
                 className="flex-1 bg-neutral-900 text-white py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-black disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
               >
-                {isAdding ? 'Adding...' : 'Buy Now'}
+                {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Buy Now'}
               </button>
               <button
                 onClick={handleWishlistToggle}

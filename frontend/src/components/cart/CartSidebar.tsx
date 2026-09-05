@@ -7,23 +7,40 @@ import { productsAPI } from "../../api";
 import { getAvailableStockForItem } from "../../utils/stockHelpers";
 import { getColorName, resolveColorHex } from "../../utils/colorNames";
 
-export default function CartSidebar() {
-  const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, getItemCount } = useCart();
-  const [isOpen, setIsOpen] = useState(false);
+export function CartButton({ className }: { className?: string }) {
+  const { getItemCount, openCart } = useCart();
+  const totalItems = getItemCount();
+
+  return (
+    <button
+      onClick={openCart}
+      className={className || "group p-1.5 flex items-center text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"}
+      aria-label={`Shopping cart, ${totalItems} items`}
+    >
+      <svg className="flex-shrink-0 h-5 w-5 text-gray-700 group-hover:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      {totalItems > 0 && <span className="ml-1 text-xs font-semibold text-gray-700 group-hover:text-black">{totalItems}</span>}
+    </button>
+  );
+}
+
+export default function CartSidebar({ drawerOnly = false }: { drawerOnly?: boolean }) {
+  const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, getItemCount, isCartOpen, closeCart, openCart } = useCart();
   const [productStocks, setProductStocks] = useState<Record<string, any>>({});
 
   const totalItems = getItemCount();
 
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = "hidden";
+    if (isCartOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isCartOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isCartOpen) return;
     const fetchStocks = async () => {
       const uniqueProductIds = Array.from(new Set(items.map(it => it.productId).filter(Boolean)));
       if (!uniqueProductIds.length) return;
@@ -46,7 +63,7 @@ export default function CartSidebar() {
       }
     };
     fetchStocks();
-  }, [isOpen, items.map(it => it.productId).sort().join(',')]);
+  }, [isCartOpen, items.map(it => it.productId).sort().join(',')]);
 
   const getCartItemStock = (item: any): number => {
     const prod = productStocks[String(item.productId)] || productStocks[String(item.id)];
@@ -75,7 +92,7 @@ export default function CartSidebar() {
     if (availableStock !== 999 && quantity > availableStock) {
       return;
     }
-    updateQuantity(String(item.productId), item.size, quantity, item.color);
+    updateQuantity(String(item.productId), item.size, quantity, item.color, availableStock !== 999 ? availableStock : undefined);
   };
 
   const formatCurrency = (amount: number) => {
@@ -84,35 +101,26 @@ export default function CartSidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="group p-1.5 flex items-center text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"
-        aria-label={`Shopping cart, ${totalItems} items`}
-      >
-        <svg className="flex-shrink-0 h-5 w-5 text-gray-700 group-hover:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        {totalItems > 0 && <span className="ml-1 text-xs font-semibold text-gray-700 group-hover:text-black">{totalItems}</span>}
-      </button>
+      {!drawerOnly && <CartButton />}
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex">
+      {isCartOpen && (
+        <div className="fixed inset-0 z-[100] flex">
           <div
             className="absolute inset-0 bg-black/50"
             role="button"
             tabIndex={0}
-            onClick={() => setIsOpen(false)}
+            onClick={closeCart}
             onKeyDown={(e) => {
               if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                setIsOpen(false);
+                closeCart();
               }
             }}
           />
-          <div className="relative ml-auto w-full md:w-96 h-full bg-white shadow-xl z-50 flex flex-col">
-            <div className="p-6 border-b flex items-center justify-between">
+          <div className="relative ml-auto w-full md:w-96 h-full max-h-screen bg-white shadow-xl z-10 flex flex-col">
+            <div className="p-5 sm:p-6 border-b flex items-center justify-between">
               <h2 className="text-xl font-bold">Shopping Cart</h2>
-              <button onClick={() => setIsOpen(false)} aria-label="Close cart" className="text-gray-400 hover:text-gray-600">
+              <button onClick={closeCart} aria-label="Close cart" className="text-gray-400 hover:text-gray-600 p-1">
                 <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -131,7 +139,7 @@ export default function CartSidebar() {
                   </p>
                   <Link
                     to="/shop"
-                    onClick={() => setIsOpen(false)}
+                    onClick={closeCart}
                     className="w-full inline-flex items-center justify-center px-5 py-3.5 bg-black text-white text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-neutral-800 transition-colors shadow-sm mb-6 group"
                   >
                     <span>Explore Collection / Shop Now</span>
@@ -145,28 +153,28 @@ export default function CartSidebar() {
                     <div className="grid grid-cols-2 gap-2 w-full text-xs">
                       <Link
                         to="/men"
-                        onClick={() => setIsOpen(false)}
+                        onClick={closeCart}
                         className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
                       >
                         Men
                       </Link>
                       <Link
                         to="/women"
-                        onClick={() => setIsOpen(false)}
+                        onClick={closeCart}
                         className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
                       >
                         Women
                       </Link>
                       <Link
                         to="/kids"
-                        onClick={() => setIsOpen(false)}
+                        onClick={closeCart}
                         className="py-2.5 px-3 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 text-center font-medium transition-colors"
                       >
                         Kids
                       </Link>
                       <Link
                         to="/sale"
-                        onClick={() => setIsOpen(false)}
+                        onClick={closeCart}
                         className="py-2.5 px-3 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 text-center font-semibold transition-colors"
                       >
                         Sale Collection
@@ -289,11 +297,11 @@ export default function CartSidebar() {
                 
                 <p className="text-gray-500 text-sm mb-4">Shipping and taxes calculated at checkout.</p>
 
-                <Link to="/checkout" onClick={() => setIsOpen(false)} className="w-full bg-black text-white py-3 rounded-md text-center font-medium block">
+                <Link to="/checkout" onClick={closeCart} className="w-full bg-black text-white py-3 rounded-md text-center font-medium block">
                   Checkout
                 </Link>
 
-                <button onClick={() => setIsOpen(false)} className="mt-2 w-full bg-white border border-gray-300 rounded-md py-3 text-base font-medium text-gray-700">
+                <button onClick={closeCart} className="mt-2 w-full bg-white border border-gray-300 rounded-md py-3 text-base font-medium text-gray-700">
                   Continue Shopping
                 </button>
               </div>

@@ -51,7 +51,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   const canonicalId = productId(product as any) || (product as any)?.id || (product as any)?._id;
   const { selectedVariantId, setSelectedVariantId } = useProductVariant(canonicalId);
   const navigate = useNavigate();
-  const { addItem, getItemQuantity } = useCart();
+  const { addItem, getItemQuantity, openCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
   const { shippingConfig } = useShipping();
@@ -152,20 +152,20 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     : null;
   const reviewCount: number = product ? ((product as any).reviewCount ?? (product as any).reviewsCount ?? (product as any).ratings?.count ?? 0) : 0;
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (): Promise<boolean> => {
     if (!selectedSize) {
       showToast(isFragrance ? 'Please select a volume' : 'Please select a size', 'error');
-      return;
+      return false;
     }
 
     if (selectedStock <= 0) {
       showToast('This product is out of stock', 'error');
-      return;
+      return false;
     }
 
     if (isAllInCart) {
       showToast(`You already have all ${selectedStock} available units in your cart`, 'warning');
-      return;
+      return false;
     }
 
     try {
@@ -186,13 +186,14 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
             await (maybePromise as Promise<any>);
           }
           try { onClose(); } catch (e) { }
+          return true;
         } catch (e) {
           console.error('onAddToCart handler failed', e);
           showToast('Failed to add to cart', 'error');
+          return false;
         } finally {
           setIsAdding(false);
         }
-        return;
       }
 
       const selection = resolveProductSelection(product, {
@@ -224,14 +225,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
         } else {
           showToast('Product is out of stock', 'error');
         }
-        return;
+        return false;
       }
 
       showToast(`${product.name} added to the cart`, 'success');
-      onClose();
+      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
       showToast('Failed to add to cart', 'error');
+      return false;
+    }
+  };
+
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
+    if (success) {
+      onClose();
+      setTimeout(() => {
+        openCart();
+      }, 100);
     }
   };
 
@@ -919,28 +931,43 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                           const isCurrentSelectionOutOfStock = selectedStock <= 0;
 
                           return (
-                            <button
-                              onClick={handleAddToCart}
-                              disabled={
-                                isAdding ||
-                                !selectedSize ||
-                                (colorList.length > 0 && !selectedColor && !selectedVariantId) ||
-                                isCurrentSelectionOutOfStock ||
-                                isAllInCart
-                              }
-                              className="flex-1 bg-black text-white py-3.5 px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.2em] shadow-sm active:scale-[0.99]"
-                            >
-                              {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : <ShoppingCart className="h-4 w-4" />}
-                              {isAdding
-                                ? 'Adding...'
-                                : isCurrentSelectionOutOfStock
-                                ? 'Sold Out'
-                                : isAllInCart
-                                ? 'All in Cart'
-                                : inCartQty > 0
-                                ? 'Add Another to Cart'
-                                : 'Add to Cart'}
-                            </button>
+                            <>
+                              <button
+                                onClick={handleAddToCart}
+                                disabled={
+                                  isAdding ||
+                                  !selectedSize ||
+                                  (colorList.length > 0 && !selectedColor && !selectedVariantId) ||
+                                  isCurrentSelectionOutOfStock ||
+                                  isAllInCart
+                                }
+                                className="flex-1 bg-black text-white py-3 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-neutral-800 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
+                              >
+                                {isAdding ? <LoadingSpinner size="sm" className="text-white" /> : <ShoppingCart className="h-4 w-4" />}
+                                {isAdding
+                                  ? 'Adding...'
+                                  : isCurrentSelectionOutOfStock
+                                  ? 'Sold Out'
+                                  : isAllInCart
+                                  ? 'All in Cart'
+                                  : inCartQty > 0
+                                  ? 'Add Another to Cart'
+                                  : 'Add to Cart'}
+                              </button>
+                              <button
+                                onClick={handleBuyNow}
+                                disabled={
+                                  isAdding ||
+                                  !selectedSize ||
+                                  (colorList.length > 0 && !selectedColor && !selectedVariantId) ||
+                                  isCurrentSelectionOutOfStock ||
+                                  isAllInCart
+                                }
+                                className="flex-1 bg-neutral-900 text-white py-3 sm:py-3.5 px-4 sm:px-6 rounded-full font-medium hover:bg-black disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] shadow-sm active:scale-[0.99]"
+                              >
+                                {isAdding ? 'Adding...' : isAllInCart ? 'All in Cart' : 'Buy Now'}
+                              </button>
+                            </>
                           );
                         })()}
                         <button

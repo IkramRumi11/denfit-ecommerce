@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, Search, User, Heart, Bell, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import CartSidebar from "../cart/CartSidebar";
+import CartSidebar, { CartButton } from "../cart/CartSidebar";
 import PromoMarquee from '../PromoMarquee';
 import SearchOverlay from "./SearchOverlay";
 import MegaMenu from "./MegaMenu";
@@ -225,7 +225,7 @@ export default function Header(): JSX.Element {
               <User className="h-5 w-5" />
             </Link>
 
-            <CartSidebar />
+            <CartButton />
           </div>
 
           {/* Desktop Navigation */}
@@ -343,7 +343,7 @@ export default function Header(): JSX.Element {
               <User className="h-5 w-5" />
             </Link>
 
-            <CartSidebar />
+            <CartButton />
           </div>
         </div>
       </div>
@@ -623,6 +623,8 @@ export default function Header(): JSX.Element {
         onSuggestionClick={handleSuggestionClick}
         handleToggleWishlist={handleToggleWishlist}
       />
+      {/* Global Cart Sidebar Drawer */}
+      <CartSidebar drawerOnly />
     </header>
   );
 }

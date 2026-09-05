@@ -51,6 +51,10 @@ interface CartContextType extends CartState {
   getItemCount: () => number;
   getItemQuantity: (productId: string, size?: string, color?: string, variantId?: string) => number;
   adjustItemToMaxStock: (productId: string, size: string, maxStock: number, color?: string) => void;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
+  setIsCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -437,6 +441,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearCart = () => dispatch({ type: "CLEAR_CART" });
   const getItemCount = () => state.items.reduce((t, i) => t + i.quantity, 0);
 
+  const [isCartOpen, setIsCartOpen] = React.useState(false);
+  const openCart = React.useCallback(() => setIsCartOpen(true), []);
+  const closeCart = React.useCallback(() => setIsCartOpen(false), []);
+
   const value: CartContextType = {
     ...state,
     addItem: addItemSafe,
@@ -446,6 +454,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearCart,
     getItemCount,
     getItemQuantity,
+    isCartOpen,
+    openCart,
+    closeCart,
+    setIsCartOpen,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -468,6 +480,10 @@ export const useCart = () => {
       clearCart: () => { /* no-op */ },
       getItemCount: () => 0,
       getItemQuantity: () => 0,
+      isCartOpen: false,
+      openCart: () => { /* no-op */ },
+      closeCart: () => { /* no-op */ },
+      setIsCartOpen: () => { /* no-op */ },
     };
     return fallback;
   }

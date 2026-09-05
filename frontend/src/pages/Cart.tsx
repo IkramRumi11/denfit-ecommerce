@@ -70,7 +70,7 @@ export const Cart: React.FC = () => {
       return;
     }
 
-    updateQuantity(item.productId, item.size, newQuantity, item.color);
+    updateQuantity(item.productId, item.size, newQuantity, item.color, availableStock !== 999 ? availableStock : undefined);
   };
 
   const handleRemoveItem = (productId: string, size: string, color?: string) => {
@@ -188,13 +188,13 @@ export const Cart: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <div className="min-h-screen bg-white py-6 sm:py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+        <div className="flex items-center justify-between mb-5 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Shopping Cart</h1>
           <button
             onClick={handleClearCart}
-            className="text-red-600 hover:text-red-700 font-medium text-sm"
+            className="text-red-600 hover:text-red-700 font-medium text-xs sm:text-sm"
           >
             Clear Cart
           </button>
@@ -217,10 +217,10 @@ export const Cart: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm">
+            <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 sm:border-0 shadow-sm overflow-hidden">
               {items.map((item, index) => {
                 const availableStock = getCartItemStock(item);
                 const isMaxReached = availableStock !== 999 && item.quantity >= availableStock;
@@ -230,116 +230,130 @@ export const Cart: React.FC = () => {
                 return (
                   <motion.div
                     key={`${item.productId}-${item.size}-${item.colorName || item.color || ''}`}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-center gap-4 p-6 border-b border-gray-100 last:border-b-0"
+                    transition={{ delay: index * 0.05 }}
+                    className="p-4 sm:p-6 border-b border-gray-100 last:border-b-0"
                   >
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                    />
-                    
-                    <div className="flex-1 min-w-0">
-                      {(item.brand || (item.product && item.product.brand)) && (
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
-                          {item.brand || (item.product && item.product.brand)}
-                        </p>
-                      )}
-                      <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                        {item.name}
-                      </h3>
-                      <div className="text-gray-600 text-sm mb-1">
-                        <div>{/ml$/i.test(String(item.size || '').trim()) ? 'Volume:' : 'Size:'} <span className="font-medium text-gray-700">{item.size || '—'}</span></div>
-                        {(() => {
-                          const variantLabel = item.variantName || item.colorName || '';
-                          const colorValue = item.variantHex || item.color || '';
-                          const label = variantLabel || colorValue;
-                          if (!label) return null;
-                          const friendlyName = getColorName(label);
-                          return (
-                            <div className="mt-1 flex items-center gap-2">
-                              {colorValue ? (
-                                <span className="w-4 h-4 rounded-full border" style={{ backgroundColor: String(colorValue) }} />
-                              ) : null}
-                              <span className="text-sm font-light text-gray-600">Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span></span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      {isItemOutOfStock ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-                            Out of stock
-                          </span>
+                    <div className="flex items-start">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover flex-shrink-0 bg-neutral-100"
+                        loading="lazy"
+                      />
+                      <div className="ml-3.5 sm:ml-4 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            {(item.brand || (item.product && item.product.brand)) && (
+                              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-0.5 truncate">
+                                {item.brand || (item.product && item.product.brand)}
+                              </p>
+                            )}
+                            <h3 className="font-medium text-gray-900 text-sm sm:text-base leading-snug">
+                              {item.name}
+                            </h3>
+                          </div>
                           <button
                             onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
-                            className="text-xs text-red-600 underline font-medium hover:text-red-800"
+                            className="text-gray-400 hover:text-gray-600 p-1 -mr-1 transition-colors"
+                            aria-label={`Remove ${item.name}`}
                           >
-                            Remove
-                          </button>
-                        </div>
-                      ) : isOverStock ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                            Only {availableStock} available
-                          </span>
-                          <button
-                            onClick={() => handleQuantityChange(item, availableStock)}
-                            className="text-xs text-blue-600 underline font-semibold hover:text-blue-800"
-                          >
-                            Adjust to {availableStock}
-                          </button>
-                        </div>
-                      ) : null}
-
-                      <p className="text-lg font-bold text-blue-600 mt-1">
-                        Rs {item.price.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-3">
-                        {/* Quantity Controls */}
-                        <div className="flex items-center border border-gray-300 rounded-lg">
-                          <button
-                            onClick={() => handleQuantityChange(item, item.quantity - 1)}
-                            className="p-2 hover:bg-gray-100 rounded-l-lg transition-colors"
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="px-4 py-2 min-w-12 text-center font-medium">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                            className="p-2 hover:bg-gray-100 rounded-r-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                            disabled={isMaxReached}
-                            title={isMaxReached ? `Only ${availableStock} available` : 'Increase quantity'}
-                          >
-                            <Plus className="h-4 w-4" />
+                            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
                           </button>
                         </div>
 
-                        {/* Remove Button */}
-                        <button
-                          onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Remove item"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="text-gray-500 text-xs sm:text-sm mt-0.5 space-y-0.5">
+                          <div>
+                            {/ml$/i.test(String(item.size || '').trim()) ? 'Volume:' : 'Size:'}{' '}
+                            <span className="font-medium text-gray-700">{item.size || '—'}</span>
+                          </div>
+                          {(() => {
+                            const variantLabel = item.variantName || item.colorName || '';
+                            const colorValue = item.variantHex || item.color || '';
+                            const label = variantLabel || colorValue;
+                            if (!label) return null;
+                            const friendlyName = getColorName(label);
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                {colorValue ? (
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-gray-300 flex-shrink-0"
+                                    style={{ backgroundColor: String(colorValue) }}
+                                  />
+                                ) : null}
+                                <span className="text-gray-500">
+                                  Color: <span className="font-medium text-gray-700 capitalize">{friendlyName}</span>
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {isItemOutOfStock ? (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                              Out of stock
+                            </span>
+                            <button
+                              onClick={() => handleRemoveItem(item.productId, item.size, item.color)}
+                              className="text-[11px] text-red-600 underline font-medium hover:text-red-800"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : isOverStock ? (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                              Only {availableStock} left
+                            </span>
+                            <button
+                              onClick={() => handleQuantityChange(item, availableStock)}
+                              className="text-[11px] text-blue-600 underline font-semibold hover:text-blue-800"
+                            >
+                              Adjust to {availableStock}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex items-center justify-between sm:justify-start sm:gap-6">
+                            <div className="flex items-center">
+                              <button
+                                className="border border-gray-300 rounded-l px-2.5 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
+                                onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                                aria-label="Decrease quantity"
+                              >
+                                -
+                              </button>
+                              <span className="border-t border-b border-gray-300 px-3 py-1 text-xs sm:text-sm font-medium">
+                                {item.quantity}
+                              </span>
+                              <button
+                                className="border border-gray-300 rounded-r px-2.5 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                disabled={isMaxReached}
+                                title={isMaxReached ? `Only ${availableStock} available` : 'Increase quantity'}
+                                onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                                aria-label="Increase quantity"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <p className="font-semibold text-sm sm:text-base text-gray-900">
+                              Rs {(item.price * item.quantity).toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+
+                        {!isOverStock && isMaxReached && (
+                          <div className="mt-1">
+                            <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
+                              Only {availableStock} available
+                            </span>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Small stock warning tag when reaching maximum available quantity */}
-                      {!isOverStock && isMaxReached && (
-                        <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">
-                          Only {availableStock} available
-                        </span>
-                      )}
                     </div>
                   </motion.div>
                 );
