@@ -35,7 +35,7 @@ export const Checkout: React.FC = () => {
   const { items, subtotal, tax, clearCart, updateQuantity, removeItem } = useCart();
   const { showToast } = useToast();
   const { addNotification } = useNotifications();
-  const { calculateShippingFee } = useShipping();
+  const { shippingConfig, calculateShippingFee } = useShipping();
   const navigate = useNavigate();
   const { user } = useAuth();
   
