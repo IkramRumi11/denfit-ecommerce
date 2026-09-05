@@ -192,7 +192,14 @@ export const getAllProducts = async (req, res) => {
     }
 
     // Brand — support single, multi-select (comma-separated), or slug
-    const brandArr = parseArray(brand);
+    let reqBrand = brand;
+    if (!reqBrand && req.query.H !== undefined && req.query.M !== undefined) {
+      reqBrand = 'H&M';
+    } else if (reqBrand === 'H' && req.query.M !== undefined) {
+      reqBrand = 'H&M';
+    }
+
+    const brandArr = parseArray(reqBrand);
     if (brandArr.length === 1) {
       const b = brandArr[0];
       const safeB = escapeRegex(b);
@@ -375,7 +382,7 @@ export const getAllProducts = async (req, res) => {
     // against the `attributes` map on the Product document.
     const knownParams = new Set([
       'category', 'subcategory', 'brand', 'brandSlug', 'collection', 'collectionSlug', 'featured', 'minPrice', 'maxPrice', 'tags', 'search', 'sort', 'page', 'limit', 'gender', 'sizes', 'colors', 'inStock', 'q',
-      'availability', 'ageGroup', 'minRating', 'discount', 'discountTags', 'trending'
+      'availability', 'ageGroup', 'minRating', 'discount', 'discountTags', 'trending', 'H', 'M'
     ]);
 
     const attributeAndClauses = [];
