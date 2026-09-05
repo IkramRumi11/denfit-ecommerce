@@ -1,13 +1,60 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { SlidersHorizontal, X, Sparkles, Tag, ArrowRight } from 'lucide-react';
+import { SlidersHorizontal, X, Tag, ArrowRight } from 'lucide-react';
 
 import { ProductCard } from '../components/ProductCard';
 import { FilterEngine } from '../components/FilterEngine';
 import { productsAPI } from '../api';
+import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
 type AnyFilters = Record<string, any>;
+
+function HeroSection() {
+  const { banner } = usePageBanner('brands');
+  const imageUrl = banner?.imageUrl || (banner as any)?.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop";
+  const title = banner?.title || "OFFICIAL BRANDS";
+  const subtitle = banner?.subtitle || "Explore authentic collections from world-renowned labels and premium creators";
+  const buttonLink = banner?.link || "/shop";
+  const buttonText = banner?.buttonText || "Shop All Brands";
+
+  return (
+    <section className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] mb-8 md:mb-12">
+      <img
+        src={imageUrl}
+        alt={title}
+        className="w-full h-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+      <div className="absolute inset-0 flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-xl">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4 tracking-[0.2em] uppercase">
+              {title}
+            </h1>
+            <p className="text-lg md:text-xl text-white/90 mb-6 md:mb-8">
+              {subtitle}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to={buttonLink}
+                className="inline-block bg-white text-black px-6 md:px-8 py-3 md:py-4 font-semibold uppercase text-sm tracking-wider hover:bg-gray-100 transition-colors"
+              >
+                {buttonText}
+              </Link>
+              <Link
+                to="/shop?sort=newest"
+                className="inline-block border-2 border-white text-white px-6 md:px-8 py-3 md:py-4 font-semibold uppercase text-sm tracking-wider hover:bg-white hover:text-black transition-colors"
+              >
+                New Arrivals
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Brands(): JSX.Element {
   const [brands, setBrands] = useState<string[]>([]);
@@ -140,22 +187,8 @@ export default function Brands(): JSX.Element {
 
   return (
     <div className="w-full bg-white text-gray-900 min-h-screen">
-      {/* Hero Banner */}
-      <section className="relative w-full bg-black text-white py-16 md:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 opacity-25 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
-        <div className="relative max-w-7xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white text-xs font-semibold uppercase tracking-wider mb-4">
-            <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
-            <span>Official Brand Partners</span>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight uppercase">
-            Featured Brands
-          </h1>
-          <p className="mt-4 text-sm md:text-base text-gray-300 max-w-2xl mx-auto">
-            Explore authentic collections from world-renowned labels and premium creators.
-          </p>
-        </div>
-      </section>
+      {/* Hero Banner matching men.tsx / women.tsx */}
+      <HeroSection />
 
       {/* Brand Tiles Carousel / Grid */}
       {brands.length > 0 && (
@@ -228,36 +261,44 @@ export default function Brands(): JSX.Element {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+              className={`inline-flex items-center gap-2 px-3.5 py-2 border rounded-lg text-sm font-medium transition ${
+                showFilters
+                  ? 'border-black bg-black text-white'
+                  : 'border-gray-200 hover:bg-gray-50 text-gray-900'
+              }`}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>Filters</span>
+              <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
             </button>
           </div>
         </div>
 
         {/* Layout */}
         <div className="flex gap-8 mt-6">
-          {/* Filter Sidebar */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block w-64 flex-shrink-0`}>
-            <div className="sticky top-24 bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-                <span className="font-bold text-sm uppercase tracking-wider">Filters</span>
-                {showFilters && (
-                  <button onClick={() => setShowFilters(false)} className="lg:hidden p-1 text-gray-400 hover:text-black">
+          {/* Filter Sidebar - hidden by default on ALL screen sizes (including laptops/desktops) until toggled */}
+          {showFilters && (
+            <aside className="w-64 flex-shrink-0 transition-all">
+              <div className="sticky top-24 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                  <span className="font-bold text-sm uppercase tracking-wider">Filters</span>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="p-1 text-gray-400 hover:text-black transition"
+                    title="Close filters"
+                  >
                     <X className="h-4 w-4" />
                   </button>
-                )}
-              </div>
+                </div>
 
-              <FilterEngine
-                categorySlug="brands"
-                currentFilters={currentFilters}
-                onFiltersChange={applyFiltersAndSyncUrl}
-                onProductsChange={handleProductsChange}
-              />
-            </div>
-          </aside>
+                <FilterEngine
+                  categorySlug="brands"
+                  currentFilters={currentFilters}
+                  onFiltersChange={applyFiltersAndSyncUrl}
+                  onProductsChange={handleProductsChange}
+                />
+              </div>
+            </aside>
+          )}
 
           {/* Product Grid */}
           <div className="flex-1 min-w-0">

@@ -185,44 +185,47 @@ export default function SearchOverlay({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-start justify-center pt-20">
       <div ref={overlayRef} className="bg-white w-full max-w-xl rounded-xl shadow-2xl p-5 mx-4 relative">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-gray-900 transition-colors"
-          aria-label="Close search"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search products, brands (e.g. Nike, Hoodie)..."
+              className="w-full pl-11 pr-14 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
+              value={query}
+              autoFocus
+              onChange={(e) => {
+                const v = e.target.value;
+                setQuery(v);
+                try { onSearch(v); } catch (e) {}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const q = query && query.trim() ? `?search=${encodeURIComponent(query.trim())}` : '';
+                  navigate(`/shop${q}`);
+                  onClose();
+                }
+              }}
+            />
+            {query && (
+              <button
+                onClick={() => { setQuery(''); setResults([]); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 font-medium px-1 py-0.5"
+              >
+                Clear
+              </button>
+            )}
+          </div>
 
-        <div className="relative">
-          <Search className="absolute left-3.5 top-3 h-5 w-5 text-gray-400" />
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Search products, brands (e.g. Nike, Hoodie)..."
-            className="w-full pl-11 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:bg-white transition-all"
-            value={query}
-            autoFocus
-            onChange={(e) => {
-              const v = e.target.value;
-              setQuery(v);
-              try { onSearch(v); } catch (e) {}
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const q = query && query.trim() ? `?search=${encodeURIComponent(query.trim())}` : '';
-                navigate(`/shop${q}`);
-                onClose();
-              }
-            }}
-          />
-          {query && (
-            <button
-              onClick={() => { setQuery(''); setResults([]); }}
-              className="absolute right-3 top-3 text-xs text-gray-400 hover:text-gray-700"
-            >
-              Clear
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center flex-shrink-0"
+            aria-label="Close search"
+            title="Close search (Esc)"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Empty state / Trending Products suggestion section before typing */}

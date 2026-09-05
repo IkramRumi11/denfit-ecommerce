@@ -194,30 +194,72 @@ export const getAllProducts = async (req, res) => {
     if (brandArr.length === 1) {
       const b = brandArr[0];
       const safeB = escapeRegex(b);
-      andClauses.push({
-        $or: [
-          { brand: new RegExp(`^${safeB}$`, 'i') },
-          { brandSlug: String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-') }
-        ]
-      });
+      const canonical = normalizeBrandName(b);
+      const bSlug = slugify(b);
+      const bStripped = String(b).toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const bDash = String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+      const brandClauses = [
+        { brand: new RegExp(`^${safeB}$`, 'i') },
+        { brand: new RegExp(`^${escapeRegex(canonical)}$`, 'i') },
+        { brand: new RegExp(safeB, 'i') },
+        { brandSlug: bSlug },
+        { brandSlug: bDash },
+        { brandSlug: bStripped }
+      ];
+
+      // Handle common aliases like H&M <-> hm <-> h-m
+      if (/^h(&| and |[-_ ]?)m$/i.test(b) || b.toLowerCase() === 'hm' || b.toLowerCase() === 'h-m' || b.toLowerCase() === 'handm') {
+        brandClauses.push(
+          { brand: new RegExp('^H&M$', 'i') },
+          { brand: new RegExp('^H & M$', 'i') },
+          { brand: new RegExp('^HM$', 'i') },
+          { brandSlug: 'hm' },
+          { brandSlug: 'h-m' },
+          { brandSlug: 'handm' }
+        );
+      }
+
+      andClauses.push({ $or: brandClauses });
     } else if (brandArr.length > 1) {
-      const bRegexes = brandArr.map(b => new RegExp(`^${escapeRegex(b)}$`, 'i'));
+      const bRegexes = brandArr.flatMap(b => [
+        new RegExp(`^${escapeRegex(b)}$`, 'i'),
+        new RegExp(`^${escapeRegex(normalizeBrandName(b))}$`, 'i')
+      ]);
+      const bSlugs = brandArr.flatMap(b => [
+        slugify(b),
+        String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        String(b).toLowerCase().replace(/[^a-z0-9]+/g, '')
+      ]);
       andClauses.push({
         $or: [
           { brand: { $in: bRegexes } },
-          { brandSlug: { $in: brandArr.map(b => String(b).toLowerCase().replace(/[^a-z0-9]+/g, '-')) } }
+          { brandSlug: { $in: bSlugs } }
         ]
       });
     }
     if (brandSlug) {
       const slugStr = String(brandSlug).trim().toLowerCase();
       const slugName = slugStr.replace(/-/g, ' ');
-      andClauses.push({
-        $or: [
-          { brandSlug: slugStr },
-          { brand: new RegExp(`^${escapeRegex(slugName)}$`, 'i') }
-        ]
-      });
+      const canonical = normalizeBrandName(slugName);
+      const slugClauses = [
+        { brandSlug: slugStr },
+        { brandSlug: slugify(slugStr) },
+        { brand: new RegExp(`^${escapeRegex(slugName)}$`, 'i') },
+        { brand: new RegExp(`^${escapeRegex(canonical)}$`, 'i') },
+        { brand: new RegExp(escapeRegex(slugStr), 'i') }
+      ];
+      if (/^h(&| and |[-_ ]?)m$/i.test(slugStr) || slugStr === 'hm' || slugStr === 'h-m' || slugStr === 'handm') {
+        slugClauses.push(
+          { brand: new RegExp('^H&M$', 'i') },
+          { brand: new RegExp('^H & M$', 'i') },
+          { brand: new RegExp('^HM$', 'i') },
+          { brandSlug: 'hm' },
+          { brandSlug: 'h-m' },
+          { brandSlug: 'handm' }
+        );
+      }
+      andClauses.push({ $or: slugClauses });
     }
 
     // Trending filter — for Homepage and Search suggestions

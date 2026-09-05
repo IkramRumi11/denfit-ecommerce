@@ -113,8 +113,50 @@ export const Shop: React.FC = () => {
     });
   };
 
-  // --- LOGIC: URL PARAMS ---
+  // --- BRAND MATCHING HELPER ---
+  const brandMatches = (prodBrand: any, prodBrandSlug: any, targetBrand: string | null) => {
+    if (!targetBrand || !String(targetBrand).trim()) return false;
+    const target = String(targetBrand).trim().toLowerCase();
+    const targetSlug = slugify(target);
+    const targetStripped = target.replace(/[^a-z0-9]/g, '');
+
+    const candidates = [prodBrand, prodBrandSlug].filter(Boolean).map(v => String(v).trim().toLowerCase());
+
+    for (const c of candidates) {
+      if (c === target) return true;
+      if (slugify(c) === targetSlug) return true;
+      if (c.replace(/[^a-z0-9]/g, '') === targetStripped) return true;
+      if (c.includes(target) || target.includes(c)) return true;
+      // Standard aliases
+      if ((target === 'h&m' || target === 'hm' || target === 'h and m' || target === 'handm') && (c === 'h&m' || c === 'hm' || c === 'h and m' || c === 'handm')) return true;
+      if ((target === "levi's" || target === 'levis' || target === 'levi') && (c === "levi's" || c === 'levis' || c === 'levi')) return true;
+      if ((target === "j." || target === 'j dot' || target === 'junaid jamshed') && (c === "j." || c === 'j dot' || c === 'junaid jamshed')) return true;
+    }
+    return false;
+  };
+
+  const genderMatches = (prodGender: any, paramGender: string | null) => {
+    if (!prodGender || !paramGender) return false;
+    const p = slugify(prodGender);
+    const g = slugify(paramGender);
+    if (p === g) return true;
+    const groups: { [k: string]: string[] } = {
+      men: ['men', 'male', 'man', 'm'],
+      women: ['women', 'female', 'woman', 'f'],
+      kids: ['kids', 'children', 'boys', 'girls', 'kid']
+    };
+    for (const key of Object.keys(groups)) {
+      if (groups[key].includes(g) && groups[key].includes(p)) return true;
+    }
+    return p.startsWith(g) || g.startsWith(p);
+  };
+
+  // --- LOGIC: FETCH & FILTER ON URL PARAMS CHANGE ---
   useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    setError(null);
+
     const params = new URLSearchParams(location.search);
     const genderParam = params.get('gender');
     const typeParam = params.get('type');
@@ -124,292 +166,237 @@ export const Shop: React.FC = () => {
     const sizesParam = params.get('sizes');
     const priceParam = params.get('price');
     const ratingParam = params.get('rating');
-    if (!genderParam && !typeParam && !brandParam && !colorParam && !sizesParam && !priceParam && !ratingParam && !searchParam) return;
 
-    let filtered = [...products];
+    // Build query for server
+    const apiQuery: any = { limit: 1000 };
+    if (genderParam && genderParam.toLowerCase() !== 'sale') apiQuery.gender = genderParam;
+    if (brandParam) apiQuery.brand = brandParam;
+    if (typeParam) apiQuery.category = typeParam;
+    if (searchParam) apiQuery.search = searchParam;
 
-    const normalize = (v: any) => slugify(String(v || '') || '');
-
-    const genderMatches = (prodGender: any, paramGender: string | null) => {
-      if (!prodGender || !paramGender) return false;
-      const p = normalize(prodGender);
-      const g = normalize(paramGender);
-      if (p === g) return true;
-      const groups: { [k: string]: string[] } = {
-        men: ['men', 'male', 'man', 'm'],
-        women: ['women', 'female', 'woman', 'f'],
-        kids: ['kids', 'children', 'boys', 'girls', 'kid']
-      };
-      for (const key of Object.keys(groups)) {
-        if (groups[key].includes(g) && groups[key].includes(p)) return true;
-      }
-      return p.startsWith(g) || g.startsWith(p);
-    };
-
-    const isGenderSale = String(genderParam || '').toLowerCase() === 'sale';
-    if (!isGenderSale && genderParam) {
-      // Request server-side filtering by gender
-      const q: any = { gender: genderParam };
-      if (typeParam) q.category = typeParam;
-      if (brandParam) q.brand = brandParam;
-      productsAPI.getAll(q).then((res: any) => {
+    productsAPI.getAll(apiQuery)
+      .then((res: any) => {
+        if (!mounted) return;
         const items = (res && (res.products || res.data?.products)) || [];
         const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
-        setProducts(normalized);
-        setFilteredProducts(normalized);
-      }).catch((err: any) => console.error('Failed to load products for gender filter', err));
-    } else if (brandParam && !genderParam) {
-      // Request server-side filtering by brand
-      const q: any = { brand: brandParam };
-      if (typeParam) q.category = typeParam;
-      productsAPI.getAll(q).then((res: any) => {
-        const items = (res && (res.products || res.data?.products)) || [];
-        const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
-        setProducts(normalized);
-        setFilteredProducts(normalized);
-      }).catch((err: any) => console.error('Failed to load products for brand filter', err));
-    }
 
-    // Filter by brand client-side as well
-    if (brandParam && String(brandParam).trim()) {
-      const bNorm = normalize(brandParam);
-      filtered = filtered.filter((p: any) => {
-        if (!p.brand) return false;
-        const pbNorm = normalize(p.brand);
-        return pbNorm === bNorm || pbNorm.includes(bNorm) || bNorm.includes(pbNorm) || (p.brandSlug && normalize(p.brandSlug) === bNorm);
-      });
-    }
+        let filtered = [...normalized];
 
-    if (typeParam) {
-      let decoded = typeParam;
-      try {
-        decoded = decodeURIComponent(typeParam as string);
-      } catch (err) {
-        decoded = typeParam as string;
-      }
-
-      const decodedLower = String(decoded).toLowerCase();
-      const saleLike = (genderParam === 'sale') || /up[- ]?to|%|off|discount|clearance/.test(decodedLower);
-
-      if (saleLike) {
-        // helper: compute discount percent for a product
-        const productDiscount = (prod: any) => {
-          if (typeof prod.discountPercentage === 'number') return Number(prod.discountPercentage) || 0;
-          const orig = prod.originalPrice || prod.compareAtPrice || prod.original_price;
-          const p = prod.price || 0;
-          if (orig && Number(orig) > Number(p)) {
-            const pct = Math.round(((Number(orig) - Number(p)) / Number(orig)) * 100);
-            return Number.isFinite(pct) ? pct : 0;
-          }
-          return 0;
-        };
-
-        // extract numeric threshold (e.g., 30 from "up to 30%") if present
-        let threshold: number | null = null;
-        const threshMatch = decodedLower.match(/(\d{1,3})\s*%?/);
-        if (threshMatch) threshold = parseInt(threshMatch[1], 10);
-
-        // detect whether the phrase is "up to X" (inclusive <=) or a "min X%" intent (>=)
-        const isUpTo = /up[- ]?to|upto/.test(decodedLower);
-
-        // extract category text before sale phrase (e.g., "accessories")
-        const cleanedForCategory = decodedLower.replace(/-/g, ' ');
-        let categoryPart = cleanedForCategory.split(/up[- ]?to|off|%|discount|clearance/)[0].trim();
-        if (categoryPart === '') categoryPart = cleanedForCategory;
-        const catTarget = normalize(categoryPart);
-
-        // Expand high-level sale categories (e.g., "accessories") to include their sub-items
-        const expandedTargets: string[] = [catTarget];
-        try {
-          const menuEntry = (megaMenuData as any)[catTarget];
-          if (menuEntry && menuEntry.categories) {
-            Object.values(menuEntry.categories).forEach((arr: any) => {
-              if (Array.isArray(arr)) {
-                arr.forEach((it: any) => {
-                  if (it) expandedTargets.push(normalize(it));
-                });
-              }
-            });
-          }
-        } catch (e) {
-          // ignore if megaMenuData isn't present or mapping fails
+        // 1. Client-side Brand refine
+        if (brandParam && String(brandParam).trim()) {
+          filtered = filtered.filter((p: any) => brandMatches(p.brand, p.brandSlug, brandParam));
         }
 
-        filtered = filtered.filter((p: any) => {
-          const disc = productDiscount(p);
-          if (threshold !== null) {
-            if (isUpTo) {
-              if (!(disc > 0 && disc <= threshold)) return false;
-            } else {
-              if (disc < threshold) return false;
-            }
+        // 2. Client-side Gender refine
+        if (genderParam && genderParam.toLowerCase() !== 'sale') {
+          filtered = filtered.filter((p: any) => genderMatches(p.gender, genderParam) || !p.gender);
+        }
+
+        // 3. Client-side Type / Sale refine
+        const isGenderSale = String(genderParam || '').toLowerCase() === 'sale';
+        if (typeParam) {
+          let decoded = typeParam;
+          try {
+            decoded = decodeURIComponent(typeParam as string);
+          } catch (err) {
+            decoded = typeParam as string;
           }
 
-          // if categoryPart is generic sale, accept any sale product
-          const genericSaleWords = ['sale','clearance','last season','final reductions','special offers','offers','discounts'];
-          if (genericSaleWords.some(w => categoryPart.includes(w))) {
-            return disc > 0 || p.isOnSale || p.onSale || p.category === 'sale' || p.gender === 'sale';
-          }
+          const decodedLower = String(decoded).toLowerCase();
+          const saleLike = isGenderSale || /up[- ]?to|%|off|discount|clearance/.test(decodedLower);
 
-          // otherwise require category/type matching — allow expandedTargets (e.g., accessories -> wallets, watches)
-          const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section];
-          if (Array.isArray(p.tags)) candidates.push(...p.tags);
-          if (Array.isArray(p.colors)) candidates.push(...p.colors);
-
-          const matchTarget = (value: any) => {
-            if (!value) return false;
-            if (Array.isArray(value)) {
-              return value.map(String).some(x => expandedTargets.includes(normalize(x)));
-            }
-            try {
-              if (expandedTargets.includes(normalize(value))) return true;
-            } catch (e) {}
-            if (typeof value === 'string') {
-              try {
-                const parsed = JSON.parse(value);
-                if (Array.isArray(parsed) && parsed.map(String).some((x: any) => expandedTargets.includes(normalize(x)))) return true;
-              } catch (e) {
-                // ignore
+          if (saleLike) {
+            const productDiscount = (prod: any) => {
+              if (typeof prod.discountPercentage === 'number') return Number(prod.discountPercentage) || 0;
+              const orig = prod.originalPrice || prod.compareAtPrice || prod.original_price;
+              const p = prod.price || 0;
+              if (orig && Number(orig) > Number(p)) {
+                const pct = Math.round(((Number(orig) - Number(p)) / Number(orig)) * 100);
+                return Number.isFinite(pct) ? pct : 0;
               }
+              return 0;
+            };
+
+            let threshold: number | null = null;
+            const threshMatch = decodedLower.match(/(\d{1,3})\s*%?/);
+            if (threshMatch) threshold = parseInt(threshMatch[1], 10);
+
+            const isUpTo = /up[- ]?to|upto/.test(decodedLower);
+
+            const cleanedForCategory = decodedLower.replace(/-/g, ' ');
+            let categoryPart = cleanedForCategory.split(/up[- ]?to|off|%|discount|clearance/)[0].trim();
+            if (categoryPart === '') categoryPart = cleanedForCategory;
+            const catTarget = slugify(categoryPart);
+
+            const expandedTargets: string[] = [catTarget];
+            try {
+              const menuEntry = (megaMenuData as any)[catTarget];
+              if (menuEntry && menuEntry.categories) {
+                Object.values(menuEntry.categories).forEach((arr: any) => {
+                  if (Array.isArray(arr)) {
+                    arr.forEach((it: any) => {
+                      if (it) expandedTargets.push(slugify(it));
+                    });
+                  }
+                });
+              }
+            } catch (e) {
+              // ignore
+            }
+
+            filtered = filtered.filter((p: any) => {
+              const disc = productDiscount(p);
+              if (threshold !== null) {
+                if (isUpTo) {
+                  if (!(disc > 0 && disc <= threshold)) return false;
+                } else {
+                  if (disc < threshold) return false;
+                }
+              }
+
+              const genericSaleWords = ['sale', 'clearance', 'last season', 'final reductions', 'special offers', 'offers', 'discounts'];
+              if (genericSaleWords.some(w => categoryPart.includes(w))) {
+                return disc > 0 || p.isOnSale || p.onSale || p.category === 'sale' || p.gender === 'sale';
+              }
+
+              const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section];
+              if (Array.isArray(p.tags)) candidates.push(...p.tags);
+              if (Array.isArray(p.colors)) candidates.push(...p.colors);
+
+              const matchTarget = (value: any) => {
+                if (!value) return false;
+                if (Array.isArray(value)) {
+                  return value.map(String).some(x => expandedTargets.includes(slugify(x)));
+                }
+                try {
+                  if (expandedTargets.includes(slugify(value))) return true;
+                } catch (e) {}
+                return false;
+              };
+
+              for (const c of candidates.filter(Boolean)) {
+                if (matchTarget(c)) return true;
+              }
+
+              if (slugify(p.name) && expandedTargets.includes(slugify(p.name))) return true;
+              return false;
+            });
+          } else {
+            const target = slugify(decoded);
+            const targetSingular = target.endsWith('s') && target.length > 2 ? target.slice(0, -1) : target;
+            filtered = filtered.filter((p: any) => {
+              const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section, p.name];
+              if (Array.isArray(p.tags)) candidates.push(...p.tags);
+              if (Array.isArray(p.colors)) candidates.push(...p.colors);
+
+              for (const c of candidates.filter(Boolean)) {
+                const normC = slugify(c);
+                if (normC === target || normC === targetSingular) return true;
+                if (normC.includes(target) || normC.includes(targetSingular) || target.includes(normC)) return true;
+                if (Array.isArray(c)) {
+                  if ((c as any[]).map(String).some((x: any) => {
+                    const nx = slugify(x);
+                    return nx === target || nx === targetSingular || nx.includes(targetSingular);
+                  })) return true;
+                }
+              }
+              return false;
+            });
+          }
+        } else if (isGenderSale) {
+          const productDiscount = (prod: any) => {
+            if (typeof prod.discountPercentage === 'number') return Number(prod.discountPercentage) || 0;
+            const orig = prod.originalPrice || prod.compareAtPrice || prod.original_price;
+            const p = prod.price || 0;
+            if (orig && Number(orig) > Number(p)) {
+              const pct = Math.round(((Number(orig) - Number(p)) / Number(orig)) * 100);
+              return Number.isFinite(pct) ? pct : 0;
+            }
+            return 0;
+          };
+
+          filtered = filtered.filter((p: any) => {
+            const disc = productDiscount(p);
+            return disc > 0 || p.isOnSale || p.onSale || p.category === 'sale' || p.gender === 'sale';
+          });
+        }
+
+        // 4. Client-side Color refine
+        if (colorParam && String(colorParam).trim() !== '') {
+          const needle = String(colorParam).toLowerCase();
+          const matchesColor = (product: any) => {
+            if (Array.isArray(product.variants)) {
+              for (const v of product.variants) {
+                const name = (v && (v.name || v.displayName || v.value) || '').toString().toLowerCase();
+                const hex = (v && (v.hex || v.normalizedHex || v.value) || '').toString().toLowerCase();
+                if (name === needle || hex === needle) return true;
+              }
+            }
+            if (Array.isArray(product.colors)) {
+              for (const c of product.colors) {
+                const name = (c && (c.name || c.displayName || c.value) || '').toString().toLowerCase();
+                const hex = (c && (c.hex || c.normalizedHex || c.value) || '').toString().toLowerCase();
+                if (name === needle || hex === needle) return true;
+              }
+            }
+            if (product.color) {
+              const pcol = String(product.color).toLowerCase();
+              if (pcol === needle) return true;
             }
             return false;
           };
-
-          for (const c of candidates.filter(Boolean)) {
-            if (matchTarget(c)) return true;
-          }
-
-          // fallback: allow match on product name
-          if (normalize(p.name) && expandedTargets.includes(normalize(p.name))) return true;
-          return false;
-        });
-      } else {
-        const target = normalize(decoded);
-        const targetSingular = target.endsWith('s') && target.length > 2 ? target.slice(0, -1) : target;
-        filtered = filtered.filter((p: any) => {
-          const candidates = [p.category, p.subcategory, p.subCategory, p.type, p.section, p.name];
-          if (Array.isArray(p.tags)) candidates.push(...p.tags);
-          if (Array.isArray(p.colors)) candidates.push(...p.colors);
-
-          for (const c of candidates.filter(Boolean)) {
-            const normC = normalize(c);
-            if (normC === target || normC === targetSingular) return true;
-            if (normC.includes(target) || normC.includes(targetSingular) || target.includes(normC)) return true;
-            if (Array.isArray(c)) {
-              if ((c as any[]).map(String).some((x: any) => {
-                const nx = normalize(x);
-                return nx === target || nx === targetSingular || nx.includes(targetSingular);
-              })) return true;
-            }
-            if (typeof c === 'string') {
-              try {
-                const parsed = JSON.parse(c as string);
-                if (Array.isArray(parsed) && parsed.map(String).some((x: any) => {
-                  const nx = normalize(x);
-                  return nx === target || nx === targetSingular || nx.includes(targetSingular);
-                })) return true;
-              } catch (e) {
-                // ignore
-              }
-            }
-          }
-          return false;
-        });
-      }
-    } else if (isGenderSale) {
-      // Special-case: /shop?gender=sale should show all sale/discounted products
-      const productDiscount = (prod: any) => {
-        if (typeof prod.discountPercentage === 'number') return Number(prod.discountPercentage) || 0;
-        const orig = prod.originalPrice || prod.compareAtPrice || prod.original_price;
-        const p = prod.price || 0;
-        if (orig && Number(orig) > Number(p)) {
-          const pct = Math.round(((Number(orig) - Number(p)) / Number(orig)) * 100);
-          return Number.isFinite(pct) ? pct : 0;
+          filtered = filtered.filter(matchesColor);
         }
-        return 0;
-      };
 
-      filtered = filtered.filter((p: any) => {
-        const disc = productDiscount(p);
-        return disc > 0 || p.isOnSale || p.onSale || p.category === 'sale' || p.gender === 'sale';
-      });
-    }
+        // 5. Client-side Search refine (if needed)
+        if (searchParam && String(searchParam).trim() !== '') {
+          const q = String(searchParam).toLowerCase();
+          filtered = filtered.filter((p: any) => {
+            try {
+              if (p.name && String(p.name).toLowerCase().includes(q)) return true;
+              if (p.brand && String(p.brand).toLowerCase().includes(q)) return true;
+              if (p.description && String(p.description).toLowerCase().includes(q)) return true;
+              if (Array.isArray(p.tags) && p.tags.map(String).some((t: any) => String(t).toLowerCase().includes(q))) return true;
+              if (p.sku && String(p.sku).toLowerCase().includes(q)) return true;
+              return false;
+            } catch (e) { return false; }
+          });
+        }
 
-    if (colorParam && String(colorParam).trim() !== '') {
-      const needle = String(colorParam).toLowerCase();
-      const matchesColor = (product: any) => {
-        if (Array.isArray(product.variants)) {
-          for (const v of product.variants) {
-            const name = (v && (v.name || v.displayName || v.value) || '').toString().toLowerCase();
-            const hex = (v && (v.hex || v.normalizedHex || v.value) || '').toString().toLowerCase();
-            if (name === needle || hex === needle) return true;
+        // 6. Sizes / Price / Rating refine
+        if (sizesParam) {
+          const sizesList = String(sizesParam).split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+          if (sizesList.length > 0) {
+            filtered = filtered.filter((p: any) => {
+              const pSizes = (Array.isArray(p.sizes) ? p.sizes : []).map((s: any) => String(s?.value || s || '').toLowerCase());
+              return sizesList.some(s => pSizes.includes(s));
+            });
           }
         }
-        if (Array.isArray(product.colors)) {
-          for (const c of product.colors) {
-            const name = (c && (c.name || c.displayName || c.value) || '').toString().toLowerCase();
-            const hex = (c && (c.hex || c.normalizedHex || c.value) || '').toString().toLowerCase();
-            if (name === needle || hex === needle) return true;
-          }
+        if (priceParam && !Number.isNaN(Number(priceParam))) {
+          filtered = filtered.filter((p: any) => Number(p.price || 0) <= Number(priceParam));
         }
-        if (product.color) {
-          const pcol = String(product.color).toLowerCase();
-          if (pcol === needle) return true;
+        if (ratingParam && !Number.isNaN(Number(ratingParam))) {
+          filtered = filtered.filter((p: any) => Number(p.rating || p.ratings?.average || 0) >= Number(ratingParam));
         }
-        return false;
-      };
-      filtered = filtered.filter(matchesColor);
-    }
-    // Apply text search across name/description/tags/brand when present
-    if (searchParam && String(searchParam).trim() !== '') {
-      const q = String(searchParam).toLowerCase();
-      filtered = filtered.filter((p: any) => {
-        try {
-          if (p.name && String(p.name).toLowerCase().includes(q)) return true;
-          if (p.brand && String(p.brand).toLowerCase().includes(q)) return true;
-          if (p.description && String(p.description).toLowerCase().includes(q)) return true;
-          if (Array.isArray(p.tags) && p.tags.map(String).some((t: any) => String(t).toLowerCase().includes(q))) return true;
-          if (p.sku && String(p.sku).toLowerCase().includes(q)) return true;
-          return false;
-        } catch (e) { return false; }
-      });
-    }
-    // Build parsedFilters to initialize filter UI
-    const parsedFilters: any = {};
-    if (typeParam) parsedFilters.category = typeParam;
-    if (brandParam) parsedFilters.brand = brandParam;
-    if (colorParam) parsedFilters.color = colorParam;
-    if (searchParam) parsedFilters.search = searchParam;
-    if (sizesParam) parsedFilters.sizes = String(sizesParam).split(',').map(s => s.trim()).filter(Boolean);
-    if (priceParam && !Number.isNaN(Number(priceParam))) parsedFilters.priceRange = Number(priceParam);
-    if (ratingParam && !Number.isNaN(Number(ratingParam))) parsedFilters.rating = Number(ratingParam);
 
-    setCurrentFilters(parsedFilters);
-    setFilteredProducts(filtered);
-  }, [location.search, products]);
+        // Initialize filter UI states
+        const parsedFilters: any = {};
+        if (typeParam) parsedFilters.category = typeParam;
+        if (brandParam) parsedFilters.brand = brandParam;
+        if (colorParam) parsedFilters.color = colorParam;
+        if (searchParam) parsedFilters.search = searchParam;
+        if (sizesParam) parsedFilters.sizes = String(sizesParam).split(',').map(s => s.trim()).filter(Boolean);
+        if (priceParam && !Number.isNaN(Number(priceParam))) parsedFilters.priceRange = Number(priceParam);
+        if (ratingParam && !Number.isNaN(Number(ratingParam))) parsedFilters.rating = Number(ratingParam);
 
-  // --- FETCH PRODUCTS FROM API ---
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-
-    productsAPI
-      .getAll({ limit: 1000 })
-      .then((res: any) => {
-        // Backend responses are wrapped: { success: true, data: { products, pagination } }
-        // Support both shapes for resilience: top-level `products` or `data.products`.
-        const items = (res && (res.products || res.data?.products)) || [];
-        // Normalize id field (some API responses use _id)
-        const normalized = items.map((p: any) => ({ ...(p || {}), id: p.id || p._id || p.slug || '' }));
-        if (!mounted) return;
+        setCurrentFilters(parsedFilters);
         setProducts(normalized);
-        setFilteredProducts(normalized);
+        setFilteredProducts(filtered);
       })
       .catch((err: any) => {
-        console.error('Failed to load products', err);
-        if (!mounted) return;
-        setError(err?.message || 'Failed to load products');
+        console.error('Failed to load products for shop query', err);
+        if (mounted) setError(err?.message || 'Failed to load products');
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -418,7 +405,7 @@ export const Shop: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [location.search]);
 
   // compute available colors from all products for the filters UI
   const availableColors = React.useMemo(() => {
