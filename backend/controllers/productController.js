@@ -4,6 +4,8 @@ import DetailTemplate from '../models/DetailTemplate.js';
 import SystemSetting from '../models/SystemSetting.js';
 import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from '../utils/inventory.js';
 import { getColorName } from '../utils/colorHelper.js';
+import { normalizeBrandName } from '../utils/brandHelper.js';
+import { slugify } from '../utils/adminProductHelper.js';
 
 const parseArray = (val) => {
   if (!val) return [];
