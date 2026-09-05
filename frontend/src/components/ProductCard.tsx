@@ -848,14 +848,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
             </div>
           )}
 
-          {/* Tags */}
+          {/* Brand & Tags */}
           {(() => {
+            const brandName = (product.brand || '').trim();
             const tags = normalizeTagsForDisplay((product as any).tags || []);
-            if (!tags || !tags.length) return null;
+            if (!brandName && (!tags || !tags.length)) return null;
             return (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {brandName && (
+                  <span className="text-xs font-semibold uppercase tracking-wider bg-gray-100 text-gray-900 px-2 py-1 rounded-lg border border-gray-200/60">
+                    {brandName}
+                  </span>
+                )}
                 {tags.slice(0, 6).map((t, i) => (
-                  <span key={i} className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-lg">{t}</span>
+                  <span key={i} className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-lg">
+                    {t}
+                  </span>
                 ))}
               </div>
             );

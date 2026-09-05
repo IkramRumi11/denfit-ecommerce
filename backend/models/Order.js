@@ -28,6 +28,10 @@ const orderItemSchema = new mongoose.Schema({
     hex: { type: String },
     tempId: { type: String }
   },
+  brand: {
+    type: String,
+    trim: true
+  },
   quantity: {
     type: Number,
     required: true,

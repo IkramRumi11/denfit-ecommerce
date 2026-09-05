@@ -961,8 +961,8 @@ export const ProductDetail: React.FC = () => {
             <div>
               {/* Category Eyebrow */}
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400">
-                  {product.category ? `Denfit • ${product.category}` : 'Denfit Maison • Edition 2026'}
+                <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-500 font-medium">
+                  {(product as any).brand || 'DENFiT'}{product.category ? ` • ${product.category}` : ''}
                 </p>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] ${
                   isOutOfStock(product) ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
@@ -1414,6 +1414,12 @@ export const ProductDetail: React.FC = () => {
                 );
               })}
               
+              {/* Brand */}
+              <div className="grid grid-cols-[160px_1fr] gap-4">
+                <span className="font-bold text-gray-900">Brand:</span>
+                <span className="font-medium text-gray-900 uppercase tracking-wide">{(product as any).brand || 'DENFiT'}</span>
+              </div>
+
               {/* Style (Category) */}
               <div className="grid grid-cols-[160px_1fr] gap-4">
                 <span className="font-bold text-gray-900">Style:</span>

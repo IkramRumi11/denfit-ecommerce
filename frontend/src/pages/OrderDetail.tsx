@@ -164,6 +164,11 @@ const OrderDetail: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <img src={it.image || '/denfit-logo.jpg'} alt={it.name} className="w-16 h-16 object-cover rounded-xl border border-slate-100" />
                     <div className="flex-1">
+                      {(it.brand || (it.product && it.product.brand)) && (
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                          {it.brand || (it.product && it.product.brand)}
+                        </div>
+                      )}
                       <div className="font-semibold text-slate-900">{it.name}</div>
                       <div className="text-sm text-slate-500 mt-0.5">
                         {(() => {

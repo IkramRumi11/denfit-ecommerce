@@ -84,7 +84,7 @@ export const createOrder = async (req, res) => {
         try {
           const validIds = requestedProductIds.filter(id => mongoose.Types.ObjectId.isValid(id));
           const dbProducts = await Product.find({ _id: { $in: validIds } })
-            .select('_id name price images variants colors stock sizes')
+            .select('_id name brand price images variants colors stock sizes')
             .lean();
           for (const p of dbProducts) {
             dbProductMap[String(p._id)] = p;
@@ -123,6 +123,7 @@ export const createOrder = async (req, res) => {
           product: productId,
           productId,
           name: verifiedName,
+          brand: dbProduct.brand || undefined,
           image,
           price: verifiedPrice,  // ← ALWAYS from database, never from client
           size,

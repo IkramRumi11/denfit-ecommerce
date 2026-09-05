@@ -48,6 +48,8 @@ export interface Product {
   image?: string;
   // Taxonomy fields
   category?: string;
+  brand?: string;
+  brandSlug?: string;
   type?: string; // e.g. t-shirts, hoodies
   gender?: 'men' | 'women' | 'unisex' | string;
   // Sizes default to provided arrays in datasets; keep sizes required
@@ -99,6 +101,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   size: string;
+  brand?: string;
   // variant snapshot stored at add-to-cart time
   variantId?: string;
   variantName?: string;
@@ -128,6 +131,7 @@ export interface OrderItem {
   price: number;
   size: string;
   color?: string;
+  brand?: string;
   exchange?: OrderItemExchange;
 }
 

@@ -258,11 +258,11 @@ export const getAllProducts = async (req, res) => {
       andClauses.push({ discountTags: { $in: discountTagArr } });
     }
 
-    // Simple search across name/description/category
+    // Simple search across name/description/category/brand
     if (search && String(search).trim()) {
       const q = String(search).trim();
       const safeQ = escapeRegex(q);
-      andClauses.push({ $or: [{ name: { $regex: safeQ, $options: 'i' } }, { description: { $regex: safeQ, $options: 'i' } }, { category: { $regex: safeQ, $options: 'i' } }] });
+      andClauses.push({ $or: [{ name: { $regex: safeQ, $options: 'i' } }, { description: { $regex: safeQ, $options: 'i' } }, { category: { $regex: safeQ, $options: 'i' } }, { brand: { $regex: safeQ, $options: 'i' } }] });
     }
 
     // If we collected any $and clauses, combine them with base mongoQuery

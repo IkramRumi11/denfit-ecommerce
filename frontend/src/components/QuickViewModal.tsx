@@ -27,6 +27,7 @@ interface Product {
   inStock: boolean;
   rating: number;
   category: string;
+  brand?: string;
 }
 
 interface QuickViewModalProps {
@@ -659,8 +660,8 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                     <div>
                       {/* Top Brand / Category tag */}
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-400">
-                          {product.category ? `Denfit • ${product.category}` : 'Denfit Maison'}
+                        <p className="text-[11px] tracking-[0.2em] uppercase text-neutral-500 font-medium">
+                          {(product as any).brand || 'DENFiT'}{product.category ? ` • ${product.category}` : ''}
                         </p>
                         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] ${
                           isOutOfStock(product) ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'

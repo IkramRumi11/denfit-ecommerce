@@ -463,6 +463,11 @@ const AdminOrderDetail: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <img src={it.image || "/placeholder.png"} alt={it.name} className="w-16 h-16 rounded-lg object-cover border" />
                     <div className="flex-1">
+                      {(it.brand || (it.product && it.product.brand)) && (
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                          {it.brand || (it.product && it.product.brand)}
+                        </div>
+                      )}
                       <div className="font-semibold">{it.name}</div>
                       <div className="text-sm text-slate-500">
                         Qty {it.quantity} • {it.size ?? "—"}

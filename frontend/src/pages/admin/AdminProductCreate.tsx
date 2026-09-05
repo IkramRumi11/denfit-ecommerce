@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import { ArrowLeft, Save, X, Upload, Image as ImageIcon, Trash2, Plus, Package } from 'lucide-react';
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { CategorySelector } from '../../components/admin/CategorySelector';
+import { BrandSelector } from '../../components/admin/BrandSelector';
 import { Specifications } from '../../components/admin/Specifications';
 import { SEOFields } from '../../components/admin/SEOFields';
 import { StockMatrix } from '../../components/admin/StockMatrix';
@@ -20,6 +21,7 @@ const AdminProductCreate: React.FC = () => {
   
   const [form, setForm] = useState<any>({
     name: '',
+    brand: 'DENFiT',
     description: '',
     price: '',
     originalPrice: '',
@@ -877,6 +879,11 @@ const AdminProductCreate: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Category & Classification</h2>
               <div className="space-y-4">
+                <BrandSelector
+                  value={form.brand || ''}
+                  onChange={(val) => setForm((s: any) => ({ ...s, brand: val }))}
+                />
+
                 <CategorySelector
                   category={form.category}
                   subcategory={form.subcategory}

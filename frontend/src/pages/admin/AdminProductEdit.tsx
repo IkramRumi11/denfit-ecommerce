@@ -9,6 +9,7 @@ import { ArrowLeft, Save, X, Image as ImageIcon, Trash2, Plus, Package } from 'l
 import { ImageUpload } from '../../components/admin/ImageUpload';
 import { loadTemplates, saveTemplates, SizeGuideTemplate } from '../../data/sizeGuideTemplates';
 import { CategorySelector } from '../../components/admin/CategorySelector';
+import { BrandSelector } from '../../components/admin/BrandSelector';
 import { Specifications } from '../../components/admin/Specifications';
 import { SEOFields } from '../../components/admin/SEOFields';
 import { StockMatrix } from '../../components/admin/StockMatrix';
@@ -24,6 +25,7 @@ const AdminProductEdit: React.FC = () => {
   
   const [form, setForm] = useState<any>({
     name: '',
+    brand: 'DENFiT',
     description: '',
     price: '',
     originalPrice: '',
@@ -273,6 +275,7 @@ const AdminProductEdit: React.FC = () => {
 
         setForm({
           name: p.name || '',
+          brand: p.brand || '',
           description: p.description || '',
           price: p.price ?? '',
           originalPrice: p.originalPrice ?? '',
@@ -1044,6 +1047,11 @@ const AdminProductEdit: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Category & Classification</h2>
               <div className="space-y-4">
+                <BrandSelector
+                  value={form.brand || ''}
+                  onChange={(val) => setForm((s: any) => ({ ...s, brand: val }))}
+                />
+
                 <CategorySelector
                   category={form.category}
                   subcategory={form.subcategory}

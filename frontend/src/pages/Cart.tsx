@@ -236,6 +236,11 @@ export const Cart: React.FC = () => {
                     />
                     
                     <div className="flex-1 min-w-0">
+                      {(item.brand || (item.product && item.product.brand)) && (
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
+                          {item.brand || (item.product && item.product.brand)}
+                        </p>
+                      )}
                       <h3 className="font-semibold text-gray-900 text-lg mb-1">
                         {item.name}
                       </h3>

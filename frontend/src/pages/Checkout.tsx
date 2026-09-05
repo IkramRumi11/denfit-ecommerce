@@ -971,6 +971,11 @@ export const Checkout: React.FC = () => {
                       className="w-16 h-16 object-cover rounded-lg border border-gray-100" 
                     />
                     <div className="flex-1 min-w-0">
+                      {(item.brand || (item.product && item.product.brand)) && (
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">
+                          {item.brand || (item.product && item.product.brand)}
+                        </p>
+                      )}
                       <h4 className="text-sm font-medium text-gray-900 line-clamp-2">{String(item.name)}</h4>
                       <div className="text-xs text-gray-500 mt-1">
                         <div>Size: <span className="font-medium text-gray-700">{String(item.size)}</span></div>

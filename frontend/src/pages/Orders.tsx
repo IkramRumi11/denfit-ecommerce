@@ -124,6 +124,7 @@ const Orders: React.FC = () => {
                           {(() => {
                             const firstItem = first;
                             if (!firstItem) return null;
+                            const itemBrand = firstItem.brand || (firstItem.product && firstItem.product.brand) || '';
                             const colorObj = firstItem.color && typeof firstItem.color === 'object' ? firstItem.color : null;
                             const colorName = firstItem.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
                             const variantName = firstItem.variantName || undefined;
@@ -134,6 +135,8 @@ const Orders: React.FC = () => {
                             const displayLabel = getColorName(label);
                             return (
                               <div className="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-1.5">
+                                {itemBrand ? <span className="font-semibold text-gray-700 uppercase">{itemBrand}</span> : null}
+                                {itemBrand && (firstItem.size || displayLabel) ? <span>•</span> : null}
                                 {firstItem.size ? <span>Size: {firstItem.size}</span> : null}
                                 {firstItem.size && displayLabel ? <span>•</span> : null}
                                 {displayLabel ? (

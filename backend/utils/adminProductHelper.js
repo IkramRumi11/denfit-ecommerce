@@ -1,5 +1,6 @@
 // backend/utils/adminProductHelper.js
 import { normalizeAttributesInput } from './attributes.js';
+import { normalizeBrandName } from './brandHelper.js';
 
 // Safe JSON parse helper
 export const safeParse = (val) => {
@@ -328,8 +329,13 @@ export const normalizeProductInput = async (body, ProductModel) => {
   if (productData.category) {
     try { productData.categorySlug = slugify(productData.category); } catch (e) {}
   }
-  if (productData.brand) {
-    try { productData.brandSlug = slugify(productData.brand); } catch (e) {}
+  if (productData.brand !== undefined) {
+    productData.brand = normalizeBrandName(productData.brand);
+    if (productData.brand) {
+      try { productData.brandSlug = slugify(productData.brand); } catch (e) {}
+    } else {
+      productData.brandSlug = '';
+    }
   }
   if (productData.collectionName) {
     try { productData.collectionSlug = slugify(productData.collectionName); } catch (e) {}

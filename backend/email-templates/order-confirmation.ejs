@@ -82,6 +82,7 @@
                               <%= it.name || it.title || it.productName || 'Item' %>
                             </strong>
                             <% 
+                              const itemBrand = it.brand || (it.product && it.product.brand) || '';
                               const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
                               const colorName = it.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
                               const variantHex = it.variantHex || (colorObj ? (colorObj.hex || undefined) : undefined);
@@ -90,8 +91,10 @@
                               const displayLabel = getColorName(label);
                               const resolvedHex = resolveColorHex(colorValue || label);
                             %>
-                            <% if (it.size || displayLabel) { %>
+                            <% if (itemBrand || it.size || displayLabel) { %>
                               <div style="font-size: 11px; color: #90a4ae; margin-top: 2px; line-height: 14px;">
+                                <% if (itemBrand) { %><strong style="color: #263238; text-transform: uppercase;"><%= itemBrand %></strong><% } %>
+                                <% if (itemBrand && (it.size || displayLabel)) { %> • <% } %>
                                 <% if (it.size) { %>Size: <%= it.size %><% } %>
                                 <% if (it.size && displayLabel) { %> • <% } %>
                                 <% if (displayLabel) { %>

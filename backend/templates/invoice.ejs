@@ -458,6 +458,7 @@
                                 <%= (it.name || it.title || (it.product && it.productName) || 'Product') %>
                               </strong>
                               <% 
+                                const itemBrand = it.brand || (it.product && it.product.brand) || '';
                                 const colorObj = it.color && typeof it.color === 'object' ? it.color : null;
                                 const colorName = it.colorName || (colorObj ? (colorObj.name || undefined) : undefined);
                                 const variantHex = it.variantHex || (colorObj ? (colorObj.hex || undefined) : undefined);
@@ -466,8 +467,10 @@
                                 const displayLabel = getColorName(label);
                                 const resolvedHex = resolveColorHex(colorValue || label);
                               %>
-                              <% if (it.size || displayLabel) { %>
+                              <% if (itemBrand || it.size || displayLabel) { %>
                                 <div class="small" style="font-size: 11px; color: var(--brand-muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px;">
+                                  <% if (itemBrand) { %><span style="font-weight: 600; text-transform: uppercase; color: var(--brand-primary);"><%= itemBrand %></span><% } %>
+                                  <% if (itemBrand && (it.size || displayLabel)) { %><span>•</span><% } %>
                                   <% if (it.size) { %><span>Size: <%= it.size %></span><% } %>
                                   <% if (it.size && displayLabel) { %><span>•</span><% } %>
                                   <% if (displayLabel) { %>
