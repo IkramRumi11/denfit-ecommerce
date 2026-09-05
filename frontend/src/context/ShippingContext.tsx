@@ -35,13 +35,14 @@ export const ShippingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsLoading(true);
       setError(null);
       const res = await shippingAPI.getPublicConfig();
-      if (res && res.data && res.data.config) {
+      const cfg = res?.data?.shippingConfig || res?.data?.config || res?.shippingConfig || res?.data;
+      if (cfg && typeof cfg === 'object') {
         setShippingConfig({
-          shippingFee: Number(res.data.config.shippingFee) || 0,
-          freeShippingThreshold: Number(res.data.config.freeShippingThreshold) || 0,
-          isFreeShippingEnabled: res.data.config.isFreeShippingEnabled !== false,
-          isShippingEnabled: res.data.config.isShippingEnabled !== false,
-          estimatedDeliveryDays: res.data.config.estimatedDeliveryDays || '5-7 business days',
+          shippingFee: Number(cfg.shippingFee) || 0,
+          freeShippingThreshold: Number(cfg.freeShippingThreshold) || 0,
+          isFreeShippingEnabled: cfg.isFreeShippingEnabled !== false,
+          isShippingEnabled: cfg.isShippingEnabled !== false,
+          estimatedDeliveryDays: cfg.estimatedDeliveryDays || '5-7 business days',
         });
       }
     } catch (err: any) {
