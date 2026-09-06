@@ -418,42 +418,46 @@ const AdminProductCreate: React.FC = () => {
     setForm((s: any) => {
       const colors = [...(s.colors || [])];
       const cur = { ...colors[idx] };
-      const normalized = typeof value === 'string' ? value.trim() : value;
-      cur[field] = normalized;
-      
-      // Auto-fill hex if name is entered
-      if (field === 'name') {
-        try {
-          if (normalized.startsWith('#')) {
-            cur.name = getColorName(normalized);
-            const resolved = resolveColorHex(cur.name) || normalized;
-            cur.value = resolved;
-            cur.hex = resolved;
-          } else {
-            const resolved = resolveColorHex(normalized);
-            if (resolved) {
+      if (field === 'price' || field === 'originalPrice') {
+        cur[field] = value === '' ? null : Number(value);
+      } else {
+        const normalized = typeof value === 'string' ? value.trim() : value;
+        cur[field] = normalized;
+        
+        // Auto-fill hex if name is entered
+        if (field === 'name') {
+          try {
+            if (normalized.startsWith('#')) {
+              cur.name = getColorName(normalized);
+              const resolved = resolveColorHex(cur.name) || normalized;
               cur.value = resolved;
               cur.hex = resolved;
+            } else {
+              const resolved = resolveColorHex(normalized);
+              if (resolved) {
+                cur.value = resolved;
+                cur.hex = resolved;
+              }
             }
-          }
-        } catch (e) {}
-      }
-
-      // Update hex value when color value changes
-      if (field === 'value' || field === 'hex') {
-        cur.value = value;
-        try {
-          const res = parseColor(normalized as string);
-          if (res.valid && res.hex) cur.hex = res.hex;
-        } catch (e) {
-          // ignore parse errors
-        }
-        // Only auto-fill friendly name if admin did not provide an explicit name or entered a hex code as name
-        if (!cur.name || cur.name.startsWith('#')) {
-          try {
-            const friendly = getColorName(cur.hex || cur.value);
-            if (friendly) cur.name = friendly;
           } catch (e) {}
+        }
+
+        // Update hex value when color value changes
+        if (field === 'value' || field === 'hex') {
+          cur.value = value;
+          try {
+            const res = parseColor(normalized as string);
+            if (res.valid && res.hex) cur.hex = res.hex;
+          } catch (e) {
+            // ignore parse errors
+          }
+          // Only auto-fill friendly name if admin did not provide an explicit name or entered a hex code as name
+          if (!cur.name || cur.name.startsWith('#')) {
+            try {
+              const friendly = getColorName(cur.hex || cur.value);
+              if (friendly) cur.name = friendly;
+            } catch (e) {}
+          }
         }
       }
       colors[idx] = cur;
@@ -598,9 +602,57 @@ const AdminProductCreate: React.FC = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!form.name || !form.description || !form.price) {
+    if (!form.name || !form.description) {
       showToast('Please fill in all required fields', 'error');
       return;
+    }
+
+    // Base price validation
+    if (!form.price && !form.originalPrice) {
+      showToast('Please enter a Price for the product', 'error');
+      return;
+    }
+    if (form.price && form.originalPrice && Number(form.price) > Number(form.originalPrice)) {
+      showToast('Base product: Discounted price cannot exceed Actual price', 'error');
+      return;
+    }
+
+    // Case D and Discount validity validation for sizes/volumes
+    if (Array.isArray(form.sizes)) {
+      for (let idx = 0; idx < form.sizes.length; idx++) {
+        const s = form.sizes[idx];
+        if (!s) continue;
+        const name = s.value || `Variant ${idx + 1}`;
+        const hasPrice = s.price !== null && s.price !== undefined && s.price !== '';
+        const hasOrig = s.originalPrice !== null && s.originalPrice !== undefined && s.originalPrice !== '';
+        if (hasPrice && !hasOrig) {
+          showToast(`Variant '${name}': Actual Price is required when Discounted Price is specified.`, 'error');
+          return;
+        }
+        if (hasPrice && hasOrig && Number(s.price) > Number(s.originalPrice)) {
+          showToast(`Variant '${name}': Discounted price cannot exceed Actual price.`, 'error');
+          return;
+        }
+      }
+    }
+
+    // Case D and Discount validity validation for color variants
+    if (Array.isArray(form.colors)) {
+      for (let idx = 0; idx < form.colors.length; idx++) {
+        const c = form.colors[idx];
+        if (!c) continue;
+        const name = c.name || c.value || `Color ${idx + 1}`;
+        const hasPrice = c.price !== null && c.price !== undefined && c.price !== '';
+        const hasOrig = c.originalPrice !== null && c.originalPrice !== undefined && c.originalPrice !== '';
+        if (hasPrice && !hasOrig) {
+          showToast(`Color '${name}': Actual Price is required when Discounted Price is specified.`, 'error');
+          return;
+        }
+        if (hasPrice && hasOrig && Number(c.price) > Number(c.originalPrice)) {
+          showToast(`Color '${name}': Discounted price cannot exceed Actual price.`, 'error');
+          return;
+        }
+      }
     }
 
     if (isFragrance) {
@@ -666,6 +718,13 @@ const AdminProductCreate: React.FC = () => {
       const targetSubcategory = isFragrance ? (form.subcategory || 'fragrances') : form.subcategory;
       const targetGender = form.category === 'fragrances' ? 'unisex' : (form.category || 'men');
 
+      // Base price normalization (Cases A-E)
+      if (form.originalPrice && !form.price) {
+        form.price = form.originalPrice;
+      } else if (form.price && !form.originalPrice) {
+        form.originalPrice = form.price;
+      }
+
       // Add all form fields except sizes and inventory
       Object.entries(form).forEach(([k, v]) => {
         if (v === undefined || v === null) return;
@@ -715,10 +774,17 @@ const AdminProductCreate: React.FC = () => {
           const swatchExisting = c.swatchImage?.url || c.swatchImage || undefined;
           const swatchLocal = variantFiles[tid]?.swatch ? `__file__variantSwatch_${tid}` : undefined;
 
+          let p = (c.price != null && c.price !== '' && !Number.isNaN(Number(c.price))) ? Number(c.price) : null;
+          let op = (c.originalPrice != null && c.originalPrice !== '' && !Number.isNaN(Number(c.originalPrice))) ? Number(c.originalPrice) : null;
+          if (op != null && p == null) p = op;
+          if (p != null && op == null) op = p;
+
           return {
             tempId: tid,
             name: c.name,
             hex: c.hex || c.value || '',
+            price: p,
+            originalPrice: op,
             images: [...existing, ...localFiles],
             swatchImage: swatchExisting || swatchLocal || undefined,
           };
@@ -744,12 +810,19 @@ const AdminProductCreate: React.FC = () => {
         if (typeof s === 'string') {
           return { id: `size_legacy_${idx}`, value: s, inStock: true, quantity: null };
         }
+        let p = (s.price != null && s.price !== '' && !Number.isNaN(Number(s.price))) ? Number(s.price) : null;
+        let op = (s.originalPrice != null && s.originalPrice !== '' && !Number.isNaN(Number(s.originalPrice))) ? Number(s.originalPrice) : null;
+        if (op != null && p == null) p = op;
+        if (p != null && op == null) op = p;
+
         // ensure required fields exist, strip quantityManual (UI-only)
         return {
           id: s.id || `size_${idx}`,
           value: s.value ?? '',
           inStock: typeof s.inStock === 'boolean' ? s.inStock : true,
           quantity: (s.quantity != null && !Number.isNaN(Number(s.quantity))) ? Number(s.quantity) : (s.qty != null && !Number.isNaN(Number(s.qty)) ? Number(s.qty) : null),
+          price: p,
+          originalPrice: op,
         };
       }).filter(Boolean);
       fd.append('sizes', JSON.stringify(sizesPayload));
@@ -844,8 +917,8 @@ const AdminProductCreate: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                      Price (PKR) <span className="text-red-500">*</span>
+                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2" title="The selling price customers pay">
+                      Discounted / Selling Price (PKR) <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="price"
@@ -853,16 +926,16 @@ const AdminProductCreate: React.FC = () => {
                       name="price"
                       value={form.price ?? ''}
                       onChange={onChange}
-                      required
                       min="0"
                       step="0.01"
+                      placeholder="e.g. 400"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-2">
-                      Original Price (PKR)
+                    <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-2" title="The original/MRP price (for discount strike-through and % OFF calculation)">
+                      Actual / Original Price (PKR)
                     </label>
                     <input
                       id="originalPrice"
@@ -872,6 +945,7 @@ const AdminProductCreate: React.FC = () => {
                       onChange={onChange}
                       min="0"
                       step="0.01"
+                      placeholder="e.g. 500"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1332,6 +1406,19 @@ const AdminProductCreate: React.FC = () => {
                 </div>
               )}
 
+              {form.sizes && form.sizes.length > 0 && (
+                <div className="flex items-center gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <span className="flex-1">{isFragrance ? 'Volume / Size' : 'Size'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 text-center">Status</span>
+                    <span className="w-20 text-center">Stock</span>
+                    <span className="w-28 text-center" title="Discounted/Selling price customer pays">Disc. (PKR)</span>
+                    <span className="w-28 text-center" title="Original/Actual price for discount badge">Actual (PKR)</span>
+                    <span className="w-8"></span>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {form.sizes.map((size: any, idx: number) => {
                   const s = typeof size === 'string' ? { id: `size_legacy_${idx}`, value: size, inStock: true, quantity: null } : size;
@@ -1366,18 +1453,18 @@ const AdminProductCreate: React.FC = () => {
                           type="number"
                           value={s.price ?? ''}
                           onChange={(e) => updateSizePrice(idx, e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Price (PKR)"
+                          placeholder="Disc. Price"
                           min={0}
-                          title="Variant-specific price in PKR (leave blank to use base product price)"
+                          title="Discounted / Selling Price in PKR (what the customer pays). If no discount, enter Actual Price only."
                           className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                         <input
                           type="number"
                           value={s.originalPrice ?? ''}
                           onChange={(e) => updateSizeOriginalPrice(idx, e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Compare At"
+                          placeholder="Actual Price"
                           min={0}
-                          title="Original/Compare-at price in PKR (optional)"
+                          title="Actual / Original Price in PKR (required if Discounted Price is specified)"
                           className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                         <button

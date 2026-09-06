@@ -369,8 +369,13 @@ export function getVariantPrice(
       return false;
     });
 
-    if (matchedStock && typeof matchedStock.price === 'number' && Number.isFinite(matchedStock.price) && matchedStock.price > 0) {
-      return matchedStock.price;
+    if (matchedStock && typeof matchedStock === 'object') {
+      if (typeof matchedStock.price === 'number' && Number.isFinite(matchedStock.price) && matchedStock.price > 0) {
+        return matchedStock.price;
+      }
+      if (typeof matchedStock.originalPrice === 'number' && Number.isFinite(matchedStock.originalPrice) && matchedStock.originalPrice > 0) {
+        return matchedStock.originalPrice; // Cases A & E fallback
+      }
     }
   }
 
@@ -383,8 +388,13 @@ export function getVariantPrice(
       return val === targetSize || (id && id === targetSize);
     });
 
-    if (matchedSize && typeof matchedSize === 'object' && typeof matchedSize.price === 'number' && Number.isFinite(matchedSize.price) && matchedSize.price > 0) {
-      return matchedSize.price;
+    if (matchedSize && typeof matchedSize === 'object') {
+      if (typeof matchedSize.price === 'number' && Number.isFinite(matchedSize.price) && matchedSize.price > 0) {
+        return matchedSize.price;
+      }
+      if (typeof matchedSize.originalPrice === 'number' && Number.isFinite(matchedSize.originalPrice) && matchedSize.originalPrice > 0) {
+        return matchedSize.originalPrice; // Cases A & E fallback
+      }
     }
   }
 
@@ -398,8 +408,13 @@ export function getVariantPrice(
       return colorTokens.has(vid) || colorTokens.has(vname) || colorTokens.has(vhex);
     });
 
-    if (matchedVariant && typeof matchedVariant.price === 'number' && Number.isFinite(matchedVariant.price) && matchedVariant.price > 0) {
-      return matchedVariant.price;
+    if (matchedVariant && typeof matchedVariant === 'object') {
+      if (typeof matchedVariant.price === 'number' && Number.isFinite(matchedVariant.price) && matchedVariant.price > 0) {
+        return matchedVariant.price;
+      }
+      if (typeof matchedVariant.originalPrice === 'number' && Number.isFinite(matchedVariant.originalPrice) && matchedVariant.originalPrice > 0) {
+        return matchedVariant.originalPrice; // Cases A & E fallback
+      }
     }
   }
 
@@ -511,14 +526,14 @@ export function hasVariantPricing(product: any): boolean {
     ? product.sizesObjects
     : (Array.isArray(product.sizes) ? product.sizes : []);
 
-  const hasSizePrice = sizesArr.some((s: any) => s && typeof s === 'object' && typeof s.price === 'number' && s.price > 0);
+  const hasSizePrice = sizesArr.some((s: any) => s && typeof s === 'object' && ((typeof s.price === 'number' && s.price > 0) || (typeof s.originalPrice === 'number' && s.originalPrice > 0)));
   if (hasSizePrice) return true;
 
-  if (Array.isArray(product.variants) && product.variants.some((v: any) => v && typeof v.price === 'number' && v.price > 0)) {
+  if (Array.isArray(product.variants) && product.variants.some((v: any) => v && ((typeof v.price === 'number' && v.price > 0) || (typeof v.originalPrice === 'number' && v.originalPrice > 0)))) {
     return true;
   }
 
-  if (Array.isArray(product.stock) && product.stock.some((st: any) => st && typeof st.price === 'number' && st.price > 0)) {
+  if (Array.isArray(product.stock) && product.stock.some((st: any) => st && ((typeof st.price === 'number' && st.price > 0) || (typeof st.originalPrice === 'number' && st.originalPrice > 0)))) {
     return true;
   }
 
@@ -538,23 +553,26 @@ export function getMinProductPrice(product: any): number {
     : (Array.isArray(product.sizes) ? product.sizes : []);
 
   sizesArr.forEach((s: any) => {
-    if (s && typeof s === 'object' && typeof s.price === 'number' && s.price > 0) {
-      if (min === 0 || s.price < min) min = s.price;
+    if (s && typeof s === 'object') {
+      const p = (typeof s.price === 'number' && s.price > 0) ? s.price : (typeof s.originalPrice === 'number' && s.originalPrice > 0 ? s.originalPrice : null);
+      if (p !== null && (min === 0 || p < min)) min = p;
     }
   });
 
   if (Array.isArray(product.variants)) {
     product.variants.forEach((v: any) => {
-      if (v && typeof v.price === 'number' && v.price > 0) {
-        if (min === 0 || v.price < min) min = v.price;
+      if (v) {
+        const p = (typeof v.price === 'number' && v.price > 0) ? v.price : (typeof v.originalPrice === 'number' && v.originalPrice > 0 ? v.originalPrice : null);
+        if (p !== null && (min === 0 || p < min)) min = p;
       }
     });
   }
 
   if (Array.isArray(product.stock)) {
     product.stock.forEach((st: any) => {
-      if (st && typeof st.price === 'number' && st.price > 0) {
-        if (min === 0 || st.price < min) min = st.price;
+      if (st) {
+        const p = (typeof st.price === 'number' && st.price > 0) ? st.price : (typeof st.originalPrice === 'number' && st.originalPrice > 0 ? st.originalPrice : null);
+        if (p !== null && (min === 0 || p < min)) min = p;
       }
     });
   }

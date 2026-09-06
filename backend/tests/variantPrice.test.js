@@ -81,4 +81,85 @@ assert.strictEqual(getVariantPrice(matrixProduct, { color: '#000080', size: 'XXL
 assert.strictEqual(getVariantOriginalPrice(matrixProduct, { color: '#000080', size: 'XXL' }), 750, 'Navy XXL combo original price should be 750');
 console.log('✓ Test 4 Passed: Combination matrix overrides resolve prices correctly');
 
-console.log('--- ALL VARIANT PRICING TESTS PASSED! ---');
+// Test 5: Cases A through E verification
+// Case A: Actual Price = 500, Discounted = empty -> Sells for 500, no discount
+const caseAProduct = {
+  _id: 'prod_case_a',
+  name: 'Case A Product',
+  price: 500,
+  sizes: [
+    { id: 'v1', value: '100 ml', originalPrice: 500 } // price omitted/empty
+  ]
+};
+const caseAPrice = getVariantPrice(caseAProduct, { size: '100 ml' });
+const caseAOrig = getVariantOriginalPrice(caseAProduct, { size: '100 ml' });
+assert.strictEqual(caseAPrice, 500, 'Case A: When discounted price is empty, selling price should be originalPrice (500)');
+assert.strictEqual(caseAOrig > caseAPrice, false, 'Case A: No discount badge should be shown (originalPrice is not > price)');
+console.log('✓ Case A Passed: Actual Price = 500, Discounted = empty -> Sells for 500, no discount');
+
+// Case B: Actual Price = 500, Discounted = 500 -> Sells for 500, no discount
+const caseBProduct = {
+  _id: 'prod_case_b',
+  name: 'Case B Product',
+  price: 500,
+  sizes: [
+    { id: 'v1', value: '100 ml', price: 500, originalPrice: 500 }
+  ]
+};
+const caseBPrice = getVariantPrice(caseBProduct, { size: '100 ml' });
+const caseBOrig = getVariantOriginalPrice(caseBProduct, { size: '100 ml' });
+assert.strictEqual(caseBPrice, 500, 'Case B: Selling price should be 500');
+assert.strictEqual(caseBOrig, 500, 'Case B: Original price should be 500');
+assert.strictEqual(caseBOrig > caseBPrice, false, 'Case B: No discount badge should be shown');
+console.log('✓ Case B Passed: Actual Price = 500, Discounted = 500 -> Sells for 500, no discount');
+
+// Case C: Actual Price = 500, Discounted = 400 -> Sells for 400, shows 20% discount
+const caseCProduct = {
+  _id: 'prod_case_c',
+  name: 'Case C Product',
+  price: 400,
+  originalPrice: 500,
+  sizes: [
+    { id: 'v1', value: '100 ml', price: 400, originalPrice: 500 }
+  ]
+};
+const caseCPrice = getVariantPrice(caseCProduct, { size: '100 ml' });
+const caseCOrig = getVariantOriginalPrice(caseCProduct, { size: '100 ml' });
+assert.strictEqual(caseCPrice, 400, 'Case C: Selling price should be 400');
+assert.strictEqual(caseCOrig, 500, 'Case C: Original price should be 500');
+assert.strictEqual(caseCOrig > caseCPrice, true, 'Case C: Discount badge SHOULD be shown');
+const discountPercent = Math.round(((caseCOrig - caseCPrice) / caseCOrig) * 100);
+assert.strictEqual(discountPercent, 20, 'Case C: Discount percentage should be 20%');
+console.log('✓ Case C Passed: Actual Price = 500, Discounted = 400 -> Sells for 400, shows 20% OFF');
+
+// Case D: Discounted without Actual (price = 400, originalPrice omitted)
+const caseDProduct = {
+  _id: 'prod_case_d',
+  name: 'Case D Product',
+  price: 400,
+  sizes: [
+    { id: 'v1', value: '100 ml', price: 400 } // originalPrice omitted
+  ]
+};
+const caseDPrice = getVariantPrice(caseDProduct, { size: '100 ml' });
+const caseDOrig = getVariantOriginalPrice(caseDProduct, { size: '100 ml' });
+assert.strictEqual(caseDPrice, 400, 'Case D: Selling price is 400');
+assert.strictEqual(caseDOrig > caseDPrice, false, 'Case D: No false discount should be shown');
+console.log('✓ Case D Passed: Discounted without Actual -> Sells for price, no false discount');
+
+// Case E: Actual Price only (originalPrice = 750, price omitted)
+const caseEProduct = {
+  _id: 'prod_case_e',
+  name: 'Case E Product',
+  originalPrice: 750,
+  sizes: [
+    { id: 'v1', value: '200 ml', originalPrice: 750 }
+  ]
+};
+const caseEPrice = getVariantPrice(caseEProduct, { size: '200 ml' });
+const caseEOrig = getVariantOriginalPrice(caseEProduct, { size: '200 ml' });
+assert.strictEqual(caseEPrice, 750, 'Case E: Selling price should fallback to originalPrice (750)');
+assert.strictEqual(caseEOrig > caseEPrice, false, 'Case E: No discount badge should be shown');
+console.log('✓ Case E Passed: Actual Price only -> Sells for Actual Price, no discount');
+
+console.log('--- ALL VARIANT PRICING & CASES A-E TESTS PASSED! ---');

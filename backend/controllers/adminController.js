@@ -981,8 +981,17 @@ export const createProduct = async (req, res) => {
         const raw = safeParse(req.body.variants);
         if (Array.isArray(raw)) {
           raw.forEach((v, idx) => {
-            const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
-            const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+            let vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+            let vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+
+            // Cases A & E: Actual price only -> sells for actual price, no discount
+            if (vOrigPrice !== undefined && vPrice === undefined) {
+              vPrice = vOrigPrice;
+            } else if (vPrice !== undefined && vOrigPrice === undefined) {
+              // Case D fallback
+              vOrigPrice = vPrice;
+            }
+
             parsedVariants.push({
               tempId: v.tempId || v._id || `v${idx}`,
               name: v.name || '',
@@ -991,8 +1000,8 @@ export const createProduct = async (req, res) => {
               images: v.images || [],
               swatchImage: v.swatchImage || '',
               availableSizes: v.availableSizes || [],
-              price: vPrice,
-              originalPrice: vOrigPrice
+              ...(vPrice !== undefined ? { price: vPrice } : {}),
+              ...(vOrigPrice !== undefined ? { originalPrice: vOrigPrice } : {})
             });
           });
         }
@@ -1185,8 +1194,17 @@ export const updateProduct = async (req, res) => {
 
     updateData.variants = dedup.map(v => {
       const vName = v.name && !v.name.startsWith('#') ? v.name : getColorName(v.name || v.hex);
-      const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
-      const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+      let vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+      let vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+
+      // Cases A & E: Actual price only -> sells for actual price, no discount
+      if (vOrigPrice !== undefined && vPrice === undefined) {
+        vPrice = vOrigPrice;
+      } else if (vPrice !== undefined && vOrigPrice === undefined) {
+        // Case D fallback
+        vOrigPrice = vPrice;
+      }
+
       return {
         _id: v._id,
         name: vName || 'Default',

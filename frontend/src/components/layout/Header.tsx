@@ -178,12 +178,20 @@ export default function Header(): JSX.Element {
       {/* Main header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
-          {/* Mobile left */}
-          <div className="flex items-center gap-1 md:hidden">
-            <button onClick={() => setMobileOpen(true)} className="p-1.5 text-gray-700 hover:text-black">
+          {/* Mobile / Intermediate left hamburger */}
+          <div className="flex items-center gap-1 xl:hidden">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Open menu"
+            >
               <Menu className="h-6 w-6" />
             </button>
-            <button onClick={() => setSearchOpen(true)} className="p-1.5 text-gray-700 hover:text-black">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="p-1.5 text-gray-700 hover:text-black lg:hidden rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Search"
+            >
               <Search className="h-5 w-5" />
             </button>
           </div>
@@ -194,12 +202,12 @@ export default function Header(): JSX.Element {
             return (
               <a
                 href={href}
-                className="absolute left-1/2 transform -translate-x-1/2 md:static md:transform-none flex items-center gap-2"
+                className="absolute left-1/2 transform -translate-x-1/2 xl:static xl:transform-none flex items-center gap-2"
               >
                 <img
                   src="https://i.ibb.co/ycZSHXMr/logo.png"
                   alt="DENFiT Logo"
-                  className="h-10 w-auto object-contain"
+                  className="h-9 md:h-10 w-auto object-contain"
                 />
               </a>
             );
@@ -207,7 +215,7 @@ export default function Header(): JSX.Element {
           
 
           {/* Mobile right */}
-          <div className="flex items-center gap-1 md:hidden ml-auto">
+          <div className="flex items-center gap-1 lg:hidden ml-auto">
             <Link to="/wishlist" className="relative p-1.5 text-gray-700 hover:text-black">
               <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
@@ -229,34 +237,41 @@ export default function Header(): JSX.Element {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 space-x-8 font-medium">
-            {categories.map((cat) => (
-              <div key={cat.slug} onMouseEnter={() => setMegaIndex(cat.slug)}>
-                {(() => {
-                  const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
-                    ? `/${cat.slug}`
-                    : `/shop?gender=${cat.slug}`;
-                  return (
-                    <Link
-                      to={path}
-                      onClick={() => setMegaIndex(null)}
-                      className={`text-gray-700 hover:text-black ${
-                        cat.slug === "sale" ? "text-red-600 hover:text-red-700" : ""
-                      }`}
-                    >
-                      {cat.name}
-                    </Link>
-                  );
-                })()}
-              </div>
-            ))}
+          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 space-x-4 lg:space-x-5 xl:space-x-7 text-[13px] xl:text-[14px] font-medium tracking-[0.01em]">
+            {categories.map((cat) => {
+              const isOverflowCat = ['fragrances', 'sale', 'brands'].includes(cat.slug);
+              return (
+                <div
+                  key={cat.slug}
+                  onMouseEnter={() => setMegaIndex(cat.slug)}
+                  className={isOverflowCat ? "hidden xl:block" : "block"}
+                >
+                  {(() => {
+                    const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
+                      ? `/${cat.slug}`
+                      : `/shop?gender=${cat.slug}`;
+                    return (
+                      <Link
+                        to={path}
+                        onClick={() => setMegaIndex(null)}
+                        className={`text-gray-700 hover:text-black transition-colors ${
+                          cat.slug === "sale" ? "text-red-600 hover:text-red-700 font-semibold" : ""
+                        }`}
+                      >
+                        {cat.name}
+                      </Link>
+                    );
+                  })()}
+                </div>
+              );
+            })}
           </div>
 
           {/* Mega Menu */}
           <MegaMenu activeCategory={megaIndex} brands={brands} onClose={() => setMegaIndex(null)} />
 
           {/* Desktop right */}
-          <div className="hidden md:flex items-center gap-1 md:gap-1.5 ml-auto">
+          <div className="hidden lg:flex items-center gap-1 xl:gap-1.5 ml-auto">
             {/* Notifications */}
             <div ref={notifRef} className="relative">
               <button className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors" onClick={() => setNotifOpen((s) => !s)}>
@@ -356,7 +371,7 @@ export default function Header(): JSX.Element {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 md:hidden"
+            className="fixed inset-0 z-50 xl:hidden"
           >
             <aside className="relative z-50 bg-white w-full h-full overflow-y-auto shadow-lg">
               <div className="flex items-center justify-between p-4 border-b">

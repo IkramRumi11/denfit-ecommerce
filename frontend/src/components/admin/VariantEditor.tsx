@@ -84,7 +84,7 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                 <div>
                   <label htmlFor={`color-name-${tid}`} className="block text-xs text-gray-500 mb-1">
                     Color Name
@@ -94,13 +94,13 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                     type="text"
                     value={color.name || ''}
                     onChange={(e) => onUpdateColor(idx, 'name', e.target.value)}
-                    placeholder="e.g., Red, Blue, Green"
+                    placeholder="e.g., Red, Blue"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
                   />
                 </div>
                 <div>
                   <label htmlFor={`color-value-${tid}`} className="block text-xs text-gray-500 mb-1">
-                    Color Value
+                    Color Value / Hex
                   </label>
                   <input
                     id={`color-value-${tid}`}
@@ -108,6 +108,36 @@ export const VariantEditor: React.FC<VariantEditorProps> = ({
                     value={color.value || color.hex || ''}
                     onChange={(e) => onUpdateColor(idx, 'value', e.target.value)}
                     placeholder="#ff0000 or 'red'"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`color-price-${tid}`} className="block text-xs text-gray-500 mb-1" title="Discounted / Selling Price (leave empty to inherit base price)">
+                    Disc. Price (PKR)
+                  </label>
+                  <input
+                    id={`color-price-${tid}`}
+                    type="number"
+                    min={0}
+                    value={color.price ?? ''}
+                    onChange={(e) => onUpdateColor(idx, 'price', e.target.value)}
+                    placeholder="Selling Price"
+                    title="Discounted / Selling Price in PKR (what the customer pays). Leave empty to inherit base product price."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`color-orig-price-${tid}`} className="block text-xs text-gray-500 mb-1" title="Actual / Original Price (for discount strike-through)">
+                    Actual Price (PKR)
+                  </label>
+                  <input
+                    id={`color-orig-price-${tid}`}
+                    type="number"
+                    min={0}
+                    value={color.originalPrice ?? ''}
+                    onChange={(e) => onUpdateColor(idx, 'originalPrice', e.target.value)}
+                    placeholder="Actual Price"
+                    title="Actual / Original Price in PKR (required if Discounted Price is specified)"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded"
                   />
                 </div>

@@ -265,8 +265,17 @@ export const normalizeProductInput = async (body, ProductModel) => {
       if (!sz) return null;
       if (typeof sz === 'string') return { id: `size_legacy_${i}`, value: sz, inStock: true, quantity: null };
       const q = (sz.quantity != null && !Number.isNaN(Number(sz.quantity))) ? Number(sz.quantity) : (sz.qty != null && !Number.isNaN(Number(sz.qty)) ? Number(sz.qty) : null);
-      const price = (sz.price != null && sz.price !== '' && !Number.isNaN(Number(sz.price))) ? Number(sz.price) : undefined;
-      const originalPrice = (sz.originalPrice != null && sz.originalPrice !== '' && !Number.isNaN(Number(sz.originalPrice))) ? Number(sz.originalPrice) : undefined;
+      let price = (sz.price != null && sz.price !== '' && !Number.isNaN(Number(sz.price))) ? Number(sz.price) : undefined;
+      let originalPrice = (sz.originalPrice != null && sz.originalPrice !== '' && !Number.isNaN(Number(sz.originalPrice))) ? Number(sz.originalPrice) : undefined;
+
+      // Cases A & E: Actual price only -> sells for actual price, no discount
+      if (originalPrice !== undefined && price === undefined) {
+        price = originalPrice;
+      } else if (price !== undefined && originalPrice === undefined) {
+        // Case D fallback: ensure no invalid discount state
+        originalPrice = price;
+      }
+
       return {
         id: sz.id || `size_${i}`,
         value: sz.value ?? (sz.label || sz.name || ''),
@@ -286,8 +295,17 @@ export const normalizeProductInput = async (body, ProductModel) => {
     productData.stock = productData.stock.map((st) => {
       if (!st) return null;
       const q = (st.quantity != null && !Number.isNaN(Number(st.quantity))) ? Number(st.quantity) : 0;
-      const price = (st.price != null && st.price !== '' && !Number.isNaN(Number(st.price))) ? Number(st.price) : undefined;
-      const originalPrice = (st.originalPrice != null && st.originalPrice !== '' && !Number.isNaN(Number(st.originalPrice))) ? Number(st.originalPrice) : undefined;
+      let price = (st.price != null && st.price !== '' && !Number.isNaN(Number(st.price))) ? Number(st.price) : undefined;
+      let originalPrice = (st.originalPrice != null && st.originalPrice !== '' && !Number.isNaN(Number(st.originalPrice))) ? Number(st.originalPrice) : undefined;
+
+      // Cases A & E: Actual price only -> sells for actual price, no discount
+      if (originalPrice !== undefined && price === undefined) {
+        price = originalPrice;
+      } else if (price !== undefined && originalPrice === undefined) {
+        // Case D fallback
+        originalPrice = price;
+      }
+
       return {
         ...st,
         quantity: q,
