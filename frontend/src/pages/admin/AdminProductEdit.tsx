@@ -1093,7 +1093,7 @@ const AdminProductEdit: React.FC = () => {
 
       <form onSubmit={onSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Info */}
+          {/* Left Column - Main Product Content & Variants */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1180,68 +1180,199 @@ const AdminProductEdit: React.FC = () => {
               </div>
             </div>
 
-            {/* Category & Classification */}
+            {/* Sizes / Volume Variants */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Category & Classification</h2>
-              <div className="space-y-4">
-                <BrandSelector
-                  value={form.brand || ''}
-                  onChange={(val) => setForm((s: any) => ({ ...s, brand: val }))}
-                />
-
-                <CategorySelector
-                  category={form.category}
-                  subcategory={form.subcategory}
-                  availableSubcategories={availableSubcategories}
-                  dynamicFilterGroups={dynamicFilterGroups}
-                  dynamicAttributes={dynamicAttributes}
-                  onCategoryChange={(val) => setForm((s: any) => ({ ...s, category: val, subcategory: '' }))}
-                  onSubcategoryChange={(val) => setForm((s: any) => ({ ...s, subcategory: val }))}
-                  onToggleAttribute={toggleAttribute}
-                />
-
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <select 
-                    id="status" 
-                    name="status" 
-                    value={form.status} 
-                    onChange={onChange} 
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                    <option value="archived">Archived</option>
-                  </select>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {isFragrance ? 'Volume Variants (ml)' : 'Sizes'}
+                  </h2>
+                  {isFragrance && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Configure bottle volumes and stock quantity per volume variant.
+                    </p>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="featured"
-                      checked={form.featured}
-                      onChange={onChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Featured Product</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="trending"
-                      checked={form.trending}
-                      onChange={onChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Trending Product</span>
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  onClick={addSize}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  {isFragrance ? 'Add Volume' : 'Add Size'}
+                </button>
               </div>
+
+              {isFragrance && (
+                <div className="mb-4">
+                  <span className="text-xs font-medium text-gray-500 block mb-2">Quick Add Volume:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {['30 ml', '50 ml', '75 ml', '100 ml', '150 ml', '200 ml'].map((preset) => {
+                      const alreadyAdded = (form.sizes || []).some(
+                        (s: any) => String(s.value || s).toLowerCase().trim() === preset.toLowerCase()
+                      );
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          disabled={alreadyAdded}
+                          onClick={() => {
+                            setForm((s: any) => ({
+                              ...s,
+                              sizes: [
+                                ...(s.sizes || []),
+                                { id: `vol_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, value: preset, inStock: true, quantity: 10 }
+                              ]
+                            }));
+                          }}
+                          className={`px-3 py-1 text-xs rounded-md border font-medium transition-colors ${
+                            alreadyAdded
+                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                              : 'bg-white text-gray-800 border-gray-300 hover:border-black hover:bg-gray-50 cursor-pointer'
+                          }`}
+                        >
+                          + {preset}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {form.sizes && form.sizes.length > 0 && (
+                <div className="overflow-x-auto pb-1">
+                  <div className="min-w-[580px]">
+                    <div className="flex items-center gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                      <span className="flex-1 min-w-[140px]">{isFragrance ? 'Volume / Size' : 'Size'}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="w-16 text-center">Status</span>
+                        <span className="w-20 text-center">Stock</span>
+                        <span className="w-28 text-center" title="Discounted/Selling price customer pays">Disc. (PKR)</span>
+                        <span className="w-28 text-center" title="Original/Actual price for discount badge">Actual (PKR)</span>
+                        <span className="w-8"></span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {form.sizes.map((size: any, idx: number) => {
+                        const s = typeof size === 'string' ? { id: `size_legacy_${idx}`, value: size, inStock: true, quantity: null } : size;
+                        return (
+                          <div key={s.id || idx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={s.value || ''}
+                              onChange={(e) => updateSizeValue(idx, e.target.value)}
+                              placeholder={isFragrance ? "e.g., 50 ml, 100 ml" : "e.g., S, M, L, XL"}
+                              className="flex-1 min-w-[140px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <label className="flex items-center gap-2 text-sm text-gray-600 w-16 justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.inStock}
+                                  onChange={() => toggleSizeStock(idx)}
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-xs">In stock</span>
+                              </label>
+                              <input
+                                type="number"
+                                value={s.quantity ?? ''}
+                                onChange={(e) => updateSizeQuantity(idx, e.target.value === '' ? null : Number(e.target.value))}
+                                placeholder="Qty"
+                                min={0}
+                                className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="number"
+                                value={s.price ?? ''}
+                                onChange={(e) => updateSizePrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                                placeholder="Disc. Price"
+                                min={0}
+                                title="Discounted / Selling Price in PKR (what the customer pays). If no discount, enter Actual Price only."
+                                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                              <input
+                                type="number"
+                                value={s.originalPrice ?? ''}
+                                onChange={(e) => updateSizeOriginalPrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                                placeholder="Actual Price"
+                                min={0}
+                                title="Actual / Original Price in PKR (required if Discounted Price is specified)"
+                                className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeSize(idx)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-8 flex items-center justify-center"
+                                title="Delete variant"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {form.sizes.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  {isFragrance
+                    ? 'No volumes added. Click "Add Volume" or use a preset above.'
+                    : 'No sizes added. Click "Add Size" to add one.'}
+                </p>
+              )}
             </div>
 
-            {/* Inventory & Stock */}
+            {/* Color Variants - Hidden for Fragrances */}
+            {!isFragrance && (
+              <VariantEditor
+                colors={form.colors}
+                existingVariantImages={existingVariantImages}
+                variantFiles={variantFiles}
+                onAddColor={addColor}
+                onRemoveColor={removeColor}
+                onUpdateColor={updateColor}
+                onExistingImageRemove={(tid, idx) => {
+                  setExistingVariantImages(m => {
+                    const copy = { ...(m || {}) };
+                    copy[tid] = (copy[tid] || []).slice();
+                    copy[tid].splice(idx, 1);
+                    return copy;
+                  });
+                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: ((cc.images || []).slice()).filter((_, i) => i !== idx) } : cc) }));
+                }}
+                onExistingImageAdd={(tid, img) => {
+                  setExistingVariantImages(m => ({ ...(m || {}), [tid]: [...((m || {})[tid] || []), img] }));
+                  const imageEntry = img && (img.url || img.path || img) ? (img.url || img.path || img) : img;
+                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: [...(cc.images || []), imageEntry] } : cc) }));
+                }}
+                onLocalImageRemove={(tid, idx) => removeVariantLocalImage(tid, idx)}
+                onImagesAdded={(tid, files) => onVariantImagesChange(tid, files)}
+                onSwatchAdded={(tid, file) => {
+                  onVariantSwatchChange(tid, file);
+                  if (!file) {
+                    setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: undefined } : cc) }));
+                  }
+                }}
+                onSwatchUrlAdd={(tid, url) => setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: { url } } : cc) }))}
+              />
+            )}
+
+            {/* Per-color size quantities - Hidden for Fragrances */}
+            {!isFragrance && (
+              <StockMatrix
+                colors={form.colors}
+                sizes={form.sizes}
+                stock={form.stock}
+                onChangeQuantity={setStockQuantity}
+              />
+            )}
+
+            {/* Inventory & Stock Summary */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Inventory & Stock</h2>
               <div className="space-y-4">
@@ -1426,7 +1557,7 @@ const AdminProductEdit: React.FC = () => {
             />
           </div>
 
-          {/* Right Column - Images, Variants & Ratings */}
+          {/* Right Column - Images, Category & Classification, Tags, Recommendations */}
           <div className="space-y-6">
             {/* Main Product Images */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1438,7 +1569,7 @@ const AdminProductEdit: React.FC = () => {
                   </p>
                   {form.colors && form.colors.length > 0 && !isFragrance ? (
                     <div className="p-4 border rounded-lg bg-gray-50 text-sm text-gray-600">
-                      This product has color variants. Upload images per color under each variant section below. General product images are disabled to avoid orphaned images.
+                      This product has color variants. Upload images per color under each variant section. General product images are disabled to avoid orphaned images.
                     </div>
                   ) : (
                     <>
@@ -1516,191 +1647,66 @@ const AdminProductEdit: React.FC = () => {
               </div>
             </div>
 
-            {/* Color Variants - Hidden for Fragrances */}
-            {!isFragrance && (
-              <VariantEditor
-                colors={form.colors}
-                existingVariantImages={existingVariantImages}
-                variantFiles={variantFiles}
-                onAddColor={addColor}
-                onRemoveColor={removeColor}
-                onUpdateColor={updateColor}
-                onExistingImageRemove={(tid, idx) => {
-                  setExistingVariantImages(m => {
-                    const copy = { ...(m || {}) };
-                    copy[tid] = (copy[tid] || []).slice();
-                    copy[tid].splice(idx, 1);
-                    return copy;
-                  });
-                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: ((cc.images || []).slice()).filter((_, i) => i !== idx) } : cc) }));
-                }}
-                onExistingImageAdd={(tid, img) => {
-                  setExistingVariantImages(m => ({ ...(m || {}), [tid]: [...((m || {})[tid] || []), img] }));
-                  const imageEntry = img && (img.url || img.path || img) ? (img.url || img.path || img) : img;
-                  setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, images: [...(cc.images || []), imageEntry] } : cc) }));
-                }}
-                onLocalImageRemove={(tid, idx) => removeVariantLocalImage(tid, idx)}
-                onImagesAdded={(tid, files) => onVariantImagesChange(tid, files)}
-                onSwatchAdded={(tid, file) => {
-                  onVariantSwatchChange(tid, file);
-                  if (!file) {
-                    setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: undefined } : cc) }));
-                  }
-                }}
-                onSwatchUrlAdd={(tid, url) => setForm((s: any) => ({ ...s, colors: (s.colors || []).map((cc: any) => cc.tempId === tid ? { ...cc, swatchImage: { url } } : cc) }))}
-              />
-            )}
-
-            {/* Sizes / Volume Variants */}
+            {/* Category & Classification */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Category & Classification</h2>
+              <div className="space-y-4">
+                <BrandSelector
+                  value={form.brand || ''}
+                  onChange={(val) => setForm((s: any) => ({ ...s, brand: val }))}
+                />
+
+                <CategorySelector
+                  category={form.category}
+                  subcategory={form.subcategory}
+                  availableSubcategories={availableSubcategories}
+                  dynamicFilterGroups={dynamicFilterGroups}
+                  dynamicAttributes={dynamicAttributes}
+                  onCategoryChange={(val) => setForm((s: any) => ({ ...s, category: val, subcategory: '' }))}
+                  onSubcategoryChange={(val) => setForm((s: any) => ({ ...s, subcategory: val }))}
+                  onToggleAttribute={toggleAttribute}
+                />
+
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {isFragrance ? 'Volume Variants (ml)' : 'Sizes'}
-                  </h2>
-                  {isFragrance && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Configure bottle volumes and stock quantity per volume variant.
-                    </p>
-                  )}
+                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select 
+                    id="status" 
+                    name="status" 
+                    value={form.status} 
+                    onChange={onChange} 
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                    <option value="archived">Archived</option>
+                  </select>
                 </div>
-                <button
-                  type="button"
-                  onClick={addSize}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  {isFragrance ? 'Add Volume' : 'Add Size'}
-                </button>
-              </div>
 
-              {isFragrance && (
-                <div className="mb-4">
-                  <span className="text-xs font-medium text-gray-500 block mb-2">Quick Add Volume:</span>
-                  <div className="flex flex-wrap gap-2">
-                    {['30 ml', '50 ml', '75 ml', '100 ml', '150 ml', '200 ml'].map((preset) => {
-                      const alreadyAdded = (form.sizes || []).some(
-                        (s: any) => String(s.value || s).toLowerCase().trim() === preset.toLowerCase()
-                      );
-                      return (
-                        <button
-                          key={preset}
-                          type="button"
-                          disabled={alreadyAdded}
-                          onClick={() => {
-                            setForm((s: any) => ({
-                              ...s,
-                              sizes: [
-                                ...(s.sizes || []),
-                                { id: `vol_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, value: preset, inStock: true, quantity: 10 }
-                              ]
-                            }));
-                          }}
-                          className={`px-3 py-1 text-xs rounded-md border font-medium transition-colors ${
-                            alreadyAdded
-                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                              : 'bg-white text-gray-800 border-gray-300 hover:border-black hover:bg-gray-50 cursor-pointer'
-                          }`}
-                        >
-                          + {preset}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      checked={form.featured}
+                      onChange={onChange}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Featured Product</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="trending"
+                      checked={form.trending}
+                      onChange={onChange}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Trending Product</span>
+                  </label>
                 </div>
-              )}
-
-              {form.sizes && form.sizes.length > 0 && (
-                <div className="flex items-center gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  <span className="flex-1">{isFragrance ? 'Volume / Size' : 'Size'}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="w-16 text-center">Status</span>
-                    <span className="w-20 text-center">Stock</span>
-                    <span className="w-28 text-center" title="Discounted/Selling price customer pays">Disc. (PKR)</span>
-                    <span className="w-28 text-center" title="Original/Actual price for discount badge">Actual (PKR)</span>
-                    <span className="w-8"></span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {form.sizes.map((size: any, idx: number) => {
-                  const s = typeof size === 'string' ? { id: `size_legacy_${idx}`, value: size, inStock: true, quantity: null } : size;
-                  return (
-                    <div key={s.id || idx} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={s.value || ''}
-                        onChange={(e) => updateSizeValue(idx, e.target.value)}
-                        placeholder={isFragrance ? "e.g., 50 ml, 100 ml" : "e.g., S, M, L, XL"}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-sm text-gray-600">
-                          <input
-                            type="checkbox"
-                            checked={!!s.inStock}
-                            onChange={() => toggleSizeStock(idx)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-xs">In stock</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={s.quantity ?? ''}
-                          onChange={(e) => updateSizeQuantity(idx, e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Qty"
-                          min={0}
-                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <input
-                          type="number"
-                          value={s.price ?? ''}
-                          onChange={(e) => updateSizePrice(idx, e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Disc. Price"
-                          min={0}
-                          title="Discounted / Selling Price in PKR (what the customer pays). If no discount, enter Actual Price only."
-                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <input
-                          type="number"
-                          value={s.originalPrice ?? ''}
-                          onChange={(e) => updateSizeOriginalPrice(idx, e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="Actual Price"
-                          min={0}
-                          title="Actual / Original Price in PKR (required if Discounted Price is specified)"
-                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeSize(idx)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {form.sizes.length === 0 && (
-                  <p className="text-sm text-gray-500">
-                    {isFragrance
-                      ? 'No volumes added. Click "Add Volume" or use a preset above.'
-                      : 'No sizes added. Click "Add Size" to add one.'}
-                  </p>
-                )}
               </div>
             </div>
-
-            {/* Per-color size quantities - Hidden for Fragrances */}
-            {!isFragrance && (
-              <StockMatrix
-                colors={form.colors}
-                sizes={form.sizes}
-                stock={form.stock}
-                onChangeQuantity={setStockQuantity}
-              />
-            )}
 
             {/* Tags */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1741,7 +1747,7 @@ const AdminProductEdit: React.FC = () => {
             </div>
 
             {/* Related Products */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900 mb-3">Related Products</h2>
                 <div className="flex items-center gap-3">
