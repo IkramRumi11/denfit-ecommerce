@@ -178,8 +178,8 @@ export default function Header(): JSX.Element {
       {/* Main header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
-          {/* Mobile / Intermediate left hamburger */}
-          <div className="flex items-center gap-1 xl:hidden">
+          {/* Mobile left hamburger */}
+          <div className="flex items-center gap-1 lg:hidden">
             <button
               onClick={() => setMobileOpen(true)}
               className="p-1.5 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"
@@ -202,7 +202,7 @@ export default function Header(): JSX.Element {
             return (
               <a
                 href={href}
-                className="absolute left-1/2 transform -translate-x-1/2 xl:static xl:transform-none flex items-center gap-2"
+                className="absolute left-1/2 transform -translate-x-1/2 lg:static lg:transform-none flex items-center gap-2"
               >
                 <img
                   src="https://i.ibb.co/ycZSHXMr/logo.png"
@@ -237,14 +237,13 @@ export default function Header(): JSX.Element {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 space-x-4 lg:space-x-5 xl:space-x-7 text-[13px] xl:text-[14px] font-medium tracking-[0.01em]">
+          <div className="hidden lg:flex absolute left-1/2 transform -translate-x-1/2 space-x-3.5 lg:space-x-4 xl:space-x-7 text-[13px] xl:text-[14px] font-medium tracking-[0.01em]">
             {categories.map((cat) => {
-              const isOverflowCat = ['fragrances', 'sale', 'brands'].includes(cat.slug);
               return (
                 <div
                   key={cat.slug}
                   onMouseEnter={() => setMegaIndex(cat.slug)}
-                  className={isOverflowCat ? "hidden xl:block" : "block"}
+                  className="block"
                 >
                   {(() => {
                     const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
@@ -371,7 +370,7 @@ export default function Header(): JSX.Element {
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 xl:hidden"
+            className="fixed inset-0 z-50 lg:hidden"
           >
             <aside className="relative z-50 bg-white w-full h-full overflow-y-auto shadow-lg">
               <div className="flex items-center justify-between p-4 border-b">
