@@ -1,9 +1,10 @@
-require('dotenv').config();
+const dotenv = require('dotenv');
+dotenv.config();
 const mongoose = require('mongoose');
-const Order = require('../models/Order');
 
 async function checkOrder() {
   await mongoose.connect(process.env.MONGODB_URI);
+  const Order = mongoose.model('Order', new mongoose.Schema({}, { strict: false }));
   const order = await Order.findOne().sort({ createdAt: -1 });
   if (!order) {
     console.log('No orders found');
