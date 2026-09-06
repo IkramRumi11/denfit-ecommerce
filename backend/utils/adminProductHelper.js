@@ -265,11 +265,34 @@ export const normalizeProductInput = async (body, ProductModel) => {
       if (!sz) return null;
       if (typeof sz === 'string') return { id: `size_legacy_${i}`, value: sz, inStock: true, quantity: null };
       const q = (sz.quantity != null && !Number.isNaN(Number(sz.quantity))) ? Number(sz.quantity) : (sz.qty != null && !Number.isNaN(Number(sz.qty)) ? Number(sz.qty) : null);
+      const price = (sz.price != null && sz.price !== '' && !Number.isNaN(Number(sz.price))) ? Number(sz.price) : undefined;
+      const originalPrice = (sz.originalPrice != null && sz.originalPrice !== '' && !Number.isNaN(Number(sz.originalPrice))) ? Number(sz.originalPrice) : undefined;
       return {
         id: sz.id || `size_${i}`,
         value: sz.value ?? (sz.label || sz.name || ''),
         inStock: typeof sz.inStock === 'boolean' ? sz.inStock : true,
-        quantity: q
+        quantity: q,
+        ...(price !== undefined ? { price } : {}),
+        ...(originalPrice !== undefined ? { originalPrice } : {})
+      };
+    }).filter(Boolean);
+  }
+
+  // 3b. Stock Combination Matrix
+  if (productData.stock && typeof productData.stock === 'string') {
+    productData.stock = safeParse(productData.stock);
+  }
+  if (Array.isArray(productData.stock)) {
+    productData.stock = productData.stock.map((st) => {
+      if (!st) return null;
+      const q = (st.quantity != null && !Number.isNaN(Number(st.quantity))) ? Number(st.quantity) : 0;
+      const price = (st.price != null && st.price !== '' && !Number.isNaN(Number(st.price))) ? Number(st.price) : undefined;
+      const originalPrice = (st.originalPrice != null && st.originalPrice !== '' && !Number.isNaN(Number(st.originalPrice))) ? Number(st.originalPrice) : undefined;
+      return {
+        ...st,
+        quantity: q,
+        ...(price !== undefined ? { price } : {}),
+        ...(originalPrice !== undefined ? { originalPrice } : {})
       };
     }).filter(Boolean);
   }

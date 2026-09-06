@@ -13,7 +13,7 @@ import { QuickViewModal } from './QuickViewModal';
 import type { Product } from '../types';
 import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
-import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
+import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock, getVariantPrice, getVariantOriginalPrice, hasVariantPricing, getMinProductPrice } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
 
 export interface ProductCardProps {
@@ -111,8 +111,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   const isWishlisted =
     typeof isInWishlist === 'function' ? isInWishlist(productId(product)) : false;
 
-  const price = priceNumber(product);
-  const originalPrice = (product as any).originalPrice || (product as any).compareAtPrice;
+  const basePrice = priceNumber(product);
+  const isMultiPrice = hasVariantPricing(product);
+  const minPrice = isMultiPrice ? getMinProductPrice(product) : basePrice;
+
+  // Selected variant active price (used for mobile quick-add sheet and variant selection)
+  const activeSelectedPrice = React.useMemo(() => {
+    return getVariantPrice(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+  }, [product, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
+
+  const activeSelectedOriginalPrice = React.useMemo(() => {
+    return getVariantOriginalPrice(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+  }, [product, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
+
+  const price = showMobileQuickAdd && selectedSize ? activeSelectedPrice : minPrice;
+  const originalPrice = showMobileQuickAdd && selectedSize ? activeSelectedOriginalPrice : ((product as any).originalPrice || (product as any).compareAtPrice);
   const discountPercent =
     originalPrice && originalPrice > price
       ? Math.round(((originalPrice - price) / originalPrice) * 100)
@@ -209,7 +232,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         });
 
         const imageSrc = primaryImage({ ...product, selectedVariantId: selection.variantId } as any) || '';
-        const price = priceNumber(product);
+        const variantPrice = getVariantPrice(product, {
+          size: selection.size,
+          color: selection.color,
+          colorName: selection.colorName,
+          variantId: selection.variantId,
+          variantName: selection.variantName,
+          variantHex: selection.variantHex
+        });
 
         const availableStock = getAvailableStockForItem(product, {
           size: selection.size,
@@ -228,7 +258,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
         const result = addItem({
           productId: canonicalProductId(product),
           name: String(product.name),
-          price,
+          price: variantPrice,
           image: imageSrc,
           size: selection.size,
           color: isFragrance ? '' : selection.color,
@@ -528,11 +558,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                     <h3 className="text-sm text-gray-800 font-normal">{String(product.name)}</h3>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-sm font-normal text-gray-900">
-                        Rs. {price.toLocaleString()}
+                        Rs. {activeSelectedPrice.toLocaleString()}
                       </span>
-                      {discountPercent > 0 && originalPrice && (
+                      {activeSelectedOriginalPrice && activeSelectedOriginalPrice > activeSelectedPrice && (
                         <span className="text-xs text-gray-400 line-through">
-                          Rs. {originalPrice.toLocaleString()}
+                          Rs. {activeSelectedOriginalPrice.toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -781,7 +811,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
                 discountPercent > 0 ? 'text-red-600' : 'text-gray-900'
               }`}
             >
-              Rs. {price.toLocaleString()}
+              {isMultiPrice && !selectedSize ? `From Rs. ${minPrice.toLocaleString()}` : `Rs. ${price.toLocaleString()}`}
             </span>
             {discountPercent > 0 && originalPrice && (
               <span className="text-xs text-gray-400 line-through decoration-gray-400">

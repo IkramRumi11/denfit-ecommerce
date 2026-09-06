@@ -13,6 +13,7 @@ import User from '../models/User.js';
 import PromoCode from '../models/PromoCode.js';
 import StoreCredit from '../models/StoreCredit.js';
 import { getShippingConfig, calculateShippingFee } from '../utils/shippingHelper.js';
+import { getVariantPrice } from '../utils/variantPriceHelper.js';
 
 export const createOrder = async (req, res) => {
   console.log('Entered createOrder');
@@ -74,8 +75,11 @@ export const createOrder = async (req, res) => {
         if (!size) validationErrors.push(`items[${idx}].size is required`);
         if (!Number.isInteger(quantity) || quantity < 1) validationErrors.push(`items[${idx}].quantity must be an integer >= 1`);
 
+        const variantId = it.variantId || it.variantSnapshot?.id || (color && color.tempId) || undefined;
+        const colorName = incomingColorName || (color && color.name) || undefined;
+
         if (productId) requestedProductIds.push(String(productId));
-        parsedItems.push({ idx, productId, image, size, quantity, color });
+        parsedItems.push({ idx, productId, image, size, quantity, color, colorName, variantId });
       });
 
       // 2. Batch-fetch all referenced products from the database in a single query
@@ -84,7 +88,7 @@ export const createOrder = async (req, res) => {
         try {
           const validIds = requestedProductIds.filter(id => mongoose.Types.ObjectId.isValid(id));
           const dbProducts = await Product.find({ _id: { $in: validIds } })
-            .select('_id name brand price images variants colors stock sizes')
+            .select('_id name brand price originalPrice images variants colors stock sizes')
             .lean();
           for (const p of dbProducts) {
             dbProductMap[String(p._id)] = p;
@@ -95,9 +99,9 @@ export const createOrder = async (req, res) => {
         }
       }
 
-      // 3. Build normalizedItems using the DATABASE price, not the client price
+      // 3. Build normalizedItems using the authoritative DATABASE price (variant/size-specific)
       for (const parsed of parsedItems) {
-        const { idx, productId, image, size, quantity, color } = parsed;
+        const { idx, productId, image, size, quantity, color, colorName, variantId } = parsed;
         if (!productId) continue; // already flagged above
 
         const dbProduct = dbProductMap[String(productId)];
@@ -106,7 +110,13 @@ export const createOrder = async (req, res) => {
           continue;
         }
 
-        const verifiedPrice = Number(dbProduct.price);
+        const verifiedPrice = getVariantPrice(dbProduct, {
+          size,
+          color,
+          colorName,
+          variantId
+        });
+
         if (!Number.isFinite(verifiedPrice) || verifiedPrice <= 0) {
           validationErrors.push(`items[${idx}] has an invalid price in the database — please contact support`);
           continue;
@@ -125,7 +135,7 @@ export const createOrder = async (req, res) => {
           name: verifiedName,
           brand: dbProduct.brand || undefined,
           image,
-          price: verifiedPrice,  // ← ALWAYS from database, never from client
+          price: verifiedPrice,  // ← ALWAYS from database (resolving variant/size-level price)
           size,
           quantity,
           color

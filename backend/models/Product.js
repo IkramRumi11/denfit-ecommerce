@@ -188,21 +188,30 @@ const productSchema = new mongoose.Schema({
     // Sizes available specifically for this variant (optional; falls back to product.availableSizes)
     availableSizes: [{ type: String }],
     // Inventory can be tracked per-variant
-    inventory: { type: Number, default: 0, min: 0 }
+    inventory: { type: Number, default: 0, min: 0 },
+    // Optional variant-level pricing overrides
+    price: { type: Number, min: 0 },
+    originalPrice: { type: Number, min: 0 }
   }],
   // Sizes: admin-controlled size entries. Stored as objects to preserve availability and quantity.
   sizes: [{
     id: { type: String }, // admin-generated id for the size entry
     value: { type: String, required: true }, // e.g., 'S', 'M', '42'
     inStock: { type: Boolean, default: true },
-    quantity: { type: Number, default: null, min: 0 }
+    quantity: { type: Number, default: null, min: 0 },
+    // Optional size/volume-level pricing overrides (e.g. 50ml, 100ml, 200ml)
+    price: { type: Number, min: 0 },
+    originalPrice: { type: Number, min: 0 }
   }],
   // Stock mapping per color and size. Each entry represents a color-size combination
   // Example: { colorTempId: 'color_xxx', sizeId: 'size_xxx', quantity: 9 }
   stock: [{
     colorTempId: { type: String },
     sizeId: { type: String },
-    quantity: { type: Number, default: 0, min: 0 }
+    quantity: { type: Number, default: 0, min: 0 },
+    // Optional combination-level pricing overrides
+    price: { type: Number, min: 0 },
+    originalPrice: { type: Number, min: 0 }
   }],
   // Per-product available sizes (stores the set of size values enabled for this product)
   availableSizes: [{ type: String }],

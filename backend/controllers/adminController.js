@@ -981,7 +981,19 @@ export const createProduct = async (req, res) => {
         const raw = safeParse(req.body.variants);
         if (Array.isArray(raw)) {
           raw.forEach((v, idx) => {
-            parsedVariants.push({ tempId: v.tempId || v._id || `v${idx}`, name: v.name || '', hex: v.hex || '', sku: v.sku || undefined, images: v.images || [], swatchImage: v.swatchImage || '', availableSizes: v.availableSizes || [] });
+            const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+            const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+            parsedVariants.push({
+              tempId: v.tempId || v._id || `v${idx}`,
+              name: v.name || '',
+              hex: v.hex || '',
+              sku: v.sku || undefined,
+              images: v.images || [],
+              swatchImage: v.swatchImage || '',
+              availableSizes: v.availableSizes || [],
+              price: vPrice,
+              originalPrice: vOrigPrice
+            });
           });
         }
       } catch (e) {
@@ -1029,13 +1041,17 @@ export const createProduct = async (req, res) => {
 
     productData.variants = dedup.map(v => {
       const vName = v.name && !v.name.startsWith('#') ? v.name : getColorName(v.name || v.hex);
+      const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+      const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
       return {
         name: vName || 'Default',
         hex: v.hex,
         sku: v.sku,
         images: v.images || [],
         swatchImage: v.swatchImage || '',
-        availableSizes: v.availableSizes || []
+        availableSizes: v.availableSizes || [],
+        ...(vPrice !== undefined ? { price: vPrice } : {}),
+        ...(vOrigPrice !== undefined ? { originalPrice: vOrigPrice } : {})
       };
     });
 
@@ -1111,7 +1127,20 @@ export const updateProduct = async (req, res) => {
         const raw = safeParse(req.body.variants);
         if (Array.isArray(raw)) {
           raw.forEach((v, idx) => {
-            parsedVariants.push({ tempId: v.tempId || v._id || `v${idx}`, _id: v._id, name: v.name || '', hex: v.hex || '', sku: v.sku || undefined, images: v.images || [], swatchImage: v.swatchImage || '', availableSizes: v.availableSizes || [] });
+            const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+            const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
+            parsedVariants.push({
+              tempId: v.tempId || v._id || `v${idx}`,
+              _id: v._id,
+              name: v.name || '',
+              hex: v.hex || '',
+              sku: v.sku || undefined,
+              images: v.images || [],
+              swatchImage: v.swatchImage || '',
+              availableSizes: v.availableSizes || [],
+              price: vPrice,
+              originalPrice: vOrigPrice
+            });
           });
         }
       } catch (e) {
@@ -1156,6 +1185,8 @@ export const updateProduct = async (req, res) => {
 
     updateData.variants = dedup.map(v => {
       const vName = v.name && !v.name.startsWith('#') ? v.name : getColorName(v.name || v.hex);
+      const vPrice = (v.price != null && v.price !== '' && !Number.isNaN(Number(v.price))) ? Number(v.price) : undefined;
+      const vOrigPrice = (v.originalPrice != null && v.originalPrice !== '' && !Number.isNaN(Number(v.originalPrice))) ? Number(v.originalPrice) : undefined;
       return {
         _id: v._id,
         name: vName || 'Default',
@@ -1163,7 +1194,9 @@ export const updateProduct = async (req, res) => {
         sku: v.sku,
         images: v.images || [],
         swatchImage: v.swatchImage || '',
-        availableSizes: v.availableSizes || []
+        availableSizes: v.availableSizes || [],
+        ...(vPrice !== undefined ? { price: vPrice } : {}),
+        ...(vOrigPrice !== undefined ? { originalPrice: vOrigPrice } : {})
       };
     });
 

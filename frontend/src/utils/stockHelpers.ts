@@ -266,4 +266,310 @@ export function isLowStock(product: any, selectedSize?: string, selectedColor?: 
   return qty > 0 && qty <= threshold;
 }
 
-export default { getAvailableStockForItem, getRemainingVariantStock, getAvailableQuantity, isOutOfStock, isLowStock };
+/**
+ * Resolves authoritative price for a product selection across 4 tiers:
+ * 1. Combination Matrix: stock[].price
+ * 2. Size / Volume: sizesObjects[].price or sizes[].price
+ * 3. Variant: variants[].price
+ * 4. Base Product: product.price
+ */
+export function getVariantPrice(
+  product: any,
+  item?: {
+    size?: string | null;
+    color?: string | null;
+    colorName?: string | null;
+    variantId?: string | null;
+    variantName?: string | null;
+    variantHex?: string | null;
+  }
+): number {
+  if (!product) return 0;
+  const basePrice = typeof product.price === 'number' ? product.price : Number(product.price || 0);
+
+  const targetSize = item?.size ? String(item.size).trim().toLowerCase() : '';
+  const targetColor = item?.color ? String(item.color).trim().toLowerCase() : '';
+  const targetColorName = item?.colorName ? String(item.colorName).trim().toLowerCase() : '';
+  const targetVariantId = item?.variantId ? String(item.variantId).trim().toLowerCase() : '';
+  const targetVariantName = item?.variantName ? String(item.variantName).trim().toLowerCase() : '';
+  const targetVariantHex = item?.variantHex ? String(item.variantHex).trim().toLowerCase() : '';
+
+  const colorTokens = new Set<string>();
+  if (targetVariantId) colorTokens.add(targetVariantId);
+  if (targetColor) {
+    colorTokens.add(targetColor);
+    colorTokens.add(targetColor.replace(/^#/, ''));
+  }
+  if (targetColorName) colorTokens.add(targetColorName);
+  if (targetVariantName) colorTokens.add(targetVariantName);
+  if (targetVariantHex) {
+    colorTokens.add(targetVariantHex);
+    colorTokens.add(targetVariantHex.replace(/^#/, ''));
+  }
+
+  // Enrich color tokens from product.colors & variants
+  if (Array.isArray(product.colors)) {
+    product.colors.forEach((c: any) => {
+      if (!c) return;
+      const cid = String(c._id || c.id || c.tempId || '').toLowerCase().trim();
+      const cname = String(c.name || c.displayName || '').toLowerCase().trim();
+      const chex = String(c.hex || c.value || '').toLowerCase().trim();
+      if ((targetVariantId && cid === targetVariantId) ||
+          (targetColor && (chex === targetColor || chex.replace(/^#/, '') === targetColor.replace(/^#/, '') || cname === targetColor)) ||
+          (targetColorName && cname === targetColorName)) {
+        if (cid) colorTokens.add(cid);
+        if (cname) colorTokens.add(cname);
+        if (chex) { colorTokens.add(chex); colorTokens.add(chex.replace(/^#/, '')); }
+      }
+    });
+  }
+
+  if (Array.isArray(product.variants)) {
+    product.variants.forEach((v: any) => {
+      if (!v) return;
+      const vid = String(v._id || v.id || v.tempId || '').toLowerCase().trim();
+      const vname = String(v.name || '').toLowerCase().trim();
+      const vhex = String(v.hex || '').toLowerCase().trim();
+      if ((targetVariantId && vid === targetVariantId) ||
+          (targetColor && (vhex === targetColor || vhex.replace(/^#/, '') === targetColor.replace(/^#/, '') || vname === targetColor)) ||
+          (targetColorName && vname === targetColorName)) {
+        if (vid) colorTokens.add(vid);
+        if (vname) colorTokens.add(vname);
+        if (vhex) { colorTokens.add(vhex); colorTokens.add(vhex.replace(/^#/, '')); }
+      }
+    });
+  }
+
+  const sizesArr = Array.isArray(product.sizesObjects) && product.sizesObjects.length
+    ? product.sizesObjects
+    : (Array.isArray(product.sizes) ? product.sizes : []);
+
+  const hasColor = colorTokens.size > 0;
+  const hasSize = targetSize !== '';
+
+  // 1. Combination Matrix: Check stock[].price
+  if (Array.isArray(product.stock) && product.stock.length > 0 && hasColor && hasSize) {
+    const matchedStock = product.stock.find((st: any) => {
+      if (!st) return false;
+      const sCol = String(st.colorTempId || '').trim().toLowerCase();
+      const sColClean = sCol.replace(/^#/, '');
+      const colorMatches = !sCol || colorTokens.has(sCol) || colorTokens.has(sColClean);
+      if (!colorMatches) return false;
+
+      const sSizeId = String(st.sizeId || '').trim().toLowerCase();
+      if (sSizeId === targetSize) return true;
+      for (let idx = 0; idx < sizesArr.length; idx++) {
+        const sz = sizesArr[idx];
+        const szId = sz && typeof sz === 'object' ? String(sz.id || sz._id || `size_${idx}`).toLowerCase() : `size_${idx}`;
+        const szVal = sz && typeof sz === 'object' ? String(sz.value || sz.label || sz.name || '').toLowerCase().trim() : String(sz).toLowerCase().trim();
+        if ((sSizeId === szId || sSizeId === szVal || sSizeId === `size_legacy_${idx}`) && szVal === targetSize) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (matchedStock && typeof matchedStock.price === 'number' && Number.isFinite(matchedStock.price) && matchedStock.price > 0) {
+      return matchedStock.price;
+    }
+  }
+
+  // 2. Size / Volume: Check sizes[].price or sizesObjects[].price
+  if (hasSize && sizesArr.length > 0) {
+    const matchedSize = sizesArr.find((s: any) => {
+      if (!s) return false;
+      const val = s && typeof s === 'object' ? String(s.value || s.label || s.name || '').toLowerCase().trim() : String(s).toLowerCase().trim();
+      const id = s && typeof s === 'object' ? String(s.id || s._id || '').toLowerCase().trim() : '';
+      return val === targetSize || (id && id === targetSize);
+    });
+
+    if (matchedSize && typeof matchedSize === 'object' && typeof matchedSize.price === 'number' && Number.isFinite(matchedSize.price) && matchedSize.price > 0) {
+      return matchedSize.price;
+    }
+  }
+
+  // 3. Variant / Color: Check variants[].price
+  if (hasColor && Array.isArray(product.variants) && product.variants.length > 0) {
+    const matchedVariant = product.variants.find((v: any) => {
+      if (!v) return false;
+      const vid = String(v._id || v.id || v.tempId || '').toLowerCase().trim();
+      const vname = String(v.name || '').toLowerCase().trim();
+      const vhex = String(v.hex || '').toLowerCase().trim();
+      return colorTokens.has(vid) || colorTokens.has(vname) || colorTokens.has(vhex);
+    });
+
+    if (matchedVariant && typeof matchedVariant.price === 'number' && Number.isFinite(matchedVariant.price) && matchedVariant.price > 0) {
+      return matchedVariant.price;
+    }
+  }
+
+  // 4. Fallback to base product price
+  return Number.isFinite(basePrice) ? basePrice : 0;
+}
+
+/**
+ * Resolves authoritative original / compare-at price for a product selection
+ */
+export function getVariantOriginalPrice(
+  product: any,
+  item?: {
+    size?: string | null;
+    color?: string | null;
+    colorName?: string | null;
+    variantId?: string | null;
+    variantName?: string | null;
+    variantHex?: string | null;
+  }
+): number | undefined {
+  if (!product) return undefined;
+  const rawBase = product.originalPrice || product.compareAtPrice;
+  const baseOriginal = typeof rawBase === 'number' && Number.isFinite(rawBase)
+    ? rawBase
+    : (rawBase ? Number(rawBase) : undefined);
+
+  const targetSize = item?.size ? String(item.size).trim().toLowerCase() : '';
+  const targetColor = item?.color ? String(item.color).trim().toLowerCase() : '';
+  const targetColorName = item?.colorName ? String(item.colorName).trim().toLowerCase() : '';
+  const targetVariantId = item?.variantId ? String(item.variantId).trim().toLowerCase() : '';
+  const targetVariantName = item?.variantName ? String(item.variantName).trim().toLowerCase() : '';
+  const targetVariantHex = item?.variantHex ? String(item.variantHex).trim().toLowerCase() : '';
+
+  const colorTokens = new Set<string>();
+  if (targetVariantId) colorTokens.add(targetVariantId);
+  if (targetColor) { colorTokens.add(targetColor); colorTokens.add(targetColor.replace(/^#/, '')); }
+  if (targetColorName) colorTokens.add(targetColorName);
+  if (targetVariantName) colorTokens.add(targetVariantName);
+  if (targetVariantHex) { colorTokens.add(targetVariantHex); colorTokens.add(targetVariantHex.replace(/^#/, '')); }
+
+  const sizesArr = Array.isArray(product.sizesObjects) && product.sizesObjects.length
+    ? product.sizesObjects
+    : (Array.isArray(product.sizes) ? product.sizes : []);
+
+  const hasColor = colorTokens.size > 0;
+  const hasSize = targetSize !== '';
+
+  // 1. Stock combination
+  if (Array.isArray(product.stock) && product.stock.length > 0 && hasColor && hasSize) {
+    const matchedStock = product.stock.find((st: any) => {
+      if (!st) return false;
+      const sCol = String(st.colorTempId || '').trim().toLowerCase();
+      const colorMatches = !sCol || colorTokens.has(sCol) || colorTokens.has(sCol.replace(/^#/, ''));
+      if (!colorMatches) return false;
+      const sSizeId = String(st.sizeId || '').trim().toLowerCase();
+      if (sSizeId === targetSize) return true;
+      for (let idx = 0; idx < sizesArr.length; idx++) {
+        const sz = sizesArr[idx];
+        const szVal = sz && typeof sz === 'object' ? String(sz.value || sz.label || sz.name || '').toLowerCase().trim() : String(sz).toLowerCase().trim();
+        if (szVal === targetSize) return true;
+      }
+      return false;
+    });
+
+    if (matchedStock && typeof matchedStock.originalPrice === 'number' && Number.isFinite(matchedStock.originalPrice) && matchedStock.originalPrice > 0) {
+      return matchedStock.originalPrice;
+    }
+  }
+
+  // 2. Size
+  if (hasSize && sizesArr.length > 0) {
+    const matchedSize = sizesArr.find((s: any) => {
+      if (!s) return false;
+      const val = s && typeof s === 'object' ? String(s.value || s.label || s.name || '').toLowerCase().trim() : String(s).toLowerCase().trim();
+      const id = s && typeof s === 'object' ? String(s.id || s._id || '').toLowerCase().trim() : '';
+      return val === targetSize || (id && id === targetSize);
+    });
+
+    if (matchedSize && typeof matchedSize === 'object' && typeof matchedSize.originalPrice === 'number' && Number.isFinite(matchedSize.originalPrice) && matchedSize.originalPrice > 0) {
+      return matchedSize.originalPrice;
+    }
+  }
+
+  // 3. Variant
+  if (hasColor && Array.isArray(product.variants) && product.variants.length > 0) {
+    const matchedVariant = product.variants.find((v: any) => {
+      if (!v) return false;
+      const vid = String(v._id || v.id || v.tempId || '').toLowerCase().trim();
+      const vname = String(v.name || '').toLowerCase().trim();
+      const vhex = String(v.hex || '').toLowerCase().trim();
+      return colorTokens.has(vid) || colorTokens.has(vname) || colorTokens.has(vhex);
+    });
+
+    if (matchedVariant && typeof matchedVariant.originalPrice === 'number' && Number.isFinite(matchedVariant.originalPrice) && matchedVariant.originalPrice > 0) {
+      return matchedVariant.originalPrice;
+    }
+  }
+
+  return baseOriginal;
+}
+
+/**
+ * Checks if a product has any variant-specific pricing defined
+ */
+export function hasVariantPricing(product: any): boolean {
+  if (!product) return false;
+  const sizesArr = Array.isArray(product.sizesObjects) && product.sizesObjects.length
+    ? product.sizesObjects
+    : (Array.isArray(product.sizes) ? product.sizes : []);
+
+  const hasSizePrice = sizesArr.some((s: any) => s && typeof s === 'object' && typeof s.price === 'number' && s.price > 0);
+  if (hasSizePrice) return true;
+
+  if (Array.isArray(product.variants) && product.variants.some((v: any) => v && typeof v.price === 'number' && v.price > 0)) {
+    return true;
+  }
+
+  if (Array.isArray(product.stock) && product.stock.some((st: any) => st && typeof st.price === 'number' && st.price > 0)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Gets the lowest starting price for a product across all variants
+ */
+export function getMinProductPrice(product: any): number {
+  if (!product) return 0;
+  const basePrice = typeof product.price === 'number' ? product.price : Number(product.price || 0);
+  let min = basePrice;
+
+  const sizesArr = Array.isArray(product.sizesObjects) && product.sizesObjects.length
+    ? product.sizesObjects
+    : (Array.isArray(product.sizes) ? product.sizes : []);
+
+  sizesArr.forEach((s: any) => {
+    if (s && typeof s === 'object' && typeof s.price === 'number' && s.price > 0) {
+      if (min === 0 || s.price < min) min = s.price;
+    }
+  });
+
+  if (Array.isArray(product.variants)) {
+    product.variants.forEach((v: any) => {
+      if (v && typeof v.price === 'number' && v.price > 0) {
+        if (min === 0 || v.price < min) min = v.price;
+      }
+    });
+  }
+
+  if (Array.isArray(product.stock)) {
+    product.stock.forEach((st: any) => {
+      if (st && typeof st.price === 'number' && st.price > 0) {
+        if (min === 0 || st.price < min) min = st.price;
+      }
+    });
+  }
+
+  return min;
+}
+
+export default {
+  getAvailableStockForItem,
+  getRemainingVariantStock,
+  getAvailableQuantity,
+  isOutOfStock,
+  isLowStock,
+  getVariantPrice,
+  getVariantOriginalPrice,
+  hasVariantPricing,
+  getMinProductPrice
+};

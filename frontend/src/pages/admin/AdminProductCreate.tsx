@@ -297,6 +297,26 @@ const AdminProductCreate: React.FC = () => {
     });
   };
 
+  const updateSizePrice = (idx: number, price: number | null) => {
+    setForm((s: any) => {
+      const sizes = [...(s.sizes || [])];
+      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null } : { ...sizes[idx] };
+      cur.price = price;
+      sizes[idx] = cur;
+      return { ...s, sizes };
+    });
+  };
+
+  const updateSizeOriginalPrice = (idx: number, originalPrice: number | null) => {
+    setForm((s: any) => {
+      const sizes = [...(s.sizes || [])];
+      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null } : { ...sizes[idx] };
+      cur.originalPrice = originalPrice;
+      sizes[idx] = cur;
+      return { ...s, sizes };
+    });
+  };
+
   const setStockQuantity = (colorTempId: string, sizeId: string, quantity: number | null) => {
     setForm((s: any) => {
       const stock = Array.isArray(s.stock) ? [...s.stock] : [];
@@ -1341,6 +1361,24 @@ const AdminProductCreate: React.FC = () => {
                           placeholder="Qty"
                           min={0}
                           className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={s.price ?? ''}
+                          onChange={(e) => updateSizePrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="Price (PKR)"
+                          min={0}
+                          title="Variant-specific price in PKR (leave blank to use base product price)"
+                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={s.originalPrice ?? ''}
+                          onChange={(e) => updateSizeOriginalPrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="Compare At"
+                          min={0}
+                          title="Original/Compare-at price in PKR (optional)"
+                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                         <button
                           type="button"

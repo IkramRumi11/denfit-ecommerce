@@ -198,11 +198,15 @@ const AdminProductEdit: React.FC = () => {
             };
           }
           const qty = (s.quantity != null && !Number.isNaN(Number(s.quantity))) ? Number(s.quantity) : (s.qty != null && !Number.isNaN(Number(s.qty)) ? Number(s.qty) : null);
+          const price = (s.price != null && s.price !== '' && !Number.isNaN(Number(s.price))) ? Number(s.price) : undefined;
+          const originalPrice = (s.originalPrice != null && s.originalPrice !== '' && !Number.isNaN(Number(s.originalPrice))) ? Number(s.originalPrice) : undefined;
           return {
             id: s.id || `size_${idx}`,
             value: s.value || '',
             inStock: s.inStock ?? true,
             quantity: qty,
+            price,
+            originalPrice,
             // If a size has a saved quantity value, treat it as manually set to preserve the cap behavior
             quantityManual: qty !== null && qty >= 0,
           };
@@ -586,6 +590,26 @@ const AdminProductEdit: React.FC = () => {
       }
 
       return next;
+    });
+  };
+
+  const updateSizePrice = (idx: number, price: number | null) => {
+    setForm((s: any) => {
+      const sizes = [...(s.sizes || [])];
+      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null } : { ...sizes[idx] };
+      cur.price = price;
+      sizes[idx] = cur;
+      return { ...s, sizes };
+    });
+  };
+
+  const updateSizeOriginalPrice = (idx: number, originalPrice: number | null) => {
+    setForm((s: any) => {
+      const sizes = [...(s.sizes || [])];
+      const cur = typeof sizes[idx] === 'string' ? { id: `size_legacy_${idx}`, value: sizes[idx], inStock: true, quantity: null } : { ...sizes[idx] };
+      cur.originalPrice = originalPrice;
+      sizes[idx] = cur;
+      return { ...s, sizes };
     });
   };
 
@@ -1541,6 +1565,24 @@ const AdminProductEdit: React.FC = () => {
                           placeholder="Qty"
                           min={0}
                           className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={s.price ?? ''}
+                          onChange={(e) => updateSizePrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="Price (PKR)"
+                          min={0}
+                          title="Variant-specific price in PKR (leave blank to use base product price)"
+                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={s.originalPrice ?? ''}
+                          onChange={(e) => updateSizeOriginalPrice(idx, e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="Compare At"
+                          min={0}
+                          title="Original/Compare-at price in PKR (optional)"
+                          className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
                         />
                         <button
                           type="button"

@@ -22,7 +22,7 @@ import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
 import useReducedMotion from '../hooks/useReducedMotion';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
-import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock } from '../utils/stockHelpers';
+import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock, getVariantPrice, getVariantOriginalPrice } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
 
 // --- Accordion Component ---
@@ -650,6 +650,26 @@ export const ProductDetail: React.FC = () => {
     });
   }, [product, selectedVariantId, selectedSize, selectedColor, selectedColorName]);
 
+  const currentPrice = useMemo(() => {
+    if (!product) return 0;
+    return getVariantPrice(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+  }, [product, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
+
+  const currentOriginalPrice = useMemo(() => {
+    if (!product) return undefined;
+    return getVariantOriginalPrice(product, {
+      size: selectedSize,
+      color: selectedColor,
+      colorName: selectedColorName,
+      variantId: selectedVariantId
+    });
+  }, [product, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
+
   const displayAvailableQuantity = itemsAvailable;
 
   const canonicalPid = String(product?.id || product?._id || productId || '');
@@ -752,7 +772,7 @@ export const ProductDetail: React.FC = () => {
       const result = addItem({
         productId: canonicalProductId(product),
         name: product.name,
-        price: product.price,
+        price: currentPrice,
         image: primaryImage({ ...product, selectedVariantId: selection.variantId } as any),
         size: selection.size,
         color: isFragrance ? '' : selection.color,
@@ -1040,14 +1060,11 @@ export const ProductDetail: React.FC = () => {
 
               {/* Pricing Section with Sale Strikethrough & Multi-line Free Shipping Text */}
               {(() => {
-                const rawOriginalPrice = (product as any)?.originalPrice || (product as any)?.compareAtPrice;
-                const originalPriceNumber = typeof rawOriginalPrice === 'number' && Number.isFinite(rawOriginalPrice) 
-                  ? rawOriginalPrice 
-                  : (rawOriginalPrice ? Number(rawOriginalPrice) : undefined);
-                const currentPrice = typeof product.price === 'number' ? product.price : Number(product.price || 0);
-                const hasSaleDiscount = Boolean(originalPriceNumber && originalPriceNumber > currentPrice);
+                const originalPriceNumber = currentOriginalPrice;
+                const activePrice = currentPrice;
+                const hasSaleDiscount = Boolean(originalPriceNumber && originalPriceNumber > activePrice);
                 const discountPercent = hasSaleDiscount && originalPriceNumber
-                  ? Math.round(((originalPriceNumber - currentPrice) / originalPriceNumber) * 100)
+                  ? Math.round(((originalPriceNumber - activePrice) / originalPriceNumber) * 100)
                   : 0;
 
                 return (
@@ -1056,7 +1073,7 @@ export const ProductDetail: React.FC = () => {
                       <span className={`text-3xl md:text-4xl font-light tracking-wide ${
                         hasSaleDiscount ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'
                       }`}>
-                        Rs. {currentPrice.toLocaleString()}
+                        Rs. {activePrice.toLocaleString()}
                       </span>
                       {hasSaleDiscount && originalPriceNumber && (
                         <span className="text-lg md:text-xl text-neutral-400 line-through decoration-neutral-400 font-normal">
