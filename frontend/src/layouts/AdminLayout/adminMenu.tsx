@@ -12,7 +12,8 @@ import {
   Megaphone,
   Tag,
   Truck,
-  TrendingUp
+  TrendingUp,
+  Lock
 } from 'lucide-react';
 
 export type AdminMenuItem = {
@@ -31,6 +32,7 @@ const adminMenu: AdminMenuItem[] = [
   { to: '/admin/promo-codes', label: 'Promo Codes', icon: <Tag className="w-5 h-5" />, permission: 'products.view' },
   { to: '/admin/reviews', label: 'Reviews', icon: <Users className="w-5 h-5" />, permission: 'reviews.manage' },
   { to: '/admin/products', label: 'Products', icon: <Package className="w-5 h-5" />, permission: 'products.view' },
+  { to: '/admin/private-sale', label: 'Private Sale', icon: <Lock className="w-5 h-5" />, permission: 'products.view' },
   { to: '/admin/users', label: 'Customers', icon: <Users className="w-5 h-5" />, permission: 'users.view' },
   { to: '/admin/audits', label: 'Security Logs', icon: <ShieldCheck className="w-5 h-5" />, permission: 'audits.view' },
   { to: '/admin/features', label: 'Feature Flags', icon: <Zap className="w-5 h-5" />, permission: 'features.manage' },

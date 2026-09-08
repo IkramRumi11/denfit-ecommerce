@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ProductCard } from '../components/ProductCard';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productId, slugify } from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import megaMenuData from '../data/megaMenuData';
@@ -194,6 +195,14 @@ export default function Accessories(): JSX.Element {
 
       {/* Main Content with Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+        <Breadcrumb
+          items={
+            selectedCategory && selectedCategory !== 'all'
+              ? [{ label: 'Home', to: '/' }, { label: 'Accessories', to: '/accessories' }, { label: `${selectedCategory.toUpperCase()} ACCESSORIES` }]
+              : [{ label: 'Home', to: '/' }, { label: 'Accessories' }]
+          }
+          className="mb-6"
+        />
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Mobile Filter Button */}
           <div className="lg:hidden mb-4">

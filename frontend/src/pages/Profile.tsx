@@ -16,6 +16,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
 import { EditProfileModal } from '../components/features/EditProfileModal';
 import { ordersAPI } from '../api';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 
 export const Profile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -130,6 +131,7 @@ export const Profile: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'My Account' }]} className="mb-4" />
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Account</h1>

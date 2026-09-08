@@ -652,7 +652,8 @@ export const getAllProducts = async (req, res) => {
       search = '',
       category = '',
       status = '',
-      sort = '-createdAt'
+      sort = '-createdAt',
+      privateSale
     } = req.query;
 
     // Build query
@@ -669,6 +670,13 @@ export const getAllProducts = async (req, res) => {
     }
     if (status) {
       query.status = status;
+    }
+    if (privateSale !== undefined && privateSale !== '') {
+      if (privateSale === 'true' || privateSale === true || privateSale === '1') {
+        query.privateSale = true;
+      } else if (privateSale === 'false' || privateSale === false || privateSale === '0') {
+        query.privateSale = { $ne: true };
+      }
     }
 
     const products = await Product.find(query)

@@ -7,13 +7,21 @@ import {
   getFilters,
   getActiveBrands,
   getProductsByCategory,
-  searchProducts
+  searchProducts,
+  getPrivateSaleProducts,
+  checkPrivateSaleEligibilityEndpoint
 } from '../controllers/productController.js';
+import { requirePrivateSaleAccess } from '../middleware/privateSaleMiddleware.js';
+import { optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // ✅ GET /api/v1/products
 router.get('/', getAllProducts);
+
+// ✅ Private Sale endpoints (declared BEFORE /:id)
+router.get('/private-sale/eligibility', optionalAuth, checkPrivateSaleEligibilityEndpoint);
+router.get('/private-sale', requirePrivateSaleAccess, getPrivateSaleProducts);
 
 // ✅ GET /api/v1/products/brands
 router.get('/brands', getActiveBrands);

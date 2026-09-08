@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductCard } from '../components/ProductCard';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productId } from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import { SlidersHorizontal, X } from 'lucide-react';
@@ -356,6 +357,14 @@ export default function Sale(): JSX.Element {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <Breadcrumb
+          items={
+            selectedGender && selectedGender !== 'all'
+              ? [{ label: 'Home', to: '/' }, { label: 'Sale', to: '/sale' }, { label: (genderCategories as any)[selectedGender]?.name?.toUpperCase() || selectedGender.toUpperCase() }]
+              : [{ label: 'Home', to: '/' }, { label: 'Sale' }]
+          }
+          className="mb-6"
+        />
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:hidden flex gap-2">
             <button

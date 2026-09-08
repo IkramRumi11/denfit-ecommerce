@@ -10,6 +10,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
 import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { QuickViewModal } from '../components/QuickViewModal';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 
 export const Wishlist: React.FC = () => {

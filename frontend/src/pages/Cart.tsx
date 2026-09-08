@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext';
 import { getColorName } from '../utils/colorNames';
 import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { productsAPI } from '../api';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 
 export const Cart: React.FC = () => {
   const { items, subtotal, shipping, tax, total, removeItem, updateQuantity, clearCart } = useCart();
@@ -152,12 +153,6 @@ export const Cart: React.FC = () => {
                 Kids
               </Link>
               <Link
-                to="/sale"
-                className="px-4 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold transition-colors"
-              >
-                Sale &amp; Offers %
-              </Link>
-              <Link
                 to="/accessories"
                 className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
               >
@@ -168,6 +163,18 @@ export const Cart: React.FC = () => {
                 className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
               >
                 Fragrances
+              </Link>
+              <Link
+                to="/brands"
+                className="px-4 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium transition-colors"
+              >
+                Brands
+              </Link>
+              <Link
+                to="/sale"
+                className="px-4 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-semibold transition-colors"
+              >
+                Sale &amp; Offers %
               </Link>
             </div>
           </div>
@@ -190,6 +197,7 @@ export const Cart: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-6 sm:py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Cart' }]} className="mb-4" />
         <div className="flex items-center justify-between mb-5 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Shopping Cart</h1>
           <button

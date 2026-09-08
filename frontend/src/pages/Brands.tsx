@@ -4,6 +4,7 @@ import { SlidersHorizontal, X, Tag, ArrowRight } from 'lucide-react';
 
 import { ProductCard } from '../components/ProductCard';
 import { FilterEngine } from '../components/FilterEngine';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { usePageBanner } from '../hooks/usePageBanner';
 
@@ -250,6 +251,15 @@ export default function Brands(): JSX.Element {
 
       {/* Main Listing Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <Breadcrumb
+          items={
+            selectedBrand && selectedBrand !== 'all'
+              ? [{ label: 'Home', to: '/' }, { label: 'Brands', to: '/brands' }, { label: selectedBrand.toUpperCase() }]
+              : [{ label: 'Home', to: '/' }, { label: 'Brands' }]
+          }
+          className="mb-6"
+        />
+
         {/* Controls Bar */}
         <div className="flex items-center justify-between pb-6 border-b border-gray-100">
           <div>
@@ -303,13 +313,13 @@ export default function Brands(): JSX.Element {
           {/* Product Grid */}
           <div className="flex-1 min-w-0">
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="animate-pulse bg-gray-100 rounded-xl aspect-[3/4]" />
                 ))}
               </div>
             ) : displayedProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {displayedProducts.map((p) => (
                   <ProductCard key={p.id} product={p as any} />
                 ))}

@@ -62,6 +62,8 @@ import AdminContentController from './pages/admin/AdminContentController';
 import AdminPromoCodes from './pages/admin/AdminPromoCodes';
 import AdminShipping from './pages/admin/AdminShipping';
 import AdminFinancials from './pages/admin/AdminFinancials';
+import AdminPrivateSale from './pages/admin/AdminPrivateSale';
+import PrivateSale from './pages/PrivateSale';
 
 // Context Providers
 // NOTE: AuthProvider and SearchProvider are in main.tsx — do not re-import here
@@ -169,6 +171,7 @@ function AppContent() {
           <Route path="/kids/:subcategory" element={<CategoryPage />} />
           <Route path="/sale" element={<Sale />} />
           <Route path="/sale/:subcategory" element={<CategoryPage genderOverride="sale" />} />
+          <Route path="/private-sale" element={<PrivateSale />} />
           <Route path="/accessories" element={<Accessories />} />
           <Route path="/accessories/:subcategory" element={<CategoryPage genderOverride="accessories" />} />
           <Route path="/brands" element={<Brands />} />
@@ -197,6 +200,7 @@ function AppContent() {
             <Route path="products" element={<AdminProducts />} />
             <Route path="products/new" element={<AdminProductCreate />} />
             <Route path="products/:id/edit" element={<AdminProductEdit />} />
+            <Route path="private-sale" element={<AdminPrivateSale />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="orders/:id" element={<AdminOrderDetail />} />
             <Route path="shipping" element={<AdminShipping />} />

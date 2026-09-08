@@ -5,6 +5,7 @@ import { ordersAPI } from '../api';
 import { getColorName } from '../utils/colorNames';
 import TrackingLink from '../components/TrackingLink';
 import { useAuth } from '../context/AuthContext';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 
 const Orders: React.FC = () => {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ const Orders: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-12">
       <div className="max-w-4xl mx-auto px-4">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Account', to: '/profile' }, { label: 'Orders' }]} className="mb-4" />
         <div className="mb-6">
           <h1 className="text-2xl font-bold">My Orders</h1>
           <p className="text-sm text-gray-600">Review your recent purchases and order details</p>

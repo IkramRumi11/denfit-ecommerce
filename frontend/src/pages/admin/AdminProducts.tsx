@@ -34,7 +34,13 @@ const AdminProducts: React.FC = () => {
       };
       if (q) params.search = q;
       if (category) params.category = category;
-      if (status) params.status = status;
+      if (status === 'privateSale') {
+        params.privateSale = 'true';
+      } else if (status === 'publicOnly') {
+        params.privateSale = 'false';
+      } else if (status) {
+        params.status = status;
+      }
 
       const res = await api.admin.getAllProducts(params);
       // Only apply results for the latest request to avoid race-updates/flicker
@@ -258,6 +264,8 @@ const AdminProducts: React.FC = () => {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">All Status</option>
+            <option value="privateSale">🔒 Private Sale Only</option>
+            <option value="publicOnly">🌐 Public Only</option>
             <option value="inStock">In Stock</option>
             <option value="outOfStock">Out of Stock</option>
             <option value="featured">Featured</option>
@@ -322,6 +330,18 @@ const AdminProducts: React.FC = () => {
             className="px-3 py-1 bg-gray-200 rounded"
           >
             Unpublish selected
+          </button>
+          <button
+            onClick={() => bulkUpdate({ privateSale: true })}
+            className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
+          >
+            Mark Private Sale
+          </button>
+          <button
+            onClick={() => bulkUpdate({ privateSale: false })}
+            className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200"
+          >
+            Remove Private Sale
           </button>
         </div>
       </div>
@@ -388,6 +408,7 @@ const AdminProducts: React.FC = () => {
                           <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
                             {product.featured && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Featured</span>}
                             {product.trending && <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Trending</span>}
+                            {product.privateSale && <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs rounded font-medium">Private Sale</span>}
                           </div>
                         </div>
                       </div>
@@ -488,6 +509,15 @@ const AdminProducts: React.FC = () => {
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             <span className="text-xs text-gray-600">Trending</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={product.privateSale ?? false}
+                              onChange={(e) => handleQuickEdit(product._id, 'privateSale', e.target.checked)}
+                              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-xs text-purple-700 font-medium">Private Sale</span>
                           </label>
                         </div>
                       </div>

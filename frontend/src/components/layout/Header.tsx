@@ -27,6 +27,7 @@ const categories = [
   { name: "Accessories", slug: "accessories" },
   { name: "Fragrances", slug: "fragrances" },
   { name: "Sale", slug: "sale" },
+  { name: "Exclusive", slug: "private-sale" },
   { name: "Brands", slug: "brands" },
 ];
 
@@ -246,7 +247,7 @@ export default function Header(): JSX.Element {
                   className="block"
                 >
                   {(() => {
-                    const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
+                    const path = ['men','women','kids','sale','private-sale','accessories','brands','fragrances'].includes(cat.slug)
                       ? `/${cat.slug}`
                       : `/shop?gender=${cat.slug}`;
                     return (
@@ -254,7 +255,11 @@ export default function Header(): JSX.Element {
                         to={path}
                         onClick={() => setMegaIndex(null)}
                         className={`text-gray-700 hover:text-black transition-colors ${
-                          cat.slug === "sale" ? "text-red-600 hover:text-red-700 font-semibold" : ""
+                          cat.slug === "sale"
+                            ? "text-red-600 hover:text-red-700 font-semibold"
+                            : cat.slug === "private-sale"
+                            ? "text-purple-600 hover:text-purple-700 font-semibold"
+                            : ""
                         }`}
                       >
                         {cat.name}
@@ -439,7 +444,7 @@ export default function Header(): JSX.Element {
                         ) : (
                           <>
                             {(() => {
-                              const path = ['men','women','kids','sale','accessories','brands','fragrances'].includes(cat.slug)
+                              const path = ['men','women','kids','sale','private-sale','accessories','brands','fragrances'].includes(cat.slug)
                                 ? `/${cat.slug}`
                                 : `/shop?gender=${cat.slug}`;
                               return (

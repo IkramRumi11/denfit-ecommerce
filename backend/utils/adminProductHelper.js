@@ -389,6 +389,11 @@ export const normalizeProductInput = async (body, ProductModel) => {
     productData.sku = generateSKU(productData.category, productData.brand || 'GEN');
   }
 
+  // 11. Private Sale boolean normalization
+  if (productData.privateSale !== undefined) {
+    productData.privateSale = productData.privateSale === true || productData.privateSale === 'true' || productData.privateSale === 1 || productData.privateSale === '1';
+  }
+
   return productData;
 };
 

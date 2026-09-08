@@ -28,6 +28,7 @@ import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { useToast } from '../context/ToastContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useShipping } from '../context/ShippingContext';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 
 type PaymentMethod = 'cod';
 
@@ -627,6 +628,14 @@ export const Checkout: React.FC = () => {
   return (
     <div className="min-h-screen bg-white py-8 font-sans">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <Breadcrumb
+          items={[
+            { label: 'Home', to: '/' },
+            { label: 'Cart', to: '/cart' },
+            { label: 'Checkout' }
+          ]}
+          className="mb-4"
+        />
         
         {/* Header */}
         <div className="mb-8">

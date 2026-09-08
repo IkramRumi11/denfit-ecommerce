@@ -6,6 +6,7 @@ import { computeAvailableQuantity, computeIsLowStock, computeIsOutOfStock } from
 import { getColorName } from '../utils/colorHelper.js';
 import { normalizeBrandName } from '../utils/brandHelper.js';
 import { slugify } from '../utils/adminProductHelper.js';
+import { checkEligibility, checkRequesterPrivateSaleAccess } from '../middleware/privateSaleMiddleware.js';
 
 const unescapeHtml = (str) => {
   if (!str || typeof str !== 'string') return str;
@@ -129,6 +130,9 @@ export const getAllProducts = async (req, res) => {
 
     const mongoQuery = {};
     const andClauses = [];
+
+    // Exclude Private Sale products from public general listing
+    andClauses.push({ privateSale: { $ne: true } });
 
     // Category / Subcategory matching: check category, categorySlug, subcategory, tags, and product name
     const catSearch = unescapeHtml(subcategory || category);
@@ -486,14 +490,32 @@ export const getProduct = async (req, res) => {
   try {
     const rawId = String(req.params.id || '').trim();
     let product = null;
+    const populateRelated = {
+      path: 'relatedProducts',
+      match: { privateSale: { $ne: true }, status: 'published' },
+      select: 'name images price originalPrice brand category seo.slug'
+    };
+
     // If looks like an ObjectId, try by _id first; otherwise try SEO slug or SKU
     if (/^[a-fA-F0-9]{24}$/.test(rawId)) {
-      product = await Product.findById(rawId).populate('relatedProducts', 'name images price seo.slug');
+      product = await Product.findById(rawId).populate(populateRelated);
     }
     if (!product) {
-      product = await Product.findOne({ $or: [{ 'seo.slug': rawId }, { sku: rawId }] }).populate('relatedProducts', 'name images price seo.slug');
+      product = await Product.findOne({ $or: [{ 'seo.slug': rawId }, { sku: rawId }] }).populate(populateRelated);
     }
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    // Enforce access control if product is marked as Private Sale
+    if (product.privateSale) {
+      const hasAccess = await checkRequesterPrivateSaleAccess(req);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          isPrivateSale: true,
+          message: 'Private Sale access is restricted to verified customers with prior orders.'
+        });
+      }
+    }
 
     const out = product.toObject ? product.toObject() : product;
 
@@ -541,7 +563,10 @@ export const getProduct = async (req, res) => {
 
 export const getProductsByCategory = async (req, res) => {
   try {
-    const products = await Product.find({ category: req.params.category }).sort({ createdAt: -1 }).lean();
+    const products = await Product.find({
+      category: req.params.category,
+      privateSale: { $ne: true }
+    }).sort({ createdAt: -1 }).lean();
     const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
     const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
     const normalized = products.map(p => normalizeProductForClient(p));
@@ -557,7 +582,10 @@ export const getProductsByCategory = async (req, res) => {
 
 export const getFeaturedProducts = async (req, res) => {
   try {
-    const products = await Product.find({ featured: true }).limit(8).sort({ createdAt: -1 }).lean();
+    const products = await Product.find({
+      featured: true,
+      privateSale: { $ne: true }
+    }).limit(8).sort({ createdAt: -1 }).lean();
     const lowStockSetting = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean().catch(() => null);
     const lowStockThreshold = lowStockSetting && lowStockSetting.value != null ? Number(lowStockSetting.value) : (process.env.LOW_STOCK_THRESHOLD ? Number(process.env.LOW_STOCK_THRESHOLD) : 20);
     const normalized = products.map(p => normalizeProductForClient(p));
@@ -577,7 +605,7 @@ export const searchProducts = async (req, res) => {
     if (!q || !String(q).trim()) return res.status(400).json({ success: false, message: 'Search query is required' });
     
     const tokens = String(q).trim().split(/\s+/).filter(Boolean);
-    const andClauses = [];
+    const andClauses = [{ privateSale: { $ne: true } }];
     tokens.forEach(tok => {
       const safeTok = escapeRegex(tok);
       const tokRegex = new RegExp(safeTok, 'i');
@@ -605,6 +633,120 @@ export const searchProducts = async (req, res) => {
   } catch (error) {
     console.error('searchProducts error:', error && (error.stack || error));
     res.status(500).json({ success: false, message: 'Error searching products' });
+  }
+};
+
+// ========================
+// PRIVATE SALE CONTROLLERS
+// ========================
+export const getPrivateSaleProducts = async (req, res) => {
+  try {
+    const {
+      category,
+      brand,
+      sort,
+      search,
+      page = 1,
+      limit = 20
+    } = req.query || {};
+
+    const appliedLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+    const appliedPage = Math.max(1, Number(page) || 1);
+
+    const andClauses = [
+      { privateSale: true },
+      { status: 'published' }
+    ];
+
+    if (category) {
+      andClauses.push({
+        $or: [
+          { category: new RegExp(`^${escapeRegex(category)}$`, 'i') },
+          { categorySlug: new RegExp(`^${escapeRegex(category)}$`, 'i') },
+          { gender: new RegExp(`^${escapeRegex(category)}$`, 'i') }
+        ]
+      });
+    }
+
+    if (brand) {
+      andClauses.push({ brand: new RegExp(`^${escapeRegex(brand)}$`, 'i') });
+    }
+
+    if (search) {
+      const safeSearch = escapeRegex(String(search).trim());
+      andClauses.push({
+        $or: [
+          { name: new RegExp(safeSearch, 'i') },
+          { brand: new RegExp(safeSearch, 'i') },
+          { description: new RegExp(safeSearch, 'i') },
+          { sku: new RegExp(safeSearch, 'i') }
+        ]
+      });
+    }
+
+    const finalQuery = andClauses.length > 1 ? { $and: andClauses } : andClauses[0];
+    const total = await Product.countDocuments(finalQuery);
+
+    let sortSpec = { createdAt: -1 };
+    const sortKey = sort && String(sort).toLowerCase();
+    if (sortKey === 'price_asc') sortSpec = { price: 1 };
+    else if (sortKey === 'price_desc') sortSpec = { price: -1 };
+    else if (sortKey === 'name_asc') sortSpec = { name: 1 };
+    else if (sortKey === 'name_desc') sortSpec = { name: -1 };
+
+    const products = await Product.find(finalQuery)
+      .limit(appliedLimit)
+      .skip((appliedPage - 1) * appliedLimit)
+      .sort(sortSpec)
+      .lean();
+
+    const normalized = products.map(p => normalizeProductForClient(p));
+
+    let lowStockThreshold = 20;
+    try {
+      const s = await SystemSetting.findOne({ key: 'inventory.lowStockThreshold', enabled: true }).lean();
+      if (s && s.value != null) lowStockThreshold = Number(s.value);
+    } catch (e) {}
+
+    normalized.forEach((p) => {
+      try {
+        p.availableQuantity = computeAvailableQuantity(p);
+        p.isOutOfStock = computeIsOutOfStock(p);
+        p.isLowStock = computeIsLowStock(p, lowStockThreshold);
+      } catch (e) {
+        p.availableQuantity = p.availableQuantity || 0;
+        p.isOutOfStock = !!p.isOutOfStock;
+        p.isLowStock = !!p.isLowStock;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        products: normalized,
+        pagination: {
+          current: appliedPage,
+          pages: Math.ceil(total / appliedLimit),
+          total
+        }
+      }
+    });
+  } catch (error) {
+    console.error('getPrivateSaleProducts error:', error);
+    return res.status(500).json({ success: false, message: 'Error fetching Private Sale products' });
+  }
+};
+
+export const checkPrivateSaleEligibilityEndpoint = async (req, res) => {
+  try {
+    const result = await checkEligibility(req.user);
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('checkPrivateSaleEligibilityEndpoint error:', error);
+    return res.status(500).json({ success: false, message: 'Error checking eligibility' });
   }
 };
 

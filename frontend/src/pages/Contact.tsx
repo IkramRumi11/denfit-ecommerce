@@ -9,12 +9,10 @@ import {
   Send,
   AlertCircle,
   CheckCircle2,
-  Instagram,
-  Facebook,
-  Twitter,
   ChevronDown,
   HelpCircle
 } from 'lucide-react';
+import { DENFIT_SOCIAL_LINKS } from '../config/socialLinks';
 
 export const Contact = () => {
   // --- STATE MANAGEMENT ---
@@ -312,36 +310,22 @@ ${formData.message}
                 {/* Social Links (aligned with Footer) */}
                 <div className="mt-8 pt-8 border-t border-gray-200">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Follow Us</p>
-                  <div className="flex space-x-4 items-center">
-                    {/* Snapchat */}
-                    <a href="https://www.snapchat.com/add/denfitdesigns?share_id=1bW2smAtGGw&locale=en-US" target="_blank" rel="noopener noreferrer" aria-label="Visit our Snapchat" className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300 rounded-full hover:scale-110">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path fillRule="evenodd" clipRule="evenodd" d="M12 2C9.613 2 7.5 3.343 6.282 5.293 5.623 6.459 4.333 7 3 7v1c1.333 0 2.01.54 2.665 1.707C6.953 11.657 9.08 12.5 12 12.5c2.92 0 5.047-.843 6.335-2.793C18.99 8.54 19.667 8 21 8V7c-1.333 0-2.623-.541-3.282-1.707C16.5 3.343 14.387 2 12 2zM7.5 17.1c.9-.4 2.2-.9 4.5-.9 2.3 0 3.6.5 4.5.9.3.1.5.3.5.6v.5c0 .3-.2.6-.5.7-.9.5-2.2 1.1-4.5 1.1-2.3 0-3.6-.6-4.5-1.1-.3-.1-.5-.4-.5-.7v-.5c0-.3.2-.5.5-.6z" fill="currentColor"/>
-                      </svg>
-                    </a>
-
-                    {/* Facebook */}
-                    <a href="https://www.facebook.com/share/17RhiUapmV/" target="_blank" rel="noopener noreferrer" aria-label="Visit our Facebook page" className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-300 rounded-full">
-                      <Facebook size={18} />
-                    </a>
-
-                    {/* Instagram */}
-                    <a href="https://www.instagram.com/denfitdesigns?igsh=NnM3MWVza3JudTNn" target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram" className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-all duration-300 rounded-full">
-                      <Instagram size={18} />
-                    </a>
-
-                    {/* Twitter / X */}
-                    <a href="https://x.com/denfitdesigns" target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter" className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-black hover:text-white hover:border-black transition-all duration-300 rounded-full">
-                      <Twitter size={18} />
-                    </a>
-
-                    {/* YouTube (optional - footer has it) */}
-                    <a href="https://youtube.com/@denfitcollection?si=23IsLRk3h7Rzmcrl" target="_blank" rel="noopener noreferrer" aria-label="Visit our YouTube channel" className="w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-300 rounded-full">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path d="M23.5 6.2s-.2-1.6-.8-2.3c-.8-.9-1.7-.9-2.1-1-2.9-.2-7.2-.2-7.2-.2h-.1s-4.3 0-7.2.2c-.4.1-1.3.1-2.1 1-.6.7-.8 2.3-.8 2.3S2 7.9 2 9.6v1.7c0 1.7.4 3.4.4 3.4s.2 1.6.8 2.3c.8.9 1.9.9 2.4 1 1.7.2 7.1.2 7.1.2s4.3 0 7.2-.2c.4-.1 1.3-.1 2.1-1 .6-.7.8-2.3.8-2.3s.4-1.7.4-3.4V9.6c0-1.7-.4-3.4-.4-3.4z" fill="currentColor"/>
-                        <path d="M9.8 15.1v-6.2l5.6 3.1-5.6 3.1z" fill="#fff"/>
-                      </svg>
-                    </a>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {DENFIT_SOCIAL_LINKS.map((item) => {
+                      const IconComp = item.icon;
+                      return (
+                        <a
+                          key={item.name}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={item.ariaLabel}
+                          className={`w-10 h-10 bg-white border border-gray-200 flex items-center justify-center text-gray-600 ${item.contactHoverClass || 'hover:bg-black hover:text-white'} transition-all duration-300 rounded-full hover:scale-110`}
+                        >
+                          <IconComp size={18} />
+                        </a>
+                      );
+                    })}
                   </div>
                 </div>
 

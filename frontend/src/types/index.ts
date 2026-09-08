@@ -59,6 +59,9 @@ export interface Product {
   inventory?: number;
   inStock?: boolean;
   featured?: boolean;
+  trending?: boolean;
+  privateSale?: boolean;
+  status?: 'draft' | 'published' | 'archived' | string;
   slug?: string;
   // Ratings & SEO & specifications commonly used in UI
   rating?: number;

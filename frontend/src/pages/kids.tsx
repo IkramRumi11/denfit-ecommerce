@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductCard } from '../components/ProductCard';
 import { productId } from '../utils/productHelpers';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { ProductFilters } from '../components/ProductFilters';
 import { SlidersHorizontal, X } from 'lucide-react';
@@ -398,6 +399,10 @@ export default function Kids(): JSX.Element {
           </div>
         </div>
       </nav>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Kids' }]} />
+      </div>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 md:mb-16">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 uppercase tracking-wider text-center">

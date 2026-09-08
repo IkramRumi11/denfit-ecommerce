@@ -271,6 +271,17 @@ export const productsAPI = {
   getBySlug: (slug: string) => handleRequest<Product>(`/products/slug/${slug}`),
   getFeatured: () => handleRequest<Product[]>("/products/featured"),
   getRelated: (id: string) => handleRequest<Product[]>(`/products/${id}/related`),
+  getPrivateSale: (params?: Record<string, any>) => {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === '') return;
+      if (Array.isArray(v)) return v.forEach(x => query.append(k, String(x)));
+      return query.append(k, String(v));
+    });
+    return handleRequest<{ products: Product[]; pagination: { current: number; pages: number; total: number } }>(`/products/private-sale${query.toString() ? "?" + query.toString() : ""}`);
+  },
+  checkPrivateSaleEligibility: () =>
+    handleRequest<{ eligible: boolean; reason?: string; requiresLogin?: boolean; requiresVerification?: boolean; requiresOrder?: boolean; orderCount?: number }>('/products/private-sale/eligibility'),
 };
 
 // ─── FILTERS API ─── Dynamic filtering system
@@ -582,6 +593,23 @@ export const adminAPI = {
     handleRequest<{ deletedCount: number }>("/admin/products/bulk", {
       method: "DELETE",
       body: JSON.stringify({ productIds }),
+    }),
+
+  getPrivateSaleProducts: (params?: Record<string, any>) => {
+    const query = new URLSearchParams();
+    query.set('privateSale', 'true');
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === '') return;
+      if (Array.isArray(v)) return v.forEach(x => query.append(k, String(x)));
+      return query.append(k, String(v));
+    });
+    return handleRequest<{ products: Product[]; pagination: { current: number; pages: number; total: number } }>(`/admin/products?${query.toString()}`);
+  },
+
+  togglePrivateSale: (productId: string, privateSale: boolean) =>
+    handleRequest<{ product: Product }>(`/admin/products/${productId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ privateSale }),
     }),
 
   suggestRelatedProducts: (params?: { section?: string; subcategory?: string; tags?: string; excludeId?: string; limit?: number }) => {

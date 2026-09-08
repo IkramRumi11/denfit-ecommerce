@@ -230,6 +230,7 @@ const LuxuryHomePage = () => {
         category: "men",
         description: "Tailored essentials, sharp lines.",
         badge: "NEW SEASON",
+        link: "/men",
       },
       {
         image:
@@ -238,6 +239,7 @@ const LuxuryHomePage = () => {
         category: "women",
         description: "Fluid drapery, modern silhouettes.",
         badge: "ICONIC",
+        link: "/women",
       },
       {
         image:
@@ -246,6 +248,7 @@ const LuxuryHomePage = () => {
         category: "kids",
         description: "Soft textures, playful design.",
         badge: "EDIT",
+        link: "/kids",
       },
       {
         image:
@@ -254,14 +257,43 @@ const LuxuryHomePage = () => {
         category: "accessories",
         description: "Finishing touches, everyday essentials.",
         badge: "NEW",
+        link: "/accessories",
+      },
+      {
+        image:
+          "https://images.unsplash.com/photo-1547887537-6158d64c35b3?q=80&w=800&auto=format&fit=crop",
+        title: "Haute Fragrances",
+        category: "fragrances",
+        description: "Signature scents, rare essences.",
+        badge: "EXCLUSIVE",
+        link: "/fragrances",
+      },
+      {
+        image:
+          "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop",
+        title: "Official Brands",
+        category: "brands",
+        description: "World-class houses, coveted labels.",
+        badge: "CURATED",
+        link: "/brands",
       },
       {
         image:
           "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80",
         title: "Private Sale",
+        category: "private-sale",
+        description: "Curated pieces, VIP prices.",
+        badge: "VIP EXCLUSIVE",
+        link: "/private-sale",
+      },
+      {
+        image:
+          "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80",
+        title: "Seasonal Sale",
         category: "sale",
-        description: "Curated pieces, rare prices.",
-        badge: "-40% OFF",
+        description: "Archival designs, limited offers.",
+        badge: "UP TO 50% OFF",
+        link: "/sale",
       },
     ],
     []
@@ -840,7 +872,7 @@ const LuxuryHomePage = () => {
               {collectionsState.map((c, i) => (
                 <div key={i} data-carousel-item className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2">
                   <a
-                    href={typeof window !== 'undefined' ? `http://${window.location.host}${(['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}` : (['men','women','kids','sale','accessories'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`)}
+                    href={typeof window !== 'undefined' ? `http://${window.location.host}${((c as any).link || (['men','women','kids','sale','accessories','fragrances','brands'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`))}` : ((c as any).link || (['men','women','kids','sale','accessories','fragrances','brands'].includes(c.category) ? `/${c.category}` : `/shop?gender=${c.category}`))}
                     onClick={(e) => {
                       if (collectionsCarousel.hasSwiped()) {
                         e.preventDefault();

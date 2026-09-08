@@ -9,6 +9,7 @@ import {
 import { ProductCard } from '../components/ProductCard';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { FilterEngine } from '../components/FilterEngine';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 // mockProducts intentionally not used in production search — rely on backend
@@ -592,6 +593,8 @@ export const Shop: React.FC = () => {
 
       {/* 3. MAIN CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Shop' }]} className="mb-6" />
+
         <AnimatePresence mode="popLayout">
           {loading ? (
             <div className="py-20 sm:py-40 text-center">

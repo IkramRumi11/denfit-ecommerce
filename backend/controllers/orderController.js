@@ -407,23 +407,31 @@ export const createOrder = async (req, res) => {
         const { productId, sizeId, colorTempId, availableQuantity } = createErr;
         const dbProduct = dbProductMap[String(productId)];
         let sizeVal = sizeId;
-        let colorName = colorTempId || 'Default';
+        let colorName = colorTempId ? String(colorTempId) : '';
         let displayMessage = `Only ${availableQuantity} items are available.`;
         
         if (dbProduct) {
           const matchedSize = dbProduct.sizes?.find(s => String(s.id) === String(sizeId) || String(s.value) === String(sizeId));
           sizeVal = matchedSize ? matchedSize.value : sizeId;
           
-          const matchedVar = dbProduct.variants?.find(v => 
-            String(v._id || v.id) === String(colorTempId) ||
-            (v.name && String(v.name).toLowerCase() === String(colorTempId).toLowerCase())
-          );
-          if (matchedVar) colorName = matchedVar.name;
+          if (colorTempId) {
+            const matchedVar = dbProduct.variants?.find(v => 
+              String(v._id || v.id) === String(colorTempId) ||
+              (v.name && String(v.name).toLowerCase() === String(colorTempId).toLowerCase())
+            );
+            if (matchedVar) colorName = matchedVar.name;
+          }
           
+          const hasColorVariant = Boolean(colorName && colorName.toLowerCase() !== 'default');
+          const isVolume = /ml$/i.test(String(sizeVal || '').trim());
+          const itemLabel = hasColorVariant 
+            ? `${colorName} / ${isVolume ? 'Volume' : 'Size'} ${sizeVal}`
+            : (sizeVal ? `${isVolume ? '' : 'Size '}${sizeVal}` : 'Item');
+
           if (availableQuantity === 0) {
-            displayMessage = `${colorName} / Size ${sizeVal} is out of stock.`;
+            displayMessage = `${itemLabel} is out of stock.`;
           } else {
-            displayMessage = `Only ${availableQuantity} items are available for ${colorName} / Size ${sizeVal}.`;
+            displayMessage = `Only ${availableQuantity} items are available for ${itemLabel}.`;
           }
         }
         

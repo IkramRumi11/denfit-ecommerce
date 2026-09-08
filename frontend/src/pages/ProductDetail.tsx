@@ -21,9 +21,11 @@ import { primaryImage, canonicalProductId, resolveProductSelection, getConsisten
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
 import useReducedMotion from '../hooks/useReducedMotion';
-import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock, getVariantPrice, getVariantOriginalPrice } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
+import { getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
+import Breadcrumb, { getProductBreadcrumbs } from '../components/layout/Breadcrumb';
+import { ProductCarousel } from '../components/ProductCarousel';
 
 // --- Accordion Component ---
 const AccordionItem: React.FC<{
@@ -509,22 +511,38 @@ export const ProductDetail: React.FC = () => {
       const key = 'recentlyViewed';
       const currentId = String(product.id || product._id || product.slug || '');
       const rawImg = primaryImage(product) || (product.images && product.images[0] ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0].url) : '') || '';
-      const snapshot = {
+      const snapshot: any = {
         id: currentId,
         _id: product._id || currentId,
         name: String(product.name ?? ''),
+        brand: product.brand,
         image: String(rawImg ?? ''),
-        price: typeof product.price === 'number' ? product.price : String(product.price ?? ''),
-        slug: String(product.seo?.slug ?? product.slug ?? currentId)
+        images: Array.isArray(product.images) && product.images.length ? product.images : [rawImg],
+        price: typeof product.price === 'number' ? product.price : Number(product.price) || 0,
+        originalPrice: product.originalPrice,
+        category: product.category,
+        inStock: product.inStock !== false,
+        inventory: product.inventory,
+        sizes: product.sizes || [],
+        variants: product.variants || [],
+        colors: product.colors || [],
+        rating: product.rating,
+        ratings: product.ratings,
+        numReviews: product.numReviews,
+        reviewCount: product.reviewCount,
+        slug: String(product.seo?.slug ?? product.slug ?? currentId),
+        privateSale: product.privateSale,
+        trending: product.trending
       };
       const raw = localStorage.getItem(key);
       let arr = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(arr)) arr = [];
       
       const filteredExisting = arr.filter((p: any) => String(p.id || p._id) !== currentId);
-      setRecentlyViewedList(filteredExisting.slice(0, 6));
+      // Keep up to 10 recently viewed products
+      setRecentlyViewedList(filteredExisting.slice(0, 10));
 
-      const updatedArr = [snapshot, ...filteredExisting].slice(0, 12);
+      const updatedArr = [snapshot, ...filteredExisting].slice(0, 10);
       localStorage.setItem(key, JSON.stringify(updatedArr));
     } catch (e) {
       // ignore storage errors
@@ -674,10 +692,18 @@ export const ProductDetail: React.FC = () => {
 
   const canonicalPid = String(product?.id || product?._id || productId || '');
 
+  const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
+  const hasSizes = useMemo(() => (getDisplaySizesForProduct(product) || []).length > 0, [product]);
+  const hasColors = useMemo(() => !isFragrance && Boolean(
+    (product?.variants && product.variants.length > 0) ||
+    (product?.colors && product.colors.length > 0)
+  ), [isFragrance, product]);
+  const isSelectionReady = (!hasSizes || Boolean(selectedSize)) && (!hasColors || Boolean(selectedVariantId || selectedColor));
+
   const inCartQty = useMemo(() => {
-    if (!product || !selectedSize) return 0;
+    if (!product || (hasSizes && !selectedSize)) return 0;
     return getItemQuantity(canonicalPid, selectedSize, selectedColor || selectedVariantId, selectedVariantId);
-  }, [product, selectedSize, selectedColor, selectedVariantId, canonicalPid, getItemQuantity]);
+  }, [product, hasSizes, selectedSize, selectedColor, selectedVariantId, canonicalPid, getItemQuantity]);
 
   const remainingStockAllowed = Math.max(0, displayAvailableQuantity - inCartQty);
   const isAllInCart = Boolean(selectedSize && displayAvailableQuantity > 0 && inCartQty >= displayAvailableQuantity);
@@ -704,6 +730,8 @@ export const ProductDetail: React.FC = () => {
       setQuantity(1);
     }
   }, [remainingStockAllowed, quantity]);
+
+  const breadcrumbs = useMemo(() => getProductBreadcrumbs(product), [product]);
 
   // --- Safe to return conditionally now that all hooks are called ---
   if (loading) {
@@ -732,7 +760,6 @@ export const ProductDetail: React.FC = () => {
   }
 
   const isWishlisted = typeof isInWishlist === 'function' ? isInWishlist(String(product?.id || product?._id || '')) : false;
-  const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
@@ -858,15 +885,18 @@ export const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <div className="min-h-screen bg-white py-6 md:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Systematic Breadcrumb Navigation */}
+        <Breadcrumb items={breadcrumbs} className="mb-4" />
+
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider text-gray-500 hover:text-gray-900 mb-6 transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back</span>
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
@@ -1306,7 +1336,7 @@ export const ProductDetail: React.FC = () => {
                 <div className="mt-2 text-xs md:text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                   <span>ℹ️</span> All {displayAvailableQuantity} available units are already in your cart.
                 </div>
-              ) : selectedSize && (selectedVariantId || selectedColor) && displayAvailableQuantity > 0 && displayAvailableQuantity <= 15 ? (
+              ) : isSelectionReady && displayAvailableQuantity > 0 && displayAvailableQuantity <= 15 ? (
                 <div className="mt-2 text-xs md:text-sm font-medium transition-all duration-300">
                   {displayAvailableQuantity === 1 ? (
                     <span className="text-red-600 flex items-center gap-1.5 animate-pulse font-bold">
@@ -1622,67 +1652,24 @@ export const ProductDetail: React.FC = () => {
         </div>
 
         {/* Recommendations: You Might Also Like */}
-        <div className="mt-12">
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-bold text-gray-900 tracking-tight">You Might Also Like</h3>
+        {Array.isArray(product.relatedProducts) && product.relatedProducts.length > 0 && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductCarousel
+              title="You Might Also Like"
+              products={product.relatedProducts}
+              maxItems={8}
+            />
           </div>
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 justify-start">
-              {(product.relatedProducts || []).slice(0, 4).map((rp: any) => {
-                const rpId = String(rp._id || rp.id || '');
-                const rpImage = rp.images && rp.images[0] ? (typeof rp.images[0] === 'string' ? rp.images[0] : rp.images[0].url) : '';
-                return (
-                  <Link key={rpId} to={`/product/${rpId}`} className="group border border-gray-100 rounded-xl overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 bg-white">
-                    <div className="w-full h-48 bg-gray-50 overflow-hidden relative">
-                      <img 
-                        src={String(rpImage)} 
-                        alt={String(rp.name || '')} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      />
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <div className="font-semibold text-gray-900 mb-1 line-clamp-2">{String(rp.name ?? '')}</div>
-                      <div className="text-blue-600 font-medium mt-auto">Rs {typeof rp.price === 'number' ? rp.price.toLocaleString() : String(rp.price ?? '')}</div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Recently Viewed Products */}
         {recentlyViewedList.length > 0 && (
-          <div className="mt-20 mb-10">
-            <div className="text-center mb-8">
-              <h3 className="text-xl font-bold text-gray-900">Recently Viewed</h3>
-            </div>
-            <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-                {recentlyViewedList.map((p: any) => (
-                  <Link
-                    key={String(p.id || p._id || '')}
-                    to={`/product/${String(p.id || p._id || '')}`}
-                    className="group border border-gray-100 rounded-lg overflow-hidden p-2 flex flex-col items-start hover:shadow-lg transition-all bg-white"
-                  >
-                    <div className="w-full h-32 bg-gray-50 overflow-hidden mb-2 rounded-md">
-                      <img
-                        src={String(p.image || '')}
-                        alt={String(p.name || '')}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    </div>
-                    <div className="text-sm font-medium truncate w-full text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {String(p.name ?? '')}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Rs {typeof p.price === 'number' ? p.price.toLocaleString() : String(p.price ?? '')}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ProductCarousel
+              title="Recently Viewed"
+              products={recentlyViewedList}
+              maxItems={10}
+            />
           </div>
         )}
       </div>

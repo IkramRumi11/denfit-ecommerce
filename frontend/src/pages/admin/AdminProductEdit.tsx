@@ -36,6 +36,7 @@ const AdminProductEdit: React.FC = () => {
     inStock: true,
     featured: false,
     trending: false,
+    privateSale: false,
     images: [],
     sizes: [],
     stock: [],
@@ -292,6 +293,7 @@ const AdminProductEdit: React.FC = () => {
           inStock: p.inStock ?? true,
           featured: p.featured ?? false,
           trending: p.trending ?? false,
+          privateSale: p.privateSale ?? false,
           images: images,
           sizes: sizes,
           // initialize stock mapping from product if available and map to UI tempIds
@@ -1703,6 +1705,17 @@ const AdminProductEdit: React.FC = () => {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm font-medium text-gray-700">Trending Product</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="privateSale"
+                      checked={form.privateSale}
+                      onChange={onChange}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-sm font-medium text-purple-700 font-semibold">Private Sale Product</span>
                   </label>
                 </div>
               </div>

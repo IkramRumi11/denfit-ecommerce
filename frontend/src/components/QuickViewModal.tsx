@@ -84,22 +84,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
     return [];
   }, [product]);
 
+  const hasSizes = useMemo(() => (getDisplaySizesForProduct(product as any) || []).length > 0, [product]);
+
   // Selected item live available stock
   const selectedStock = useMemo(() => {
-    if (!product || !selectedSize) return 0;
+    if (!product) return 0;
+    if (hasSizes && !selectedSize) return 0;
     return getAvailableStockForItem(product, {
-      size: selectedSize,
+      size: selectedSize || undefined,
       color: selectedColor,
       colorName: selectedColorName,
       variantId: selectedVariantId
     });
-  }, [product, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
+  }, [product, hasSizes, selectedSize, selectedColor, selectedColorName, selectedVariantId]);
 
   const inCartQty = useMemo(() => {
-    if (!product || !selectedSize) return 0;
+    if (!product || (hasSizes && !selectedSize)) return 0;
     const pid = String(canonicalId || (product as any).id || (product as any)._id || '');
     return getItemQuantity(pid, selectedSize, selectedColor || selectedVariantId);
-  }, [product, canonicalId, selectedSize, selectedColor, selectedVariantId, getItemQuantity]);
+  }, [product, hasSizes, canonicalId, selectedSize, selectedColor, selectedVariantId, getItemQuantity]);
 
   const isAllInCart = selectedStock > 0 && inCartQty >= selectedStock;
 
@@ -206,6 +209,9 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
             await (maybePromise as Promise<any>);
           }
           try { onClose(); } catch (e) { }
+          setTimeout(() => {
+            openCart();
+          }, 120);
           return true;
         } catch (e) {
           console.error('onAddToCart handler failed', e);
@@ -249,6 +255,10 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
       }
 
       showToast(`${product.name} added to the cart`, 'success');
+      onClose();
+      setTimeout(() => {
+        openCart();
+      }, 120);
       return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -258,13 +268,7 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
   };
 
   const handleBuyNow = async () => {
-    const success = await handleAddToCart();
-    if (success) {
-      onClose();
-      setTimeout(() => {
-        openCart();
-      }, 100);
-    }
+    await handleAddToCart();
   };
 
   const handleWishlistToggle = () => {
@@ -939,6 +943,25 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
                           {inCartQty} currently in your cart ({selectedStock - inCartQty} more available)
                         </p>
                       ) : null}
+
+                      {/* Low Stock Warning */}
+                      {selectedStock > 0 && selectedStock <= 15 && !isAllInCart && (
+                        <div className="mb-3 text-xs font-medium transition-all duration-300">
+                          {selectedStock === 1 ? (
+                            <span className="text-red-600 flex items-center gap-1.5 animate-pulse font-bold">
+                              🔥 Last item available!
+                            </span>
+                          ) : selectedStock <= 5 ? (
+                            <span className="text-orange-600 flex items-center gap-1.5 font-semibold">
+                              ⚠️ Only {selectedStock} left in stock.
+                            </span>
+                          ) : (
+                            <span className="text-yellow-600 flex items-center gap-1.5">
+                              🔥 Hurry! Only {selectedStock} left.
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Buttons */}

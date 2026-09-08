@@ -241,6 +241,11 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  privateSale: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   // Publication status: draft/published/archived
   status: {
     type: String,

@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { formatLabel } from '../utils/formatLabel';
 import { getColorName } from '../utils/colorNames';
 import { useToast } from '../context/ToastContext';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 
 const OrderDetail: React.FC = () => {
   const { id } = useParams();
@@ -88,6 +89,15 @@ const OrderDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 py-12">
       <div className="max-w-4xl mx-auto px-4">
+        <Breadcrumb
+          items={[
+            { label: 'Home', to: '/' },
+            { label: 'Account', to: '/profile' },
+            { label: 'Orders', to: '/orders' },
+            { label: `Order #${order.orderNumber || order._id?.slice(-8) || order._id}` }
+          ]}
+          className="mb-4"
+        />
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Order Details</h1>

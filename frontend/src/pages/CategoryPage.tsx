@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Grid, List, Search, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
 import { FilterEngine } from '../components/FilterEngine';
 import { ProductCard } from '../components/ProductCard';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
@@ -164,23 +165,10 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* ─── Breadcrumbs ─── */}
-      <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-2" aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1.5 text-xs text-gray-500">
-          {breadcrumbs.map((crumb, i) => (
-            <li key={crumb.to} className="flex items-center gap-1.5">
-              {i > 0 && <ChevronRight size={12} className="text-gray-400" />}
-              {i < breadcrumbs.length - 1 ? (
-                <Link to={crumb.to} className="hover:text-gray-900 transition-colors">
-                  {crumb.label}
-                </Link>
-              ) : (
-                <span className="text-gray-900 font-medium">{crumb.label}</span>
-              )}
-            </li>
-          ))}
-        </ol>
-      </nav>
+      {/* ─── Systematic Breadcrumbs ─── */}
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-2">
+        <Breadcrumb items={breadcrumbs} />
+      </div>
 
       {/* ─── Page Header ─── */}
       <header className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-6">

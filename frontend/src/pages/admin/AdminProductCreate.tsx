@@ -32,6 +32,7 @@ const AdminProductCreate: React.FC = () => {
     inStock: true,
     featured: false,
     trending: false,
+    privateSale: false,
     images: [],
     // sizes stored as objects: { id, value, inStock, quantity }
     sizes: [],
@@ -1499,6 +1500,17 @@ const AdminProductCreate: React.FC = () => {
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm font-medium text-gray-700">Trending Product</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="privateSale"
+                      checked={form.privateSale}
+                      onChange={onChange}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-sm font-medium text-purple-700 font-semibold">Private Sale Product</span>
                   </label>
                 </div>
               </div>

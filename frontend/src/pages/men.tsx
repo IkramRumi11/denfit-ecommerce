@@ -6,6 +6,7 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { productId } from '../utils/productHelpers';
 import { FilterEngine } from '../components/FilterEngine';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { getColorName, resolveColorHex } from '../utils/colorNames';
 import { usePageBanner } from '../hooks/usePageBanner';
@@ -244,6 +245,10 @@ export default function Men(): JSX.Element {
           </div>
         </div>
       </nav>
+
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-2">
+        <Breadcrumb items={[{ label: 'Home', to: '/' }, { label: 'Men' }]} />
+      </div>
 
       <section className="max-w-[1600px] mx-auto px-4 sm:px-6 mb-12 md:mb-16">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 uppercase tracking-wider text-center">

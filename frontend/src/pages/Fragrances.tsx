@@ -4,6 +4,7 @@ import { SlidersHorizontal, X, ArrowRight, Package } from 'lucide-react';
 
 import { ProductCard } from '../components/ProductCard';
 import { FilterEngine } from '../components/FilterEngine';
+import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { usePageBanner } from '../hooks/usePageBanner';
 
@@ -228,6 +229,15 @@ export default function Fragrances(): JSX.Element {
       <FragrancesHero />
 
       <div id="fragrances-grid" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Breadcrumb
+          items={
+            activeTab && activeTab !== 'all'
+              ? [{ label: 'Home', to: '/' }, { label: 'Fragrances', to: '/fragrances' }, { label: activeTab.toUpperCase() }]
+              : [{ label: 'Home', to: '/' }, { label: 'Fragrances' }]
+          }
+          className="mb-6"
+        />
+
         {/* Audience / Department Navigation Tabs */}
         <div className="flex items-center justify-between border-b border-neutral-200 pb-4 mb-8 gap-4 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-2">
