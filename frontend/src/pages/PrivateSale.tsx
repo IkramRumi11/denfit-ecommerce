@@ -18,6 +18,7 @@ import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { Product } from '../types';
+import { productId } from '../utils/productHelpers';
 
 export const PrivateSale: React.FC = () => {
   const navigate = useNavigate();
@@ -155,13 +156,13 @@ export const PrivateSale: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-neutral-950 to-black text-white selection:bg-white selection:text-black overflow-x-hidden">
       {/* Editorial Luxury Header Banner */}
-      <section className="relative overflow-hidden pt-12 md:pt-16 pb-14 md:pb-20 border-b border-white/10">
+      <section className="relative overflow-hidden pt-10 md:pt-14 pb-10 md:pb-14 border-b border-white/10">
         {/* Background Ambient Radial Glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.07),transparent_70%)] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-6 md:px-10 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Denfit Maison Top Mini-Bar */}
-          <div className="flex items-center justify-between text-[11px] tracking-[0.24em] uppercase text-neutral-400 mb-8 sm:mb-12">
+          <div className="flex items-center justify-between text-[11px] tracking-[0.24em] uppercase text-neutral-400 mb-6 sm:mb-8">
             <span className="flex items-center gap-2">
               <span className="h-[1px] w-8 bg-neutral-600" />
               DENFiT Maison
@@ -174,13 +175,13 @@ export const PrivateSale: React.FC = () => {
 
           <div className="text-center max-w-3xl mx-auto">
             {/* VIP Status Pill Badge */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-[10px] md:text-[11px] uppercase tracking-[0.26em] text-neutral-200 mb-6 shadow-sm">
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-[10px] md:text-[11px] uppercase tracking-[0.26em] text-neutral-200 mb-5 shadow-sm">
               <Lock className="w-3 h-3 text-neutral-300" />
               <span>Private Client Access</span>
             </div>
 
             {/* Main Editorial Heading */}
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[0.20em] uppercase text-white leading-[1.1] mb-5">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-light tracking-[0.20em] uppercase text-white leading-[1.1] mb-4">
               Private Sale
             </h1>
 
@@ -189,7 +190,7 @@ export const PrivateSale: React.FC = () => {
             </p>
 
             {/* Replaced Feature Badges: No AI icons, No 'Backend Gated Access', No 'Full Return & Warranty' */}
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-[11px] uppercase tracking-[0.20em] text-neutral-400 border-t border-white/10 pt-6">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-[11px] uppercase tracking-[0.20em] text-neutral-400 border-t border-white/10 pt-5">
               <div className="flex items-center gap-2">
                 <Lock className="w-3.5 h-3.5 text-neutral-300" />
                 <span>Verified Patron Privilege</span>
@@ -207,10 +208,10 @@ export const PrivateSale: React.FC = () => {
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 pt-8 pb-20">
+      {/* Main Content Area - Aligned to standard DENFiT category page container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-14 md:pb-16">
         {/* Subtle Dark Breadcrumb */}
-        <div className="mb-8 opacity-80 hover:opacity-100 transition-opacity">
+        <div className="mb-4 sm:mb-6 opacity-80 hover:opacity-100 transition-opacity">
           <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Private Sale' }]} />
         </div>
 
@@ -335,16 +336,16 @@ export const PrivateSale: React.FC = () => {
           </div>
         ) : (
           /* State 3: Eligible VIP Customer View */
-          <div className="space-y-8">
+          <div className="space-y-5 sm:space-y-6">
             {/* Filter & Sort Bar */}
-            <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-3 sm:p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
               {/* Category Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1.5 md:pb-0 scrollbar-none">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-5 py-2 rounded-full text-xs font-medium tracking-[0.18em] uppercase transition-all whitespace-nowrap ${
+                    className={`px-4 py-1.5 rounded-full text-xs font-medium tracking-[0.16em] uppercase transition-all whitespace-nowrap ${
                       selectedCategory === cat.id
                         ? 'bg-white text-black shadow-md'
                         : 'border border-white/10 bg-white/5 text-neutral-300 hover:text-white hover:border-white/20'
@@ -356,21 +357,21 @@ export const PrivateSale: React.FC = () => {
               </div>
 
               {/* Sort & Search */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search archive..."
-                    className="w-36 sm:w-44 px-4 py-2 text-xs rounded-full border border-white/15 bg-neutral-900/80 text-white placeholder-neutral-500 focus:outline-none focus:border-white/40 tracking-wide"
+                    className="w-32 sm:w-40 px-3.5 py-1.5 text-xs rounded-full border border-white/15 bg-neutral-900/80 text-white placeholder-neutral-500 focus:outline-none focus:border-white/40 tracking-wide"
                   />
                 </div>
 
                 <select
                   value={sortBy}
                   onChange={(e: any) => setSortBy(e.target.value)}
-                  className="px-4 py-2 text-xs rounded-full border border-white/15 bg-neutral-900/80 text-neutral-200 focus:outline-none focus:border-white/40 uppercase tracking-[0.14em] cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs rounded-full border border-white/15 bg-neutral-900/80 text-neutral-200 focus:outline-none focus:border-white/40 uppercase tracking-[0.14em] cursor-pointer"
                 >
                   <option value="featured">Featured</option>
                   <option value="price_asc">Price: Low to High</option>
@@ -382,19 +383,19 @@ export const PrivateSale: React.FC = () => {
 
             {/* Product Grid */}
             {productsLoading ? (
-              <div className="py-28 text-center">
-                <RefreshCw className="w-8 h-8 animate-spin text-white mx-auto mb-3" />
+              <div className="py-20 text-center">
+                <RefreshCw className="w-7 h-7 animate-spin text-white mx-auto mb-3" />
                 <p className="text-xs uppercase tracking-[0.22em] text-neutral-400">Loading private archive pieces...</p>
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md p-16 text-center max-w-lg mx-auto">
-                <div className="w-14 h-14 rounded-full border border-white/15 bg-white/5 flex items-center justify-center mx-auto mb-4 text-neutral-400">
-                  <ShoppingBag className="w-6 h-6 stroke-[1.5]" />
+              <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-10 sm:p-14 text-center max-w-lg mx-auto">
+                <div className="w-12 h-12 rounded-full border border-white/15 bg-white/5 flex items-center justify-center mx-auto mb-3.5 text-neutral-400">
+                  <ShoppingBag className="w-5 h-5 stroke-[1.5]" />
                 </div>
-                <h3 className="text-lg font-light tracking-[0.18em] uppercase text-white mb-2">
+                <h3 className="text-base sm:text-lg font-light tracking-[0.18em] uppercase text-white mb-2">
                   No Archive Pieces Found
                 </h3>
-                <p className="text-neutral-400 text-xs sm:text-sm max-w-sm mx-auto mb-6 font-light leading-relaxed">
+                <p className="text-neutral-400 text-xs sm:text-sm max-w-sm mx-auto mb-5 font-light leading-relaxed">
                   {searchQuery || selectedCategory !== 'all'
                     ? 'No products matched your selected archive criteria.'
                     : 'The Private Sale vault is currently being refreshed with new capsule pieces.'}
@@ -405,7 +406,7 @@ export const PrivateSale: React.FC = () => {
                       setSearchQuery('');
                       setSelectedCategory('all');
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-transparent text-white px-6 py-2 text-xs uppercase tracking-[0.20em] hover:bg-white/10 transition"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-transparent text-white px-5 py-2 text-xs uppercase tracking-[0.20em] hover:bg-white/10 transition"
                   >
                     Reset Filters
                   </button>
@@ -413,7 +414,7 @@ export const PrivateSale: React.FC = () => {
               </div>
             ) : (
               <div>
-                <div className="flex items-center justify-between mb-6 px-1">
+                <div className="flex items-center justify-between mb-3.5 sm:mb-4 px-0.5">
                   <div className="text-[11px] uppercase tracking-[0.24em] text-neutral-400 font-light">
                     Presenting <span className="text-white font-medium">{filteredProducts.length}</span> Exclusive Allocation{filteredProducts.length > 1 ? 's' : ''}
                   </div>
@@ -421,9 +422,10 @@ export const PrivateSale: React.FC = () => {
                     Limited Run • Hand Finished
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {/* Standard DENFiT Responsive Grid: 2 mobile, 3 tablet, 4 desktop, 5 wide-desktop */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4 md:gap-5">
                   {filteredProducts.map((product) => (
-                    <ProductCard key={product._id || product.id} product={product} />
+                    <ProductCard key={productId(product)} product={product} />
                   ))}
                 </div>
               </div>
