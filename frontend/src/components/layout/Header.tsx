@@ -14,7 +14,7 @@ import { useNotifications } from "../../context/NotificationContext";
 import { useToast } from "../../context/ToastContext";
 import { useFeatures } from '../../context/FeatureContext';
 import { productsAPI } from '../../api';
-import { productId, primaryImage, priceNumber, slugify } from '../../utils/productHelpers';
+import { productId, primaryImage, priceNumber, slugify, productUrl } from '../../utils/productHelpers';
 import { megaMenuData } from "../../data/megaMenuData";
 
 // ---------------------------------------------
@@ -77,7 +77,8 @@ export default function Header(): JSX.Element {
   // current tab and fall back to a per-render ref where sessionStorage isn't
   // available (e.g., tests or environments without a window).
   useEffect(() => {
-    if (!user || user.verified) return;
+    const isUserVerified = Boolean(user && (user.emailVerified || (user as any).verified || (user as any).isVerified));
+    if (!user || isUserVerified) return;
 
     const uid = (user as any).id || (user as any)._id || (user as any).email || "unknown";
     const storageKey = `verifyToastShown:${uid}`;
@@ -141,7 +142,7 @@ export default function Header(): JSX.Element {
     // Close search and navigate to product detail page to ensure full, consistent product data
     setSuggestions([]);
     setSearchOpen(false);
-    navigate(`/product/${productId(product)}`);
+    navigate(productUrl(product));
   };
 
   // Wishlist toggle

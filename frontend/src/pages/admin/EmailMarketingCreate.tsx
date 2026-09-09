@@ -161,7 +161,7 @@ const EmailMarketingCreate: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3 mb-6">
-        <input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="Specific Customer@gmail.com" className="border px-3 py-2 rounded w-64" />
+        <input value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="Enter recipient email address" className="border px-3 py-2 rounded w-64" />
           <button type="button" onClick={onSendTest} disabled={testSending} className="px-4 py-2 bg-gray-800 text-white rounded">{testSending ? 'Sending...' : 'Send Email Specifically'}</button>
       </div>
 

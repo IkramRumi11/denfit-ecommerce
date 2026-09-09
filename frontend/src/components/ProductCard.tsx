@@ -11,7 +11,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { QuickViewModal } from './QuickViewModal';
 import type { Product } from '../types';
-import { productId, primaryImage, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
+import { productId, primaryImage, priceNumber, canonicalProductId, canonicalProductSlug, productUrl, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getCategoryGroup, getDisplaySizesForProduct, getAvailableSizesForProduct } from '../utils/sizeRules';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock, getVariantPrice, getVariantOriginalPrice, hasVariantPricing, getMinProductPrice } from '../utils/stockHelpers';
 import { getColorName } from '../utils/colorNames';
@@ -175,13 +175,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
 
   const isFragrance = product?.category === 'fragrances' || product?.subcategory === 'fragrances';
 
-  // Check if product has colors/variants
   const hasColors = !isFragrance && (
     (product.variants && Array.isArray(product.variants) && product.variants.length > 0) ||
     (product.colors && Array.isArray(product.colors) && product.colors.length > 0)
   );
 
-  // Handlers
   const handleAddToCart = (e?: React.MouseEvent) => {
     e?.stopPropagation();
 
@@ -347,7 +345,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
   };
 
   const handleViewDetails = () => {
-    navigate(`/product/${productId(product)}`);
+    navigate(productUrl(product));
   };
 
   // List of images for hover preview & rotation
@@ -432,7 +430,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }
       >
         {/* IMAGE */}
         <div 
-          className="relative aspect-[3/4] overflow-hidden bg-gray-100 cursor-pointer"
+          className="relative aspect-[3/4] md:aspect-[75/97] overflow-hidden bg-gray-100 cursor-pointer"
           onMouseEnter={handleCardMouseEnter}
           onMouseLeave={handleCardMouseLeave}
           onFocus={handleCardMouseEnter}

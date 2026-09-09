@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { SlidersHorizontal, X, Check } from 'lucide-react';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
-import { productId, slugify } from '../utils/productHelpers';
+import {
+  productId,
+  slugify,
+  extractAvailableColors,
+  productMatchesColor,
+  isLightColorHex,
+  AvailableColorItem,
+} from '../utils/productHelpers';
 import { productsAPI } from '../api';
 import megaMenuData from '../data/megaMenuData';
 import { usePageBanner } from '../hooks/usePageBanner';
@@ -9,9 +18,13 @@ import { usePageBanner } from '../hooks/usePageBanner';
 export default function Accessories(): JSX.Element {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSubCategory, setSelectedSubCategory] = useState<string>('all');
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Load products and derive accessories set client-side so items classified as "wallets", "watches" etc. are included
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Load products and derive accessories set client-side
   const [accessoriesProducts, setAccessoriesProducts] = useState<any[]>([]);
   useEffect(() => {
     let mounted = true;
@@ -59,8 +72,42 @@ export default function Accessories(): JSX.Element {
     return () => { mounted = false; };
   }, []);
 
-  // Filter products based on selected category
+  // Sync color filter from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const colorParam = params.get('color');
+    if (colorParam) {
+      setSelectedColor(colorParam);
+    }
+  }, [location.search]);
+
+  // Colors available in loaded accessories products
+  const availableColors = useMemo(
+    () => extractAvailableColors(accessoriesProducts),
+    [accessoriesProducts]
+  );
+
+  const handleColorClick = (colorItem: AvailableColorItem) => {
+    const active = (selectedColor || '').trim().toLowerCase();
+    const isSelected = active === colorItem.name.toLowerCase() || active === colorItem.slug;
+    const nextColor = isSelected ? '' : colorItem.name;
+    setSelectedColor(nextColor);
+
+    try {
+      const params = new URLSearchParams(location.search);
+      if (nextColor) params.set('color', nextColor);
+      else params.delete('color');
+      const qs = params.toString();
+      navigate({ pathname: '/accessories', search: qs ? `?${qs}` : '' }, { replace: true });
+    } catch (e) {}
+  };
+
+  // Filter products based on selected category, subcategory, and color
   const filteredProducts = accessoriesProducts.filter((p: any) => {
+    if (selectedColor && !productMatchesColor(p, selectedColor)) {
+      return false;
+    }
+
     if (selectedCategory === 'all') return true;
 
     const productGender = (p as any).gender?.toLowerCase();
@@ -150,12 +197,12 @@ export default function Accessories(): JSX.Element {
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     setSelectedSubCategory('all');
-    setIsMobileSidebarOpen(false);
+    setShowFilters(false);
   };
 
   const handleSubCategoryChange = (subCategory: string) => {
     setSelectedSubCategory(subCategory);
-    setIsMobileSidebarOpen(false);
+    setShowFilters(false);
   };
 
   // Reset subcategory when category changes
@@ -194,38 +241,45 @@ export default function Accessories(): JSX.Element {
       </section>
 
       {/* Main Content with Sidebar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-        <Breadcrumb
-          items={
-            selectedCategory && selectedCategory !== 'all'
-              ? [{ label: 'Home', to: '/' }, { label: 'Accessories', to: '/accessories' }, { label: `${selectedCategory.toUpperCase()} ACCESSORIES` }]
-              : [{ label: 'Home', to: '/' }, { label: 'Accessories' }]
-          }
-          className="mb-6"
-        />
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Mobile Filter Button */}
-          <div className="lg:hidden mb-4">
-            <button
-              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-              className="w-full bg-black text-white px-6 py-3 font-semibold uppercase text-sm tracking-wider flex items-center justify-between"
-            >
-              <span>Filter Categories</span>
-              <svg
-                className={`w-5 h-5 transform transition-transform ${isMobileSidebarOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-between pb-6 mb-6 border-b border-gray-100">
+          <Breadcrumb
+            items={
+              selectedCategory && selectedCategory !== 'all'
+                ? [{ label: 'Home', to: '/' }, { label: 'Accessories', to: '/accessories' }, { label: `${selectedCategory.toUpperCase()} ACCESSORIES` }]
+                : [{ label: 'Home', to: '/' }, { label: 'Accessories' }]
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 border rounded-lg text-sm font-medium transition ${
+              showFilters
+                ? 'border-black bg-black text-white shadow-sm'
+                : 'border-gray-200 hover:bg-gray-50 text-gray-900 bg-white'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{showFilters ? 'Hide Categories' : 'Filter Categories'}</span>
+          </button>
+        </div>
 
-          {/* Sidebar */}
-          <aside className={`lg:w-64 flex-shrink-0 ${isMobileSidebarOpen ? 'block' : 'hidden lg:block'}`}>
-            <div className="bg-white border border-gray-200 p-6">
-              <h2 className="text-xl font-bold mb-6 uppercase tracking-wider">Categories</h2>
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Collapsible Sidebar */}
+          {showFilters && (
+            <aside className="w-full lg:w-64 flex-shrink-0 animate-fadeIn">
+              <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm sticky top-24">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-gray-900">Categories</h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(false)}
+                    className="p-1 text-gray-400 hover:text-black rounded transition"
+                    title="Close filters"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               
               {/* All Accessories */}
               <div className="mb-6">
@@ -366,6 +420,7 @@ export default function Accessories(): JSX.Element {
               </div>
             </div>
           </aside>
+        )}
 
           {/* Products Grid */}
           <main className="flex-1">
@@ -395,11 +450,15 @@ export default function Accessories(): JSX.Element {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No products found in this category.</p>
+                <p className="text-gray-500 text-lg">No products found matching your selection.</p>
                 <button
                   onClick={() => {
                     setSelectedCategory('all');
                     setSelectedSubCategory('all');
+                    setSelectedColor('');
+                    try {
+                      navigate({ pathname: '/accessories' }, { replace: true });
+                    } catch (e) {}
                   }}
                   className="mt-4 inline-block bg-black text-white px-6 py-3 font-semibold uppercase text-sm tracking-wider hover:bg-gray-800 transition-colors"
                 >
@@ -410,6 +469,48 @@ export default function Accessories(): JSX.Element {
           </main>
         </div>
       </div>
+
+      {availableColors.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 md:mb-16">
+          <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 uppercase tracking-wider text-center">
+            Shop by Color
+          </h2>
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            {availableColors.map((colorItem) => {
+              const active = (selectedColor || '').trim().toLowerCase();
+              const isActive = active === colorItem.name.toLowerCase() || active === colorItem.slug;
+              return (
+                <button
+                  key={colorItem.slug}
+                  type="button"
+                  onClick={() => handleColorClick(colorItem)}
+                  className={`flex flex-col items-center group transition-transform ${isActive ? 'scale-105' : ''}`}
+                  title={`Filter by ${colorItem.name}`}
+                  aria-label={`Filter by ${colorItem.name}${isActive ? ' (active, click to clear)' : ''}`}
+                >
+                  <div
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 transition-all duration-300 group-hover:scale-110 relative ${
+                      isActive
+                        ? 'border-black ring-4 ring-black/20 shadow-md'
+                        : 'border-gray-200 group-hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: colorItem.hex }}
+                  >
+                    {isActive && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Check className={`w-6 h-6 ${isLightColorHex(colorItem.hex) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`mt-2 text-xs md:text-sm font-medium uppercase tracking-wide ${isActive ? 'text-black font-bold underline' : 'text-gray-700'}`}>
+                    {colorItem.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

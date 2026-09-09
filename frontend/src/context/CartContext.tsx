@@ -328,7 +328,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Standalone / test fallback
   }
 
-  // ✅ Load cart from localStorage once
+  // Hydrate cart from local storage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("denfit-cart");
     if (savedCart) {
@@ -347,7 +347,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: "RECALCULATE_SHIPPING", config: activeShippingConfig });
   }, [activeShippingConfig]);
 
-  // ✅ Save cart with debounce
+  // Debounced persistence to local storage
   useEffect(() => {
     const timeout = setTimeout(() => {
       localStorage.setItem("denfit-cart", JSON.stringify(state.items));

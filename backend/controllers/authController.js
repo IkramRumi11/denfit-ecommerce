@@ -90,7 +90,10 @@ const createSendToken = (user, statusCode, req, res) => {
 
   // For secure cookie-only auth we set the httpOnly cookie and return the
   // user object only. Clients should not rely on receiving the raw token.
-  return res.status(statusCode).json({ success: true, data: { user } });
+  const userPayload = user.toObject ? user.toObject({ virtuals: true }) : { ...user };
+  userPayload.verified = !!user.emailVerified;
+  userPayload.emailVerified = !!user.emailVerified;
+  return res.status(statusCode).json({ success: true, data: { user: userPayload } });
 };
 
 // -------- Register
@@ -320,7 +323,11 @@ export const getMe = async (req, res, next) => {
     const user = await User.findById(req.user._id).select(
       '-password -loginAttempts -lockUntil'
     );
-    res.status(200).json({ success: true, data: { user } });
+    if (!user) return next(new AppError('User not found', 404));
+    const userPayload = user.toObject ? user.toObject({ virtuals: true }) : { ...user };
+    userPayload.verified = !!user.emailVerified;
+    userPayload.emailVerified = !!user.emailVerified;
+    res.status(200).json({ success: true, data: { user: userPayload } });
   } catch (err) {
     console.error('Error in getMe:', err);
     next(err);

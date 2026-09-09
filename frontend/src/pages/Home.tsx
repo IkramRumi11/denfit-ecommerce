@@ -18,8 +18,8 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useShipping } from "../context/ShippingContext";
-import { api } from "../api";
-import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor } from "../utils/productHelpers";
+import { api, contentAPI } from "../api";
+import { primaryImage, productId, priceNumber, canonicalProductId, resolveProductSelection, getConsistentColor, productUrl } from "../utils/productHelpers";
 import {
   getCategoryGroup,
   getDisplaySizesForProduct,
@@ -164,7 +164,27 @@ const LuxuryHomePage = () => {
   const { freeShippingText } = useShipping();
   const { banner: homeTopBanner } = usePageBanner('home_top');
   const { banner: homeHeroBanner } = usePageBanner('home_hero');
+  const [contentBanners, setContentBanners] = useState<Record<string, any>>({});
   const navigate = useNavigate();
+
+  // Load public Content Controller banners
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await contentAPI.getPublicContent();
+        const b = (res as any)?.data?.banners || (res as any)?.banners;
+        if (b && typeof b === 'object' && isMounted) {
+          setContentBanners(b);
+        }
+      } catch (err) {
+        // Silently fallback to defaults
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Quick-add overlay state
   const [quickAddProduct, setQuickAddProduct] = useState<Product | null>(null);
@@ -174,33 +194,43 @@ const LuxuryHomePage = () => {
   const [qaSelectedVariantId, setQaSelectedVariantId] = useState<string>("");
 
   const heroSlides = useMemo(() => {
+    const slide1 = contentBanners['home_slide_1'];
+    const slide2 = contentBanners['home_slide_2'];
+    const slide3 = contentBanners['home_slide_3'];
+
     const defaultSlides = [
       {
         image:
-          "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&q=90",
-        title: "TIMELESS ELEGANCE",
-        subtitle: "Fall / Winter 2026 Maison Collection",
+          (slide1?.isActive && slide1?.imageUrl)
+            ? slide1.imageUrl
+            : "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&q=90",
+        title: (slide1?.isActive && slide1?.title) ? slide1.title : "TIMELESS ELEGANCE",
+        subtitle: (slide1?.isActive && slide1?.subtitle) ? slide1.subtitle : "Fall / Winter 2026 Maison Collection",
         tagline: "Tailored silhouettes, sculpted in light.",
-        cta: "Discover Women",
-        link: "/shop?gender=women",
+        cta: (slide1?.isActive && slide1?.buttonText) ? slide1.buttonText : "Discover Women",
+        link: (slide1?.isActive && slide1?.link) ? slide1.link : "/shop?gender=women",
       },
       {
         image:
-          "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1920&q=90",
-        title: "CRAFTED PERFORMANCE",
-        subtitle: "Precision Engineered Athletic Couture",
+          (slide2?.isActive && slide2?.imageUrl)
+            ? slide2.imageUrl
+            : "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1920&q=90",
+        title: (slide2?.isActive && slide2?.title) ? slide2.title : "CRAFTED PERFORMANCE",
+        subtitle: (slide2?.isActive && slide2?.subtitle) ? slide2.subtitle : "Precision Engineered Athletic Couture",
         tagline: "Where motion meets meticulous craft.",
-        cta: "Explore Men",
-        link: "/shop?gender=men",
+        cta: (slide2?.isActive && slide2?.buttonText) ? slide2.buttonText : "Explore Men",
+        link: (slide2?.isActive && slide2?.link) ? slide2.link : "/shop?gender=men",
       },
       {
         image:
-          "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&q=90",
-        title: "REFINED YOUTH",
-        subtitle: "Exclusive Atelier Kids Edition",
+          (slide3?.isActive && slide3?.imageUrl)
+            ? slide3.imageUrl
+            : "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&q=90",
+        title: (slide3?.isActive && slide3?.title) ? slide3.title : "REFINED YOUTH",
+        subtitle: (slide3?.isActive && slide3?.subtitle) ? slide3.subtitle : "Exclusive Atelier Kids Edition",
         tagline: "Playful forms, uncompromised fabrics.",
-        cta: "Shop Kids",
-        link: "/shop?gender=kids",
+        cta: (slide3?.isActive && slide3?.buttonText) ? slide3.buttonText : "Shop Kids",
+        link: (slide3?.isActive && slide3?.link) ? slide3.link : "/shop?gender=kids",
       },
     ];
 
@@ -219,7 +249,7 @@ const LuxuryHomePage = () => {
     }
 
     return defaultSlides;
-  }, [homeHeroBanner]);
+  }, [homeHeroBanner, contentBanners]);
 
   const defaultCollections = useMemo(
     () => [
@@ -299,7 +329,21 @@ const LuxuryHomePage = () => {
     []
   );
 
-  const [collectionsState, setCollectionsState] = useState(() => defaultCollections);
+  const collectionsState = useMemo(() => {
+    return defaultCollections.map((col) => {
+      const b = contentBanners[`category_${col.category}`];
+      if (b && b.isActive && b.imageUrl) {
+        return {
+          ...col,
+          image: b.imageUrl,
+          title: b.title || col.title,
+          description: b.subtitle || col.description,
+          link: b.link || col.link,
+        };
+      }
+      return col;
+    });
+  }, [contentBanners, defaultCollections]);
 
   // Fetch products
   useEffect(() => {
@@ -527,7 +571,7 @@ const LuxuryHomePage = () => {
         }}
       >
         <div 
-          className="relative overflow-hidden mb-4 aspect-[3/4] rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900"
+          className="relative overflow-hidden mb-4 aspect-[3/4] md:aspect-[75/97] rounded-2xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900"
         >
           <img
             src={imageSrc}
@@ -593,7 +637,7 @@ const LuxuryHomePage = () => {
           <div className="absolute bottom-4 left-0 right-0 flex justify-center px-4 opacity-100 translate-y-0 md:opacity-0 md:translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
             <div className="flex gap-3 w-full max-w-xs">
               <button
-                onClick={() => navigate(`/product/${productId(product)}`)}
+                onClick={() => navigate(productUrl(product))}
                 className="flex-1 bg-white text-black px-5 py-2 text-xs md:text-sm rounded-full uppercase tracking-[0.18em] hover:bg-neutral-200 transition"
                 aria-label={`View details for ${product.name}`}
               >
@@ -976,7 +1020,7 @@ const LuxuryHomePage = () => {
                       key={i}
                       className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2"
                     >
-                      <div className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4]" />
+                      <div className="animate-pulse rounded-3xl border border-white/5 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 aspect-[3/4] md:aspect-[75/97]" />
                     </div>
                   ))
                 : featuredProducts.map((p) => (
@@ -1051,7 +1095,7 @@ const LuxuryHomePage = () => {
                       key={i}
                       className="snap-start flex-shrink-0 w-full sm:w-1/2 md:w-1/2 lg:w-1/4 px-2"
                     >
-                      <div className="animate-pulse rounded-3xl border border-gray-100 bg-gradient-to-b from-neutral-100 via-neutral-50 to-neutral-100 aspect-[3/4]" />
+                      <div className="animate-pulse rounded-3xl border border-gray-100 bg-gradient-to-b from-neutral-100 via-neutral-50 to-neutral-100 aspect-[3/4] md:aspect-[75/97]" />
                     </div>
                   ))
                 : trendingProducts.map((p) => (

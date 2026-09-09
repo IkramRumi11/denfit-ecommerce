@@ -100,7 +100,7 @@ const Settings: React.FC = () => {
               <form onSubmit={submitEmailChangeRequest} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Desired Email</label>
-                  <input value={desiredEmail} onChange={(e) => setDesiredEmail(e.target.value)} placeholder="new-email@example.com" className="mt-1 block w-full rounded-lg border-gray-200 p-3" />
+                  <input value={desiredEmail} onChange={(e) => setDesiredEmail(e.target.value)} placeholder="Enter new email address" className="mt-1 block w-full rounded-lg border-gray-200 p-3" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Reason (optional)</label>

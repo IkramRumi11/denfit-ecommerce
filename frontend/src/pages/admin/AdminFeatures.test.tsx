@@ -14,6 +14,9 @@ import { WishlistProvider } from '../../context/WishlistContext';
 import { NotificationProvider } from '../../context/NotificationContext';
 
 vi.mock('../../api', () => ({
+  productsAPI: {
+    getBrands: vi.fn().mockResolvedValue({ brands: [] }),
+  },
   api: {
     admin: {
       getFeatureFlags: vi.fn(),

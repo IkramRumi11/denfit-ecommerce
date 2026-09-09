@@ -23,7 +23,7 @@ export type AdminMenuItem = {
   permission?: string;
 };
 
-// ✅ Real-world enterprise menu — ordered by usage frequency
+// Admin navigation items ordered by primary operational workflows
 const adminMenu: AdminMenuItem[] = [
   { to: '/admin', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
   { to: '/admin/financials', label: 'Financials & Revenue', icon: <TrendingUp className="w-5 h-5" />, permission: 'orders.view' },

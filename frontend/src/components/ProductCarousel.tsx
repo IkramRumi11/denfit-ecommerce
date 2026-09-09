@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ProductCard } from './ProductCard';
 import { Product } from '../types';
 import { useAutoScrollCarousel } from '../hooks/useAutoScrollCarousel';
+import { productUrl } from '../utils/productHelpers';
 
 interface ProductCarouselProps {
   title: string;
@@ -14,6 +15,7 @@ interface ProductCarouselProps {
   viewAllText?: string;
   autoPlay?: boolean;
   interval?: number;
+  variant?: 'default' | 'compact';
 }
 
 export const ProductCarousel: React.FC<ProductCarouselProps> = ({
@@ -25,8 +27,10 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
   viewAllText = 'View all',
   autoPlay = false,
   interval = 4000,
+  variant = 'default',
 }) => {
   const displayProducts = (products || []).slice(0, maxItems);
+  const isCompact = variant === 'compact';
 
   const {
     ref,
@@ -66,11 +70,11 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
   }
 
   return (
-    <section className="relative py-8 sm:py-12">
+    <section className={`relative ${isCompact ? 'py-6 sm:py-8' : 'py-8 sm:py-12'}`}>
       {/* Header */}
-      <div className="flex items-end justify-between mb-6 px-1">
+      <div className="flex items-end justify-between mb-4 sm:mb-6 px-1">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">{title}</h2>
+          <h2 className={`${isCompact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'} font-bold tracking-tight text-gray-900`}>{title}</h2>
           {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
         </div>
 
@@ -91,17 +95,17 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
               onClick={scrollPrev}
               disabled={!canScrollLeft}
               aria-label="Previous items"
-              className="p-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="p-1.5 sm:p-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={scrollNext}
               disabled={!canScrollRight}
               aria-label="Next items"
-              className="p-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="p-1.5 sm:p-2 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
@@ -115,7 +119,7 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex gap-4 sm:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none pb-4 pt-1 px-1 -mx-1"
+        className={`flex ${isCompact ? 'gap-3 sm:gap-4' : 'gap-4 sm:gap-6'} overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none pb-4 pt-1 px-1 -mx-1`}
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -124,6 +128,38 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
       >
         {displayProducts.map((product) => {
           const key = product._id || product.id || String(Math.random());
+          if (isCompact) {
+            const pid = String(product.id || product._id || '');
+            const pImage = (product as any).image || (product.images && product.images[0] ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0].url) : '');
+            return (
+              <div
+                key={key}
+                data-carousel-item
+                className="w-[140px] xs:w-[150px] sm:w-[160px] md:w-[170px] flex-shrink-0 snap-start"
+              >
+                <Link
+                  to={productUrl(product)}
+                  className="group border border-gray-100 rounded-lg overflow-hidden p-2 flex flex-col items-start hover:shadow-lg transition-all bg-white w-full"
+                >
+                  <div className="w-full h-28 sm:h-32 bg-gray-50 overflow-hidden mb-2 rounded-md relative">
+                    <img
+                      src={String(pImage)}
+                      alt={String(product.name || '')}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium truncate w-full text-gray-900 group-hover:text-blue-600 transition-colors">
+                    {String(product.name ?? '')}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Rs. {typeof product.price === 'number' ? product.price.toLocaleString() : String(product.price ?? '')}
+                  </div>
+                </Link>
+              </div>
+            );
+          }
+
           return (
             <div
               key={key}

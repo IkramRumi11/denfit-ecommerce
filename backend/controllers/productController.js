@@ -323,16 +323,20 @@ export const getAllProducts = async (req, res) => {
       andClauses.push({ $or: [{ availableSizes: { $in: sizeArr } }, { 'sizes.value': { $in: sizeArr } }, { 'variants.availableSizes': { $in: sizeArr } }] });
     }
 
-    // Colors filter — multi-select, case-insensitive matching across all color fields
+    // Match colors across variants, color objects, flat string arrays, and legacy fields
     const colorArr = parseArray(colors);
     if (colorArr.length) {
       const colorRegexes = colorArr.map(c => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'));
+      const hexList = colorArr.map(c => c.toLowerCase());
       andClauses.push({
         $or: [
           { 'colors.value': { $in: colorRegexes } },
           { 'colors.name': { $in: colorRegexes } },
+          { 'colors.hex': { $in: hexList } },
+          { colors: { $in: colorRegexes } },
+          { color: { $in: colorRegexes } },
           { 'variants.name': { $in: colorRegexes } },
-          { 'variants.hex': { $in: colorArr.map(c => c.toLowerCase()) } }
+          { 'variants.hex': { $in: hexList } }
         ]
       });
     }
@@ -493,7 +497,7 @@ export const getProduct = async (req, res) => {
     const populateRelated = {
       path: 'relatedProducts',
       match: { privateSale: { $ne: true }, status: 'published' },
-      select: 'name images price originalPrice brand category seo.slug'
+      select: 'name images price originalPrice brand category seo.slug slug'
     };
 
     // If looks like an ObjectId, try by _id first; otherwise try SEO slug or SKU
@@ -517,7 +521,10 @@ export const getProduct = async (req, res) => {
       }
     }
 
-    const out = product.toObject ? product.toObject() : product;
+    const out = product.toObject ? product.toObject({ virtuals: true }) : product;
+    if (!out.slug && out.seo?.slug) {
+      out.slug = out.seo.slug;
+    }
 
     // optional variant selection
     const variantId = req.query.variantId;
@@ -798,11 +805,14 @@ export const getFilters = async (req, res) => {
     const sizesC = await Product.distinct('variants.availableSizes').catch(() => []);
     const sizes = Array.from(new Set([].concat.apply([], [sizesA || [], sizesB || [], sizesC || []]).flat())).filter(Boolean).map(String).sort();
 
-    // Colors: combine colors.value, variants.name and variants.hex
+    // Colors: combine colors.value, colors.name, colors.hex, variants.name, and variants.hex
     const colorsA = await Product.distinct('colors.value').catch(() => []);
     const colorsB = await Product.distinct('variants.name').catch(() => []);
     const colorsC = await Product.distinct('variants.hex').catch(() => []);
-    const colors = Array.from(new Set([].concat.apply([], [colorsA || [], colorsB || [], colorsC || []]).flat())).filter(Boolean).map(String).sort();
+    const colorsD = await Product.distinct('colors.name').catch(() => []);
+    const colorsE = await Product.distinct('colors.hex').catch(() => []);
+    const colorsF = await Product.distinct('colors').catch(() => []);
+    const colors = Array.from(new Set([].concat.apply([], [colorsA || [], colorsB || [], colorsC || [], colorsD || [], colorsE || [], colorsF || []]).flat())).filter(Boolean).map(String).sort();
 
     // Brands & collections
     const brands = await Product.distinct('brand').catch(() => []);

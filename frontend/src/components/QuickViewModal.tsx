@@ -9,7 +9,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '../context/ToastContext';
 import { useShipping } from '../context/ShippingContext';
-import { primaryImage, productId, canonicalProductId, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
+import { primaryImage, productId, canonicalProductId, canonicalProductSlug, resolveProductSelection, getConsistentColor } from '../utils/productHelpers';
 import { getAvailableStockForItem, getAvailableQuantity, isOutOfStock, isLowStock, getVariantPrice, getVariantOriginalPrice } from '../utils/stockHelpers';
 import { useProductVariant } from '../hooks/useProductVariant';
 import useLuxuryGallery from '../hooks/useLuxuryGallery';
@@ -290,12 +290,13 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({
 
   const handleViewFullDetails = () => {
     onClose();
-    // Navigate using the canonical id so variant selection persists (useProductVariant keys match)
+    // Navigate using the canonical slug/id so variant selection persists
     // persist selected color and image index via query params so full view can restore state
     const params = new URLSearchParams();
     if (selectedColor) params.set('color', String(selectedColor));
     if (typeof gallery?.index === 'number') params.set('img', String(gallery.index));
-    navigate(`/product/${canonicalId}${params.toString() ? `?${params.toString()}` : ''}`);
+    const targetSlug = canonicalProductSlug(product) || canonicalId;
+    navigate(`/product/${targetSlug}${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {

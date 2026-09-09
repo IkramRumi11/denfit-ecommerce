@@ -760,7 +760,7 @@ export const Checkout: React.FC = () => {
                            <input 
                              type="email" 
                              required 
-                             placeholder="example@gmail.com"
+                             placeholder="Enter your email address"
                              className="input-field" 
                              value={shippingInfo.email}
                              onChange={e => {

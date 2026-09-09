@@ -7,7 +7,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatCurrency';
-import { primaryImage, canonicalProductId, resolveProductSelection } from '../utils/productHelpers';
+import { primaryImage, canonicalProductId, resolveProductSelection, productUrl } from '../utils/productHelpers';
 import { getAvailableStockForItem } from '../utils/stockHelpers';
 import { QuickViewModal } from '../components/QuickViewModal';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
@@ -198,7 +198,7 @@ export const Wishlist: React.FC = () => {
                   )}
                   
                   <Link
-                    to={`/product/${product.id}`}
+                    to={productUrl(product)}
                     className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                   >
                     View Details

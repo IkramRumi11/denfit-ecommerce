@@ -51,11 +51,28 @@ export const canonicalProductId = (p: Product | any): string => {
 
 export const canonicalProductSlug = (p: Product | any): string => {
   if (!p) return '';
-  if (p.slug) return String(p.slug);
-  if (p.seo?.slug) return String(p.seo.slug);
+  if (typeof p === 'string') {
+    const trimmed = p.trim();
+    return trimmed;
+  }
+  if (p.slug && typeof p.slug === 'string' && p.slug.trim()) return p.slug.trim();
+  if (p.seo?.slug && typeof p.seo.slug === 'string' && p.seo.slug.trim()) return p.seo.slug.trim();
+  if (p.name && typeof p.name === 'string' && p.name.trim()) {
+    const generated = String(p.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    if (generated) return generated;
+  }
   if (p.id) return String(p.id);
   if (p._id) return String(p._id);
   return '';
+};
+
+export const productUrl = (p: Product | any): string => {
+  const slug = canonicalProductSlug(p);
+  return slug ? `/product/${slug}` : '#';
 };
 
 export const resolveProductSelection = (
@@ -207,6 +224,7 @@ export default {
   productId,
   canonicalProductId,
   canonicalProductSlug,
+  productUrl,
   resolveProductSelection,
   primaryImage,
   priceNumber,
@@ -221,4 +239,7 @@ export const slugify = (input: string | undefined | null): string => {
     .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-');
 };
+
+export { extractAvailableColors, productMatchesColor, isLightColorHex } from './colorFilterHelpers';
+export type { AvailableColorItem } from './colorFilterHelpers';
 

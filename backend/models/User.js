@@ -189,5 +189,13 @@ userSchema.methods.resetLoginAttempts = async function() {
   await this.save({ validateBeforeSave: false });
 };
 
+// Virtual for verified status (guarantees verified and emailVerified stay 100% in sync)
+userSchema.virtual('verified').get(function() {
+  return !!this.emailVerified;
+});
+
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
 const User = mongoose.model('User', userSchema);
 export default User;

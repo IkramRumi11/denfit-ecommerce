@@ -18,6 +18,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const normalizeUser = (u: any): User | null => {
+  if (!u) return null;
+  const isVerified = Boolean(u.emailVerified ?? u.verified ?? u.isVerified);
+  return {
+    ...u,
+    emailVerified: isVerified,
+    verified: isVerified,
+  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -31,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // user session from the server. If it fails, treat as unauthenticated.
       const res: any = await api.auth.getMe();
       if (res?.data?.user) {
-        setUser(res.data.user);
+        setUser(normalizeUser(res.data.user));
         setIsAuthenticated(true);
         try { socket.initSocket(); } catch (e) {}
       } else {
@@ -69,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res: any = await api.auth.login(email, password);
     // If server returned a user, establish client session state
     if (res?.data?.user) {
-      setUser(res.data.user);
+      setUser(normalizeUser(res.data.user));
       setIsAuthenticated(true);
       try { socket.initSocket(); } catch (e) {}
       return res;
@@ -80,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const me: any = await api.auth.getMe();
       if (me?.data?.user) {
-        setUser(me.data.user);
+        setUser(normalizeUser(me.data.user));
         setIsAuthenticated(true);
       }
     } catch (e) {
@@ -93,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: { name: string; email: string; password: string; phone?: string }) => {
     const res: any = await api.auth.register(data);
     if (res?.data?.user) {
-      setUser(res.data.user);
+      setUser(normalizeUser(res.data.user));
       setIsAuthenticated(true);
       try { socket.initSocket(); } catch (e) {}
       return res;
@@ -102,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const me: any = await api.auth.getMe();
       if (me?.data?.user) {
-        setUser(me.data.user);
+        setUser(normalizeUser(me.data.user));
         setIsAuthenticated(true);
       }
     } catch (e) {
@@ -129,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 🧾 Update user
   const updateUser = async (data: Partial<User>) => {
     const res: any = await api.auth.updateMe(data);
-    if (res?.data?.user) setUser(res.data.user);
+    if (res?.data?.user) setUser(normalizeUser(res.data.user));
   };
 
   return (

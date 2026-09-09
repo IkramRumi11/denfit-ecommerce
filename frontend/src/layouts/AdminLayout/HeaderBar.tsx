@@ -5,8 +5,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useToast } from "../../context/ToastContext";
-
-// ✅ Use your actual shadcn/ui imports
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
@@ -93,8 +91,6 @@ const HeaderBar: React.FC<Props> = ({
     else document.documentElement.classList.remove("dark");
     localStorage.setItem("theme", next ? "dark" : "light");
   }, [dark]);
-
-  // ✅ Realistic initials: First + Last initial, fallback to first char
   const getInitials = useCallback((name: string | undefined): string => {
     if (!name) return "A";
     const parts = name.trim().split(" ");

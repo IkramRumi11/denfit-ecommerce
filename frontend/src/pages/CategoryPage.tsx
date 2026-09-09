@@ -62,6 +62,7 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
   const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showMobileSort, setShowMobileSort] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [quickAddProduct, setQuickAddProduct] = useState<any | null>(null);
   const scrollYRef = useRef(0);
 
@@ -184,6 +185,19 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
 
           {/* ─── Desktop Controls ─── */}
           <div className="flex items-center gap-3">
+            {/* Filter Toggle Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-3.5 py-2 border rounded-lg text-sm font-medium transition ${
+                showFilters
+                  ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              <SlidersHorizontal size={15} />
+              <span>{showFilters ? 'Hide Filters' : 'Filters'}</span>
+            </button>
+
             {/* Sort Dropdown */}
             <div className="hidden sm:flex items-center gap-2">
               <label htmlFor="sort-select" className="text-xs text-gray-500 uppercase tracking-wider">
@@ -260,17 +274,39 @@ const CategoryPage: React.FC<CategoryPageProps> = ({ genderOverride }) => {
 
       {/* ─── Main Content: Sidebar + Grid ─── */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-16">
-        <div className="flex gap-8">
-          {/* FilterEngine renders: desktop sidebar, mobile trigger, mobile drawer, active filter chips */}
-          <FilterEngine
-            gender={gender}
-            categorySlug={categorySlug}
-            onProductsChange={setProducts}
-            onLoadingChange={setLoading}
-            onTotalChange={setTotal}
-            onPaginationChange={setPagination}
-            pageSize={24}
-          />
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* User-Controlled Filter Sidebar */}
+          {showFilters && (
+            <aside className="w-full lg:w-72 xl:w-80 flex-shrink-0 animate-fadeIn">
+              <div className="sticky top-6 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm max-h-[calc(100vh-3rem)] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-900">
+                    <SlidersHorizontal size={14} />
+                    <span>Filters</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(false)}
+                    className="p-1 text-gray-400 hover:text-black rounded"
+                    title="Close filters"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <FilterEngine
+                  gender={gender}
+                  categorySlug={categorySlug}
+                  onProductsChange={setProducts}
+                  onLoadingChange={setLoading}
+                  onTotalChange={setTotal}
+                  onPaginationChange={setPagination}
+                  pageSize={24}
+                  inline={true}
+                  showHeader={false}
+                />
+              </div>
+            </aside>
+          )}
 
           {/* Product Grid */}
           <div className="flex-1 min-w-0">

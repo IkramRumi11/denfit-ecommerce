@@ -1,10 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
-import { productId } from '../utils/productHelpers';
+import {
+  productId,
+  extractAvailableColors,
+  productMatchesColor,
+  isLightColorHex,
+  AvailableColorItem,
+} from '../utils/productHelpers';
 import { productsAPI } from '../api';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, Check } from 'lucide-react';
 import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
@@ -17,9 +24,14 @@ export default function Sale(): JSX.Element {
   const [selectedGender, setSelectedGender] = useState<GenderKey>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDiscountTier, setSelectedDiscountTier] = useState<DiscountFilterKey>('all');
+  const [selectedColor, setSelectedColor] = useState<string>('');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('new');
   const [showFilters, setShowFilters] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [allProducts, setAllProducts] = useState<AnyProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +129,36 @@ export default function Sale(): JSX.Element {
     setTempPriceMax(priceBounds.max);
   }, [priceBounds.min, priceBounds.max]);
 
+  // Sync color filter from URL params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const colorParam = params.get('color');
+    if (colorParam) {
+      setSelectedColor(colorParam);
+    }
+  }, [location.search]);
+
+  // Colors available in the sale catalog
+  const availableColors = useMemo(
+    () => extractAvailableColors(saleProducts),
+    [saleProducts]
+  );
+
+  const handleColorClick = (colorItem: AvailableColorItem) => {
+    const active = (selectedColor || '').trim().toLowerCase();
+    const isSelected = active === colorItem.name.toLowerCase() || active === colorItem.slug;
+    const nextColor = isSelected ? '' : colorItem.name;
+    setSelectedColor(nextColor);
+
+    try {
+      const params = new URLSearchParams(location.search);
+      if (nextColor) params.set('color', nextColor);
+      else params.delete('color');
+      const qs = params.toString();
+      navigate({ pathname: '/sale', search: qs ? `?${qs}` : '' }, { replace: true });
+    } catch (e) {}
+  };
+
   const genderCategories = {
     men: {
       name: "Men's Sale",
@@ -196,6 +238,10 @@ export default function Sale(): JSX.Element {
   };
 
   const filteredProducts = saleProducts.filter((p: AnyProduct) => {
+    if (selectedColor && !productMatchesColor(p, selectedColor)) {
+      return false;
+    }
+
     if (selectedGender !== 'all') {
       const productGender = String(p.gender || '').toLowerCase();
       const productAgeGroup = String(p.ageGroup || '').toLowerCase();
@@ -268,6 +314,7 @@ export default function Sale(): JSX.Element {
     setSelectedGender('all');
     setSelectedCategory('all');
     setSelectedDiscountTier('all');
+    setSelectedColor('');
     setSortBy('new');
     setPriceMin(priceBounds.min);
     setPriceMax(priceBounds.max);
@@ -275,6 +322,9 @@ export default function Sale(): JSX.Element {
     setTempPriceMax(priceBounds.max);
     setIsMobileSidebarOpen(false);
     setShowFilters(false);
+    try {
+      navigate({ pathname: '/sale' }, { replace: true });
+    } catch (e) {}
   };
 
   const openMobileFilters = () => {
@@ -357,14 +407,27 @@ export default function Sale(): JSX.Element {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        <Breadcrumb
-          items={
-            selectedGender && selectedGender !== 'all'
-              ? [{ label: 'Home', to: '/' }, { label: 'Sale', to: '/sale' }, { label: (genderCategories as any)[selectedGender]?.name?.toUpperCase() || selectedGender.toUpperCase() }]
-              : [{ label: 'Home', to: '/' }, { label: 'Sale' }]
-          }
-          className="mb-6"
-        />
+        <div className="flex items-center justify-between mb-6">
+          <Breadcrumb
+            items={
+              selectedGender && selectedGender !== 'all'
+                ? [{ label: 'Home', to: '/' }, { label: 'Sale', to: '/sale' }, { label: (genderCategories as any)[selectedGender]?.name?.toUpperCase() || selectedGender.toUpperCase() }]
+                : [{ label: 'Home', to: '/' }, { label: 'Sale' }]
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+            className={`hidden lg:inline-flex items-center gap-2 px-3.5 py-2 border rounded-lg text-sm font-medium transition ${
+              desktopSidebarOpen
+                ? 'border-black bg-black text-white shadow-sm'
+                : 'border-gray-200 hover:bg-gray-50 text-gray-900 bg-white'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{desktopSidebarOpen ? 'Hide Filters' : 'Filters'}</span>
+          </button>
+        </div>
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="lg:hidden flex gap-2">
             <button
@@ -389,9 +452,22 @@ export default function Sale(): JSX.Element {
             </button>
           </div>
 
-          <aside className={`lg:w-64 flex-shrink-0 ${isMobileSidebarOpen ? 'block' : 'hidden lg:block'}`}>
+          <aside className={`w-full lg:w-64 flex-shrink-0 ${isMobileSidebarOpen || desktopSidebarOpen ? 'block' : 'hidden'}`}>
             <div className="bg-white border border-gray-200 p-6 mb-4 rounded-sm shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 uppercase tracking-wider text-gray-800">Categories</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold uppercase tracking-wider text-gray-800">Categories</h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSidebarOpen(false);
+                    setDesktopSidebarOpen(false);
+                  }}
+                  className="hidden lg:block p-1 text-gray-400 hover:text-black rounded"
+                  title="Close filters"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
               {selectedGender !== 'all' ? (
                 <div className="space-y-1">
@@ -654,7 +730,7 @@ export default function Sale(): JSX.Element {
             ) : sortedProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {sortedProducts.map((product: AnyProduct) => (
-                  <ProductCard key={productId(product)} product={product} />
+                  <ProductCard key={productId(product)} product={product as any} />
                 ))}
               </div>
             ) : (
@@ -678,6 +754,48 @@ export default function Sale(): JSX.Element {
           </main>
         </div>
       </div>
+
+      {availableColors.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 md:mb-16">
+          <h2 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 uppercase tracking-wider text-center">
+            Shop by Color
+          </h2>
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+            {availableColors.map((colorItem) => {
+              const active = (selectedColor || '').trim().toLowerCase();
+              const isActive = active === colorItem.name.toLowerCase() || active === colorItem.slug;
+              return (
+                <button
+                  key={colorItem.slug}
+                  type="button"
+                  onClick={() => handleColorClick(colorItem)}
+                  className={`flex flex-col items-center group transition-transform ${isActive ? 'scale-105' : ''}`}
+                  title={`Filter by ${colorItem.name}`}
+                  aria-label={`Filter by ${colorItem.name}${isActive ? ' (active, click to clear)' : ''}`}
+                >
+                  <div
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 transition-all duration-300 group-hover:scale-110 relative ${
+                      isActive
+                        ? 'border-black ring-4 ring-black/20 shadow-md'
+                        : 'border-gray-200 group-hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: colorItem.hex }}
+                  >
+                    {isActive && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Check className={`w-6 h-6 ${isLightColorHex(colorItem.hex) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`mt-2 text-xs md:text-sm font-medium uppercase tracking-wide ${isActive ? 'text-black font-bold underline' : 'text-gray-700'}`}>
+                    {colorItem.name}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <AnimatePresence>
         {showFilters && (

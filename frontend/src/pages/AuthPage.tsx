@@ -161,8 +161,15 @@ const AuthPage: React.FC = () => {
       setVerificationMessage("Verifying your email, please wait...");
       const res: any = await api.auth.verifyEmail(verifyToken);
       if (res?.data?.user) {
-        setUser(res.data.user);
+        const u = res.data.user;
+        const isVerified = Boolean(u.emailVerified ?? u.verified ?? true);
+        const normalized = { ...u, emailVerified: isVerified, verified: isVerified };
+        setUser(normalized);
         setIsAuthenticated(true);
+        try {
+          const uid = normalized.id || normalized._id || normalized.email;
+          sessionStorage.setItem(`verifyToastShown:${uid}`, "1");
+        } catch (e) {}
         showToast("Email verified and logged in — welcome!", "success");
         setVerificationMessage("Email verified successfully! Redirecting...");
         return;
@@ -405,7 +412,7 @@ const AuthPage: React.FC = () => {
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      placeholder="John Doe"
+                      placeholder="Enter your full name"
                       className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-black ${
                         errors.name ? "border-red-500" : ""
                       }`}
@@ -444,7 +451,7 @@ const AuthPage: React.FC = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="you@example.com"
+                  placeholder="Enter your email address"
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-black ${
                     errors.email ? "border-red-500" : ""
                   }`}

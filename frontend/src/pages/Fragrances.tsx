@@ -346,7 +346,7 @@ export default function Fragrances(): JSX.Element {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 py-12">
             {Array.from({ length: 8 }).map((_, idx) => (
               <div key={idx} className="animate-pulse">
-                <div className="bg-neutral-200 rounded-xl aspect-[3/4] mb-3" />
+                <div className="bg-neutral-200 rounded-xl aspect-[3/4] md:aspect-[75/97] mb-3" />
                 <div className="h-3 bg-neutral-200 rounded w-1/3 mb-2" />
                 <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2" />
                 <div className="h-4 bg-neutral-200 rounded w-1/4" />

@@ -17,7 +17,6 @@ import { filtersAPI, productsAPI } from '../../api';
 import { getColorName, normalizeHex, resolveColorHex } from '../../utils/colorNames';
 import { Slider } from '../ui/Slider';
 
-// ─── Types ───
 interface FilterGroup {
   _id: string;
   name: string;
@@ -181,7 +180,6 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ─── State ───
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([]);
   const [facets, setFacets] = useState<Record<string, FacetValue[]>>({});
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 50000 });
@@ -192,7 +190,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
   const fetchRef = useRef(0);
   const initialLoadDone = useRef(false);
 
-  // ─── Derive active filters from URL ───
+  // Derive active filters from URL query parameters
   const activeFilters = useMemo(() => {
     const filters: Record<string, string[]> = {};
     searchParams.forEach((value, key) => {
@@ -205,7 +203,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     return filters;
   }, [searchParams]);
 
-  // ─── Load filter config + facets ───
+  // Load filter configuration and facets on route change
   useEffect(() => {
     let cancelled = false;
     const loadFilters = async () => {
@@ -356,7 +354,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     return () => { cancelled = true; };
   }, [gender, categorySlug, search]);
 
-  // ─── Fetch products when filters change ───
+  // Fetch products when active filters or pagination changes
   useEffect(() => {
     const currentFetch = ++fetchRef.current;
 
@@ -430,7 +428,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     return () => { if (timer) clearTimeout(timer); };
   }, [searchParams, gender, search, categorySlug, fixedParams, pageSize]);
 
-  // ─── Filter mutation helpers ───
+  // Filter update helpers
   const setFilter = useCallback((key: string, values: string[]) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -468,7 +466,6 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
 
   const hasActiveFilters = Object.keys(activeFilters).length > 0;
 
-  // ─── Section toggle ───
   const toggleSection = (slug: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
@@ -478,10 +475,9 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     });
   };
 
-  // ─── Active filter count ───
   const activeFilterCount = Object.values(activeFilters).reduce((sum, arr) => sum + arr.length, 0);
 
-  // ─── Get facet counts for a group ───
+  // Facet count lookup by group slug
   const getFacetData = (group: FilterGroup): FacetValue[] => {
     const key = group.slug;
     // Direct facet match: normalize different shapes into an array
@@ -502,7 +498,6 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     return [];
   };
 
-  // ─── Render a single filter section ───
   const renderFilterSection = (group: FilterGroup) => {
     const isExpanded = expandedSections.has(group.slug);
     const activeValues = activeFilters[group.slug] || [];
@@ -552,7 +547,6 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
       );
     }
 
-    // ─── Render by type ───
     if (group.type === 'range' && group.slug === 'price') {
       return renderPriceFilter();
     }
@@ -573,7 +567,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     return renderCheckboxFilter(group, displayOptions, activeValues, searchTerm);
   };
 
-  // ─── Price Filter ───
+  // Price filter
   const renderPriceFilter = () => {
     const currentMin = Number(activeFilters['minPrice']?.[0]) || priceRange.min;
     const currentMax = Number(activeFilters['maxPrice']?.[0]) || priceRange.max;
@@ -636,7 +630,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Color Filter ───
+  // Color swatches
   const renderColorFilter = (slug: string, options: any[], activeValues: string[]) => {
     return (
       <div className="flex flex-wrap gap-2 pt-1 pb-2">
@@ -684,7 +678,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Rating Filter ───
+  // Rating selector
   const renderRatingFilter = (activeValues: string[]) => {
     const ratingFacets = facets['rating'] || {};
     return (
@@ -716,7 +710,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Boolean Filter ───
+  // Boolean options
   const renderBooleanFilter = (slug: string, options: any[], activeValues: string[]) => {
     return (
       <div className="space-y-1.5">
@@ -746,7 +740,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Checkbox Filter (multi/single select) ───
+  // Checkbox options
   const renderCheckboxFilter = (group: FilterGroup, options: any[], activeValues: string[], searchTerm: string) => {
     return (
       <CheckboxFilterSection
@@ -761,7 +755,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Active Filters Chips ───
+  // Active filter chips
   const renderActiveFilters = () => {
     if (!hasActiveFilters) return null;
 
@@ -814,7 +808,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Filter Sidebar / Section List ───
+  // Sidebar section list
   const renderSidebar = (withHeader = true) => {
     if (facetsLoading) {
       return (
@@ -906,7 +900,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Mobile Drawer ───
+  // Mobile drawer
   const renderMobileDrawer = () => {
     if (!mobileOpen) return null;
 
@@ -964,7 +958,7 @@ export const FilterEngine: React.FC<FilterEngineProps> = ({
     );
   };
 
-  // ─── Mobile filter trigger button (rendered externally) ───
+  // Mobile filter trigger button
   const renderMobileTrigger = () => (
     <button
       type="button"

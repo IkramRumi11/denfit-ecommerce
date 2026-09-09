@@ -182,7 +182,7 @@ ${formData.message}
                     onChange={handleInputChange}
                     type="text" 
                     className="w-full border-b border-gray-300 py-2 focus:border-amber-600 focus:outline-none transition-colors" 
-                    placeholder="John Doe"
+                    placeholder="Enter your full name"
                   />
                 </div>
                 <div>
@@ -194,7 +194,7 @@ ${formData.message}
                     onChange={handleInputChange}
                     type="email" 
                     className="w-full border-b border-gray-300 py-2 focus:border-amber-600 focus:outline-none transition-colors" 
-                    placeholder="john@example.com"
+                    placeholder="Enter your email address"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -207,7 +207,7 @@ ${formData.message}
                       onChange={handleInputChange}
                       type="tel" 
                       className="w-full border-b border-gray-300 py-2 focus:border-amber-600 focus:outline-none transition-colors" 
-                      placeholder="+92..."
+                      placeholder="03XXXXXXXXX or +923XXXXXXXXX"
                     />
                   </div>
                   <div>
@@ -218,7 +218,7 @@ ${formData.message}
                       onChange={handleInputChange}
                       type="text" 
                       className="w-full border-b border-gray-300 py-2 focus:border-amber-600 focus:outline-none transition-colors" 
-                      placeholder="URL"
+                      placeholder="https://linkedin.com/in/username"
                     />
                   </div>
                 </div>

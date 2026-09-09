@@ -206,7 +206,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 name="avatar"
                 value={formData.avatar}
                 onChange={handleChange}
-                placeholder="https://example.com/avatar.jpg"
+                placeholder="Enter avatar image URL"
                 className="input-field"
               />
             </div>

@@ -1,14 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, Check } from 'lucide-react';
 
 import { ProductCard } from '../components/ProductCard';
-import { productId } from '../utils/productHelpers';
+import {
+  productId,
+  productUrl,
+  extractAvailableColors,
+  productMatchesColor,
+  isLightColorHex,
+  AvailableColorItem,
+} from '../utils/productHelpers';
 import { FilterEngine } from '../components/FilterEngine';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
-import { getColorName, resolveColorHex } from '../utils/colorNames';
 import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
@@ -20,19 +26,23 @@ type CategoryTile = {
   image: string;
 };
 
-type ColorFacet = string;
-
 export default function Men(): JSX.Element {
+  const [baseProducts, setBaseProducts] = useState<AnyProduct[]>([]);
   const [products, setProducts] = useState<AnyProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
   const [showFilters, setShowFilters] = useState(false);
-  const [availableColors, setAvailableColors] = useState<ColorFacet[]>([]);
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
   const [currentFilters, setCurrentFilters] = useState<AnyFilters>({});
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Colors available across men products
+  const availableColors = useMemo(
+    () => extractAvailableColors(baseProducts),
+    [baseProducts]
+  );
 
   const categoryTiles: CategoryTile[] = useMemo(
     () => [
@@ -56,13 +66,8 @@ export default function Men(): JSX.Element {
         const facetsRes: any = await productsAPI.getFilters();
         const facets = (facetsRes && (facetsRes.data || facetsRes)) || {};
 
-        if (mounted) {
-          if (Array.isArray(facets.colors)) {
-            setAvailableColors(facets.colors.map((c: any) => String(c)).filter(Boolean));
-          }
-          if (Array.isArray(facets.sizes)) {
-            setAvailableSizes(facets.sizes.map((s: any) => String(s)).filter(Boolean));
-          }
+        if (mounted && Array.isArray(facets.sizes)) {
+          setAvailableSizes(facets.sizes.map((s: any) => String(s)).filter(Boolean));
         }
 
         const res: any = await productsAPI.getAll({ gender: 'men', limit: 48 });
@@ -73,6 +78,7 @@ export default function Men(): JSX.Element {
         }));
 
         if (mounted) {
+          setBaseProducts(normalized);
           setProducts(normalized);
           setTotal(normalized.length);
           setLoading(false);
@@ -80,6 +86,7 @@ export default function Men(): JSX.Element {
       } catch (err) {
         console.error('Failed to load men products', err);
         if (mounted) {
+          setBaseProducts([]);
           setProducts([]);
           setTotal(0);
           setLoading(false);
@@ -121,10 +128,17 @@ export default function Men(): JSX.Element {
 
       const res: any = await productsAPI.getAll(params);
       const items = (res && (res.data?.products || res.products)) || [];
-      const normalized = items.map((p: AnyProduct) => ({
+      let normalized = items.map((p: AnyProduct) => ({
         ...(p || {}),
         id: p?.id || p?._id || p?.slug || '',
       }));
+
+      // Extra client-side match to ensure multi-color products are matched consistently
+      if (filters?.color) {
+        normalized = normalized.filter((p: AnyProduct) =>
+          productMatchesColor(p, filters.color)
+        );
+      }
 
       setProducts(normalized);
       setTotal(normalized.length);
@@ -143,6 +157,21 @@ export default function Men(): JSX.Element {
     } catch (err) {
       console.error('Filter request failed', err);
     }
+  };
+
+  const handleColorClick = (colorItem: AvailableColorItem) => {
+    const activeColor = String(currentFilters?.color || '').trim().toLowerCase();
+    const isSelected = activeColor === colorItem.name.toLowerCase() || activeColor === colorItem.slug;
+    const nextColor = isSelected ? '' : colorItem.name;
+
+    const nextFilters = { ...currentFilters };
+    if (nextColor) {
+      nextFilters.color = nextColor;
+    } else {
+      delete nextFilters.color;
+    }
+
+    void applyFiltersAndSyncUrl(nextFilters);
   };
 
   useEffect(() => {
@@ -223,12 +252,19 @@ export default function Men(): JSX.Element {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4 md:gap-8">
             <button
-              onClick={() => setShowFilters(true)}
-              className="flex items-center gap-3 hover:text-emerald-400 transition-colors"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border text-xs uppercase tracking-[0.20em] font-medium transition-all ${
+                showFilters
+                  ? 'bg-black text-white border-black shadow-sm'
+                  : 'border-gray-200 hover:border-black text-gray-900 bg-white'
+              }`}
               type="button"
             >
-              <SlidersHorizontal className="w-5 h-5" />
-              <span className="text-xs uppercase tracking-[0.26em] font-normal">Refine</span>
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>{showFilters ? 'Hide Filters' : 'Refine'}</span>
+              {Object.keys(currentFilters || {}).length > 0 && (
+                <span className={`w-2 h-2 rounded-full ${showFilters ? 'bg-white' : 'bg-black'}`} />
+              )}
             </button>
 
             <div className="hidden md:block h-4 w-px bg-gray-200" />
@@ -255,16 +291,38 @@ export default function Men(): JSX.Element {
           Featured Items
         </h2>
 
-        <div className="flex gap-8">
-          <FilterEngine
-            gender="men"
-            onProductsChange={(next: AnyProduct[]) => {
-              handleProductsChange(next);
-            }}
-            onLoadingChange={setLoading}
-            onTotalChange={setTotal}
-            pageSize={24}
-          />
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Collapsible Desktop Filter Sidebar */}
+          {showFilters && (
+            <aside className="hidden lg:block w-72 xl:w-80 flex-shrink-0 animate-fadeIn">
+              <div className="sticky top-24 bg-white rounded-2xl border border-gray-200 p-5 shadow-sm max-h-[calc(100vh-7rem)] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-900">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span>Filters</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(false)}
+                    className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
+                    title="Close filters"
+                    aria-label="Close filters"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <FilterEngine
+                  gender="men"
+                  onProductsChange={handleProductsChange}
+                  onLoadingChange={setLoading}
+                  onTotalChange={setTotal}
+                  pageSize={24}
+                  inline={true}
+                  showHeader={false}
+                />
+              </div>
+            </aside>
+          )}
 
           <div className="flex-1 min-w-0">
             {loading ? (
@@ -275,7 +333,7 @@ export default function Men(): JSX.Element {
             ) : products.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {products.map((product: AnyProduct) => (
-                  <ProductCard key={productId(product)} product={product} />
+                  <ProductCard key={productId(product)} product={product as any} />
                 ))}
               </div>
             ) : (
@@ -295,23 +353,36 @@ export default function Men(): JSX.Element {
           {availableColors.length === 0 ? (
             <div className="text-sm text-gray-500">No colors available</div>
           ) : (
-            availableColors.map((c) => {
-              const colorName = getColorName(String(c));
-              const swatchBg = resolveColorHex(String(c)) || String(c);
+            availableColors.map((colorItem) => {
+              const activeColor = String(currentFilters?.color || '').trim().toLowerCase();
+              const isActive = activeColor === colorItem.name.toLowerCase() || activeColor === colorItem.slug;
               return (
-                <Link
-                  key={String(c)}
-                  to={`/men?color=${encodeURIComponent(String(c))}`}
-                  className="flex flex-col items-center group"
+                <button
+                  key={colorItem.slug}
+                  type="button"
+                  onClick={() => handleColorClick(colorItem)}
+                  className={`flex flex-col items-center group transition-transform ${isActive ? 'scale-105' : ''}`}
+                  title={`Filter by ${colorItem.name}`}
+                  aria-label={`Filter by ${colorItem.name}${isActive ? ' (active, click to clear)' : ''}`}
                 >
                   <div
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-200 group-hover:border-gray-400 transition-all duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: swatchBg }}
-                  />
-                  <span className="mt-2 text-xs md:text-sm font-medium text-gray-700 uppercase tracking-wide">
-                    {colorName}
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 transition-all duration-300 group-hover:scale-110 relative ${
+                      isActive
+                        ? 'border-black ring-4 ring-black/20 shadow-md'
+                        : 'border-gray-200 group-hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: colorItem.hex }}
+                  >
+                    {isActive && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Check className={`w-6 h-6 ${isLightColorHex(colorItem.hex) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`mt-2 text-xs md:text-sm font-medium uppercase tracking-wide ${isActive ? 'text-black font-bold underline' : 'text-gray-700'}`}>
+                    {colorItem.name}
                   </span>
-                </Link>
+                </button>
               );
             })
           )}
@@ -328,14 +399,14 @@ export default function Men(): JSX.Element {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowFilters(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60]"
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] lg:hidden"
             />
             <motion.aside
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-[70] shadow-2xl border-l border-gray-200 flex flex-col"
+              className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-[70] shadow-2xl border-l border-gray-200 flex flex-col lg:hidden"
             >
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
@@ -488,7 +559,7 @@ function StyledByYouSection() {
           (entry.images || []).map((img: any, i: number) => (
             <Link
               key={`${entry._id || entry.id || 'styled'}-${i}`}
-              to={img.product ? `/product/${img.product}` : '#'}
+              to={img.product ? productUrl(img.product) : '#'}
               className="relative aspect-square overflow-hidden group"
             >
               <img

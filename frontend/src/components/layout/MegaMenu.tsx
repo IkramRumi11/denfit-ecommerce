@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { megaMenuData } from "../../data/megaMenuData";
 import { slugify } from '../../utils/productHelpers';
+import { usePageBanner } from '../../hooks/usePageBanner';
 
 type Props = {
   activeCategory: string | null;
@@ -21,6 +22,9 @@ const panelVariant = {
 };
 
 export default function MegaMenu({ activeCategory, brands = [], onClose }: Props) {
+  const menuBannerKey = activeCategory ? `menu_${activeCategory}` : '';
+  const { banner: menuBanner } = usePageBanner(menuBannerKey);
+
   if (!activeCategory) return null;
 
   const isBrandsCategory = activeCategory === 'brands';
@@ -99,17 +103,17 @@ export default function MegaMenu({ activeCategory, brands = [], onClose }: Props
               {/* Brands Hub card */}
               <div className="col-span-1 flex flex-col items-center justify-center text-center border-l pl-6">
                 <img
-                  src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop"
-                  alt="Explore Brands"
+                  src={(menuBanner?.isActive && menuBanner?.imageUrl) ? menuBanner.imageUrl : "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop"}
+                  alt={menuBanner?.title || "Explore Brands"}
                   className="w-full rounded-lg object-cover mb-4 h-40"
                 />
-                <h5 className="font-semibold text-gray-800 mb-2">Explore All Brands</h5>
+                <h5 className="font-semibold text-gray-800 mb-2">{menuBanner?.title || "Explore All Brands"}</h5>
                 <Link
-                  to="/brands"
+                  to={menuBanner?.link || "/brands"}
                   onClick={onClose}
                   className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
                 >
-                  View Brands Hub
+                  {menuBanner?.buttonText || "View Brands Hub"}
                 </Link>
               </div>
             </div>
@@ -147,17 +151,17 @@ export default function MegaMenu({ activeCategory, brands = [], onClose }: Props
               {/* featured card */}
               <div className="col-span-1 flex flex-col items-center justify-center text-center border-l pl-6">
                 <img
-                  src={data.featured.image}
-                  alt={data.featured.title}
+                  src={(menuBanner?.isActive && menuBanner?.imageUrl) ? menuBanner.imageUrl : data.featured.image}
+                  alt={menuBanner?.title || data.featured.title}
                   className="w-full rounded-lg object-cover mb-4 h-40"
                 />
-                <h5 className="font-semibold text-gray-800 mb-2">{data.featured.title}</h5>
+                <h5 className="font-semibold text-gray-800 mb-2">{menuBanner?.title || data.featured.title}</h5>
                 <Link
-                  to={String(data.featured.link || '/')}
+                  to={menuBanner?.link || String(data.featured.link || '/')}
                   onClick={onClose}
                   className="inline-block px-4 py-2 bg-black text-white rounded text-sm hover:bg-gray-900 transition"
                 >
-                  Shop Now
+                  {menuBanner?.buttonText || "Shop Now"}
                 </Link>
               </div>
             </div>

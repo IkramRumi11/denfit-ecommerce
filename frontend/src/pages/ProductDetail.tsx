@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart, Share2, ArrowLeft, Truck, Shield, RotateCcw, Lock } from 'lucide-react';
+import { Star, Heart, Share2, ArrowLeft, Truck, Shield, RotateCcw, Lock, Copy, Check, X } from 'lucide-react';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -100,13 +100,16 @@ export const ProductDetail: React.FC = () => {
 
   // Share popover state
   const [shareOpen, setShareOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const shareRef = useRef<HTMLDivElement | null>(null);
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Close popover on outside click
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (!shareRef.current) return;
       if (!(e.target instanceof Node)) return;
+      if (shareButtonRef.current && shareButtonRef.current.contains(e.target)) return;
       if (!shareRef.current.contains(e.target)) setShareOpen(false);
     };
     document.addEventListener('click', onDoc);
@@ -482,7 +485,12 @@ export const ProductDetail: React.FC = () => {
         }
         if (mounted) setProduct(normalized);
 
-          try {
+        const canonicalSlug = normalized.slug || normalized.seo?.slug;
+        if (canonicalSlug && productId && String(productId) !== canonicalSlug) {
+          navigate(`/product/${canonicalSlug}${location.search}`, { replace: true });
+        }
+
+        try {
           const qs = new URLSearchParams(location.search);
           const color = qs.get('color');
           const img = qs.get('img');
@@ -559,19 +567,20 @@ export const ProductDetail: React.FC = () => {
   const handleNativeShare = async () => {
     try {
       const url = window.location.href;
-      const title = product?.name || 'Product';
-      const text = `${product?.name || ''} - Rs ${product?.price?.toLocaleString?.() || ''}`.trim();
-      if (navigator.share) {
+      const title = product?.name || 'DENFiT Product';
+      const text = `${product?.name || ''} - Rs ${typeof product?.price === 'number' ? product.price.toLocaleString() : (product?.price || '')}`.trim();
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
         await navigator.share({ title, text, url });
         showToast('Shared successfully', 'success');
         await trackShare('native', { result: 'success' });
         setShareOpen(false);
         return;
       }
-      // Fallback directly to clipboard copy
       await handleCopyLink();
-    } catch (err) {
-      console.error('Share failed', err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error('Share failed', err);
+      }
       setShareOpen(false);
     }
   };
@@ -608,12 +617,12 @@ export const ProductDetail: React.FC = () => {
     try {
       const url = window.location.href;
       await copyTextToClipboard(url);
-      showToast('Product link copied to clipboard', 'success');
+      setCopiedLink(true);
+      showToast('Product link copied!', 'success');
       await trackShare('clipboard', { result: 'success' });
-      setShareOpen(false);
+      setTimeout(() => setCopiedLink(false), 2500);
     } catch (e) {
-      showToast('Product link copied to clipboard', 'success');
-      setShareOpen(false);
+      showToast('Product link copied!', 'success');
     }
   };
 
@@ -622,7 +631,7 @@ export const ProductDetail: React.FC = () => {
   const handleSocialClick = async (method: 'twitter' | 'facebook' | 'whatsapp') => {
     try {
       const url = encodeURIComponent(window.location.href);
-      const text = encodeURIComponent(`${product?.name || ''} - Rs ${product?.price?.toLocaleString?.() || ''}`.trim());
+      const text = encodeURIComponent(`${product?.name || ''} - Rs ${typeof product?.price === 'number' ? product.price.toLocaleString() : (product?.price || '')}`.trim());
       let shareUrl = '';
       if (method === 'twitter') shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`;
       if (method === 'facebook') shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
@@ -635,28 +644,26 @@ export const ProductDetail: React.FC = () => {
     }
   };
 
-  // --- MOVED UP: The useEffect that caused the crash ---
-  // Auto-copy the product URL to clipboard when the popover opens (best-effort)
-  useEffect(() => {
-    if (!shareOpen) return;
-    (async () => {
+  const handleShareClick = async () => {
+    const url = window.location.href;
+    const title = product?.name || 'DENFiT Product';
+    const text = `${product?.name || ''} - Rs ${typeof product?.price === 'number' ? product.price.toLocaleString() : (product?.price || '')}`.trim();
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+
+    // Mobile / touch devices supporting Web Share API: trigger native share sheet
+    if (isMobile && typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        const url = window.location.href;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(url);
-          showToast('Product link copied to clipboard', 'success');
-          await trackShare('clipboard', { result: 'auto' });
-        } else {
-          // fallback: prompt so user can copy
-          // eslint-disable-next-line no-alert
-          window.prompt('Copy this product link', url);
-          await trackShare('clipboard', { result: 'prompt' });
-        }
-      } catch (e) {
-        console.error('auto copy failed', e);
+        await navigator.share({ title, text, url });
+        showToast('Shared successfully', 'success');
+        await trackShare('native', { result: 'success' });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
       }
-    })();
-  }, [shareOpen]);
+    }
+    // Desktop / non-share browsers: toggle in-website sharing card
+    setShareOpen((prev) => !prev);
+  };
 
   const itemsAvailable = useMemo(() => {
     if (!product) return 0;
@@ -1389,7 +1396,12 @@ export const ProductDetail: React.FC = () => {
                 />
               </button>
               <button
-                onClick={() => setShareOpen(true)}
+                ref={shareButtonRef}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShareClick();
+                }}
                 className="p-2 sm:p-3 border border-neutral-200 rounded-full hover:border-neutral-500 hover:text-neutral-700 transition-colors"
                 title="Share product"
                 aria-label="Share product"
@@ -1399,27 +1411,98 @@ export const ProductDetail: React.FC = () => {
                 <Share2 className="h-4 w-4 sm:h-5 sm:w-5 text-neutral-500" />
               </button>
 
-              {/* Share popover */}
+              {/* Sleek In-Website Share Popover */}
               {shareOpen && (
-                <div ref={shareRef} role="dialog" aria-label="Share product" className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium">Share this product</div>
-                    <button onClick={() => setShareOpen(false)} className="text-gray-400 hover:text-gray-700">✕</button>
+                <div
+                  ref={shareRef}
+                  role="dialog"
+                  aria-label="Share product"
+                  className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border border-gray-200 rounded-2xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="text-sm font-semibold text-gray-900">Share this product</div>
+                    <button
+                      type="button"
+                      onClick={() => setShareOpen(false)}
+                      className="p-1 text-gray-400 hover:text-gray-700 rounded-md transition-colors"
+                      aria-label="Close share dialog"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <button onClick={handleNativeShare} className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 flex items-center gap-3">
-                      <span className="text-sm">Use device share</span>
+
+                  {/* Copy Link Input Bar */}
+                  <div className="mt-3">
+                    <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Product Link</div>
+                    <div className="flex items-center gap-1.5 p-1 border border-gray-200 rounded-lg bg-gray-50 focus-within:border-black transition-colors">
+                      <input
+                        type="text"
+                        readOnly
+                        value={window.location.href}
+                        className="flex-1 bg-transparent px-2 text-xs text-gray-700 select-all outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          copiedLink
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-black text-white hover:bg-neutral-800'
+                        }`}
+                      >
+                        {copiedLink ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Device Share Button (if supported by desktop browser) */}
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                    <button
+                      type="button"
+                      onClick={handleNativeShare}
+                      className="w-full mt-3 py-2 px-3 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-gray-600" />
+                      <span>Share via system apps</span>
                     </button>
-                    <button onClick={handleCopyLink} className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 flex items-center gap-3">
-                      <span className="text-sm">Copy product link</span>
-                    </button>
-                    <div className="border-t border-gray-100 pt-2 mt-2">
-                      <div className="text-xs text-gray-500 mb-1">Share via</div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleSocialClick('twitter')} className="px-2 py-1 rounded border hover:bg-gray-50">Twitter</button>
-                        <button onClick={() => handleSocialClick('facebook')} className="px-2 py-1 rounded border hover:bg-gray-50">Facebook</button>
-                        <button onClick={() => handleSocialClick('whatsapp')} className="px-2 py-1 rounded border hover:bg-gray-50">WhatsApp</button>
-                      </div>
+                  )}
+
+                  {/* Social Share Buttons */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Share to</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSocialClick('whatsapp')}
+                        className="py-1.5 px-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-colors text-center"
+                      >
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSocialClick('facebook')}
+                        className="py-1.5 px-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-colors text-center"
+                      >
+                        Facebook
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSocialClick('twitter')}
+                        className="py-1.5 px-2 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:text-black transition-colors text-center"
+                      >
+                        Twitter / X
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1669,6 +1752,7 @@ export const ProductDetail: React.FC = () => {
               title="Recently Viewed"
               products={recentlyViewedList}
               maxItems={10}
+              variant="compact"
             />
           </div>
         )}

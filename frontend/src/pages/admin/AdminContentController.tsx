@@ -11,7 +11,8 @@ import {
   AlertCircle,
   UploadCloud,
   Clock,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 import { contentAPI, adminAPI } from '../../api';
 import { useToast } from '../../context/ToastContext';
@@ -31,14 +32,53 @@ type BannerConfig = {
   isActive: boolean;
 };
 
-const BANNER_SECTIONS = [
-  { key: 'home_top', label: 'Home Top Promo Banner', page: 'Home Page (Top)', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'home_hero', label: 'Home Hero Main Banner', page: 'Home Page (Hero)', defaultPlaceholder: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'men_hero', label: "Men's Collection Hero", page: 'Men Page', defaultPlaceholder: 'https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'women_hero', label: "Women's Collection Hero", page: 'Women Page', defaultPlaceholder: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'kids_hero', label: "Kids' Collection Hero", page: 'Kids Page', defaultPlaceholder: 'https://images.unsplash.com/photo-1514090458221-65bb69cf63e6?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'sale_hero', label: 'Private Sale Hero Banner', page: 'Sale Page', defaultPlaceholder: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1600&auto=format&fit=crop' },
-  { key: 'accessories_hero', label: 'Accessories Hero Banner', page: 'Accessories Page', defaultPlaceholder: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop' },
+export type BannerSectionGroup = 'all' | 'heroes' | 'home' | 'collections' | 'menu';
+
+export interface BannerSectionDef {
+  key: string;
+  label: string;
+  page: string;
+  group: 'heroes' | 'home' | 'collections' | 'menu';
+  defaultPlaceholder: string;
+  description?: string;
+}
+
+const BANNER_SECTIONS: BannerSectionDef[] = [
+  // ─── 1. PAGE HERO BANNERS ───
+  { key: 'men_hero', label: "Men's Collection Hero", page: 'Men Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?q=80&w=1800&auto=format&fit=crop', description: 'Hero banner displayed at top of Men catalog' },
+  { key: 'women_hero', label: "Women's Collection Hero", page: 'Women Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1800&auto=format&fit=crop', description: 'Hero banner displayed at top of Women catalog' },
+  { key: 'kids_hero', label: "Kids' Collection Hero", page: 'Kids Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=1800&auto=format&fit=crop', description: 'Hero banner displayed at top of Kids catalog' },
+  { key: 'accessories_hero', label: 'Accessories Hero Banner', page: 'Accessories Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop', description: 'Hero banner displayed at top of Accessories catalog' },
+  { key: 'sale_hero', label: 'Seasonal Sale Hero Banner', page: 'Sale Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=1800&auto=format&fit=crop', description: 'Hero banner displayed on the Public Seasonal Sale page' },
+  { key: 'fragrances', label: 'Haute Fragrances Hero Banner', page: 'Fragrances Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?q=80&w=1600&auto=format&fit=crop', description: 'Hero banner displayed at top of Fragrances catalog' },
+  { key: 'brands', label: 'Official Brands Hub Hero Banner', page: 'Brands Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop', description: 'Hero banner displayed at top of Official Brands Hub' },
+  { key: 'private_sale_hero', label: 'Private Sale Exclusive Hero Banner', page: 'Private Sale Page', group: 'heroes', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1800&auto=format&fit=crop', description: 'Hero banner displayed on authenticated Private Sale page' },
+
+  // ─── 2. HOME PAGE & SLIDES ───
+  { key: 'home_top', label: 'Home Top Promo Banner', page: 'Home Page (Top)', group: 'home', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop', description: 'Top promo strip on the Home page' },
+  { key: 'home_hero', label: 'Home Hero Spotlight Banner', page: 'Home Page (Hero)', group: 'home', defaultPlaceholder: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1600&auto=format&fit=crop', description: 'Main hero spotlight banner on Home' },
+  { key: 'home_slide_1', label: 'Home Carousel — Slide 1', page: 'Home Page (Slide 1)', group: 'home', defaultPlaceholder: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&q=90', description: 'First slide in the rotating Home hero carousel (Maison Collection)' },
+  { key: 'home_slide_2', label: 'Home Carousel — Slide 2', page: 'Home Page (Slide 2)', group: 'home', defaultPlaceholder: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1920&q=90', description: 'Second slide in the rotating Home hero carousel (Athletic Couture)' },
+  { key: 'home_slide_3', label: 'Home Carousel — Slide 3', page: 'Home Page (Slide 3)', group: 'home', defaultPlaceholder: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&q=90', description: 'Third slide in the rotating Home hero carousel (Kids Edition)' },
+
+  // ─── 3. SHOP BY CATEGORY TILES ───
+  { key: 'category_men', label: 'Shop by Category — Men', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80', description: 'Card image for Men Atelier in the Shop by Category section' },
+  { key: 'category_women', label: 'Shop by Category — Women', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=800&q=80', description: 'Card image for Women Couture in the Shop by Category section' },
+  { key: 'category_kids', label: 'Shop by Category — Kids', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=800&q=80', description: 'Card image for Kids Studio in the Shop by Category section' },
+  { key: 'category_accessories', label: 'Shop by Category — Accessories', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1519744792095-2f2205e87b6f?w=800&q=80', description: 'Card image for Accessories Edit in the Shop by Category section' },
+  { key: 'category_fragrances', label: 'Shop by Category — Haute Fragrances', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?q=80&w=800&auto=format&fit=crop', description: 'Card image for Haute Fragrances in the Shop by Category section' },
+  { key: 'category_brands', label: 'Shop by Category — Official Brands', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop', description: 'Card image for Official Brands in the Shop by Category section' },
+  { key: 'category_private_sale', label: 'Shop by Category — Private Sale', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80', description: 'Card image for Private Sale VIP in the Shop by Category section' },
+  { key: 'category_sale', label: 'Shop by Category — Seasonal Sale', page: 'Home Page (Tile)', group: 'collections', defaultPlaceholder: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80', description: 'Card image for Seasonal Sale in the Shop by Category section' },
+
+  // ─── 4. MEGA MENU FEATURED CARDS ───
+  { key: 'menu_men', label: 'Mega Menu — Men Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400&h=500&fit=crop', description: 'Featured spotlight image in Men mega menu dropdown' },
+  { key: 'menu_women', label: 'Mega Menu — Women Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop', description: 'Featured spotlight image in Women mega menu dropdown' },
+  { key: 'menu_kids', label: 'Mega Menu — Kids Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=400&h=500&fit=crop', description: 'Featured spotlight image in Kids mega menu dropdown' },
+  { key: 'menu_accessories', label: 'Mega Menu — Accessories Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=500&fit=crop', description: 'Featured spotlight image in Accessories mega menu dropdown' },
+  { key: 'menu_fragrances', label: 'Mega Menu — Fragrances Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=400&h=500&fit=crop', description: 'Featured spotlight image in Fragrances mega menu dropdown' },
+  { key: 'menu_brands', label: 'Mega Menu — Brands Hub Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=800&auto=format&fit=crop', description: 'Brands hub image in Brands mega menu dropdown' },
+  { key: 'menu_sale', label: 'Mega Menu — Sale Featured Card', page: 'Header Mega Menu', group: 'menu', defaultPlaceholder: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=400&h=500&fit=crop', description: 'Featured spotlight image in Sale mega menu dropdown' },
 ];
 
 export default function AdminContentController(): JSX.Element {
@@ -46,6 +86,8 @@ export default function AdminContentController(): JSX.Element {
   const [activeTab, setActiveTab] = useState<'announcements' | 'banners'>('announcements');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<BannerSectionGroup>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Announcement state
   const [announcements, setAnnouncements] = useState<AnnouncementConfig>({
@@ -229,6 +271,19 @@ export default function AdminContentController(): JSX.Element {
       setSaving(false);
     }
   };
+
+  const filteredBannerSections = BANNER_SECTIONS.filter((sec) => {
+    const matchesGroup = selectedGroup === 'all' || sec.group === selectedGroup;
+    if (!matchesGroup) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      sec.label.toLowerCase().includes(q) ||
+      sec.page.toLowerCase().includes(q) ||
+      sec.key.toLowerCase().includes(q) ||
+      (sec.description && sec.description.toLowerCase().includes(q))
+    );
+  });
 
   if (loading) {
     return (
@@ -426,26 +481,84 @@ export default function AdminContentController(): JSX.Element {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <Sparkles className="h-5 w-5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
-              <strong>Admin-Controlled Page Banners:</strong> When active, the page will dynamically render your configured banner image, title, subtitle, and action link. When deactivated or empty, it will cleanly fall back to the website&apos;s standard default design.
+              <strong>Admin-Controlled Website Imagery & Banners:</strong> When active, customer-facing pages dynamically render your configured banner image, title, subtitle, and action link. When deactivated or empty, it will cleanly fall back to the website&apos;s standard default design.
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {BANNER_SECTIONS.map((sec) => {
-              const current = banners[sec.key] || { imageUrl: '', isActive: false };
-              const isUploading = uploadingSection === sec.key;
+          {/* Group Filter Tabs & Search */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { id: 'all', label: 'All Assets', count: BANNER_SECTIONS.length },
+                { id: 'heroes', label: 'Page Heroes', count: BANNER_SECTIONS.filter(s => s.group === 'heroes').length },
+                { id: 'home', label: 'Home & Slides', count: BANNER_SECTIONS.filter(s => s.group === 'home').length },
+                { id: 'collections', label: 'Shop by Category', count: BANNER_SECTIONS.filter(s => s.group === 'collections').length },
+                { id: 'menu', label: 'Mega Menu', count: BANNER_SECTIONS.filter(s => s.group === 'menu').length },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedGroup(tab.id as any)}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
+                    selectedGroup === tab.id
+                      ? 'bg-neutral-900 text-white shadow-sm'
+                      : 'bg-white text-neutral-600 hover:bg-neutral-100 border border-neutral-200'
+                  }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
 
-              return (
-                <div key={sec.key} className="bg-white rounded-3xl border border-neutral-200/80 shadow-sm p-6 flex flex-col justify-between space-y-4">
-                  <div>
-                    {/* Card Header */}
-                    <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400">
-                          {sec.page}
-                        </span>
-                        <h3 className="text-base font-semibold text-neutral-900">{sec.label}</h3>
-                      </div>
+            {/* Search Input */}
+            <div className="relative min-w-[260px]">
+              <Search className="h-4 w-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by page, title, or key..."
+                className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              />
+            </div>
+          </div>
+
+          {filteredBannerSections.length === 0 ? (
+            <div className="text-center py-12 bg-white border border-neutral-200 rounded-3xl p-8">
+              <p className="text-neutral-500 text-sm">No banner configurations found matching your filter criteria.</p>
+              <button
+                type="button"
+                onClick={() => { setSelectedGroup('all'); setSearchQuery(''); }}
+                className="mt-3 text-xs font-semibold text-neutral-900 underline"
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredBannerSections.map((sec) => {
+                const current = banners[sec.key] || { imageUrl: '', isActive: false };
+                const isUploading = uploadingSection === sec.key;
+
+                return (
+                  <div key={sec.key} className="bg-white rounded-3xl border border-neutral-200/80 shadow-sm p-6 flex flex-col justify-between space-y-4">
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400">
+                              {sec.page}
+                            </span>
+                            <span className="text-[9px] font-mono bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded">
+                              {sec.key}
+                            </span>
+                          </div>
+                          <h3 className="text-base font-semibold text-neutral-900">{sec.label}</h3>
+                          {sec.description && (
+                            <p className="text-[11px] text-neutral-500 mt-0.5">{sec.description}</p>
+                          )}
+                        </div>
 
                       <div className="flex items-center gap-3">
                         {/* Active Toggle */}
@@ -582,6 +695,7 @@ export default function AdminContentController(): JSX.Element {
               );
             })}
           </div>
+          )}
 
           {/* Bottom Save Bar */}
           <div className="sticky bottom-6 bg-white/90 backdrop-blur-md p-4 rounded-3xl border border-neutral-200 shadow-xl flex items-center justify-between">

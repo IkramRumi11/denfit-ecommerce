@@ -179,7 +179,7 @@ ${formData.message}
                         value={formData.name}
                         onChange={handleInputChange}
                         className="w-full bg-gray-50 border border-gray-200 p-4 focus:outline-none focus:border-amber-500 focus:bg-white transition-colors"
-                        placeholder="Your full name"
+                        placeholder="Enter your full name"
                       />
                     </div>
                     <div>
@@ -191,7 +191,7 @@ ${formData.message}
                         value={formData.email}
                         onChange={handleInputChange}
                         className="w-full bg-gray-50 border border-gray-200 p-4 focus:outline-none focus:border-amber-500 focus:bg-white transition-colors"
-                        placeholder="you@example.com"
+                        placeholder="Enter your email address"
                       />
                     </div>
                   </div>
@@ -205,7 +205,7 @@ ${formData.message}
                         value={formData.orderNumber}
                         onChange={handleInputChange}
                         className="w-full bg-gray-50 border border-gray-200 p-4 focus:outline-none focus:border-amber-500 focus:bg-white transition-colors"
-                        placeholder="ORD-1234"
+                        placeholder="Order number (if applicable)"
                       />
                     </div>
                     <div>

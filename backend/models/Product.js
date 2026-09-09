@@ -378,6 +378,22 @@ productSchema.index({ ageGroup: 1 });
 productSchema.index({ 'ratings.average': -1 });
 productSchema.index({ gender: 1, categorySlug: 1, price: 1 });
 
+// Index for SEO slug lookups
+productSchema.index({ 'seo.slug': 1 });
+
+// Virtual for slug (canonical public identifier)
+productSchema.virtual('slug').get(function() {
+  if (this.seo && this.seo.slug) return this.seo.slug;
+  if (this.name) {
+    return String(this.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+  return '';
+});
+
 // Virtual for discount percentage
 productSchema.virtual('discountPercentage').get(function() {
   if (this.originalPrice && this.originalPrice > this.price) {

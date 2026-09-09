@@ -1,13 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ProductCard } from '../components/ProductCard';
-import { productId } from '../utils/productHelpers';
+import {
+  productId,
+  productUrl,
+  extractAvailableColors,
+  productMatchesColor,
+  isLightColorHex,
+  AvailableColorItem,
+} from '../utils/productHelpers';
 import { Breadcrumb } from '../components/layout/Breadcrumb';
 import { productsAPI } from '../api';
 import { ProductFilters } from '../components/ProductFilters';
-import { SlidersHorizontal, X } from 'lucide-react';
-import { getColorName, resolveColorHex } from '../utils/colorNames';
+import { SlidersHorizontal, X, Check } from 'lucide-react';
 import { usePageBanner } from '../hooks/usePageBanner';
 
 type AnyProduct = Record<string, any>;
@@ -50,29 +56,11 @@ export default function Women(): JSX.Element {
     setFilteredProducts(products);
   }, [products]);
 
-  const availableColors = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((product) => {
-      if (Array.isArray(product.variants)) {
-        product.variants.forEach((v: any) => {
-          const name = v && (v.name || v.displayName || v.value);
-          const hex = v && (v.hex || v.normalizedHex || v.value);
-          if (name) set.add(String(name));
-          if (hex) set.add(String(hex));
-        });
-      }
-      if (Array.isArray(product.colors)) {
-        product.colors.forEach((c: any) => {
-          const name = c && (c.name || c.displayName || c.value);
-          const hex = c && (c.hex || c.normalizedHex || c.value);
-          if (name) set.add(String(name));
-          if (hex) set.add(String(hex));
-        });
-      }
-      if (product.color) set.add(String(product.color));
-    });
-    return Array.from(set);
-  }, [products]);
+  // Colors available in the loaded women products catalog
+  const availableColors = useMemo(
+    () => extractAvailableColors(products),
+    [products]
+  );
 
   const availableSizes = useMemo(() => {
     const set = new Set<string>();
@@ -106,29 +94,9 @@ export default function Women(): JSX.Element {
     }
 
     if (filters.color && String(filters.color).trim() !== '') {
-      const needle = String(filters.color).toLowerCase();
-      const matchesColor = (product: AnyProduct) => {
-        if (Array.isArray(product.variants)) {
-          for (const v of product.variants) {
-            const name = String(v && (v.name || v.displayName || v.value || '')).toLowerCase();
-            const hex = String(v && (v.hex || v.normalizedHex || v.value || '')).toLowerCase();
-            if (name === needle || hex === needle) return true;
-          }
-        }
-        if (Array.isArray(product.colors)) {
-          for (const c of product.colors) {
-            const name = String(c && (c.name || c.displayName || c.value || '')).toLowerCase();
-            const hex = String(c && (c.hex || c.normalizedHex || c.value || '')).toLowerCase();
-            if (name === needle || hex === needle) return true;
-          }
-        }
-        if (product.color) {
-          const pcol = String(product.color).toLowerCase();
-          if (pcol === needle) return true;
-        }
-        return false;
-      };
-      filtered = filtered.filter(matchesColor);
+      filtered = filtered.filter((product: AnyProduct) =>
+        productMatchesColor(product, filters.color)
+      );
     }
 
     if (filters.rating) {
@@ -165,6 +133,21 @@ export default function Women(): JSX.Element {
     }
   };
 
+  const handleColorClick = (colorItem: AvailableColorItem) => {
+    const activeColor = String(currentFilters?.color || '').trim().toLowerCase();
+    const isSelected = activeColor === colorItem.name.toLowerCase() || activeColor === colorItem.slug;
+    const nextColor = isSelected ? '' : colorItem.name;
+
+    const nextFilters = { ...currentFilters };
+    if (nextColor) {
+      nextFilters.color = nextColor;
+    } else {
+      delete nextFilters.color;
+    }
+
+    handleFilterChange(nextFilters);
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const colorParam = params.get('color');
@@ -197,20 +180,6 @@ export default function Women(): JSX.Element {
     { title: 'FOOTWEAR', slug: 'footwear', image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=800&auto=format&fit=crop' },
     { title: 'SWEATER', slug: 'sweaters', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?q=80&w=800&auto=format&fit=crop' },
     { title: 'TROUSER', slug: 'trousers', image: 'https://images.unsplash.com/photo-1506629082955-511b1aa562c8?q=80&w=800&auto=format&fit=crop' },
-  ];
-
-  const colorFilters = [
-    { name: 'Brown', color: '#8B4513', slug: 'brown' },
-    { name: 'Black', color: '#000000', slug: 'black' },
-    { name: 'Beige', color: '#F5F5DC', slug: 'beige' },
-    { name: 'Blue', color: '#0066CC', slug: 'blue' },
-    { name: 'Grey', color: '#808080', slug: 'grey' },
-    { name: 'Green', color: '#228B22', slug: 'green' },
-    { name: 'Yellow', color: '#FFD700', slug: 'yellow' },
-    { name: 'Pink', color: '#FF69B4', slug: 'pink' },
-    { name: 'White', color: '#FFFFFF', slug: 'white' },
-    { name: 'Burgundy', color: '#800020', slug: 'burgundy' },
-    { name: 'Red', color: '#DC143C', slug: 'red' },
   ];
 
   const { banner: womenBanner } = usePageBanner('women_hero');
@@ -341,7 +310,7 @@ export default function Women(): JSX.Element {
             </div>
           ) : filteredProducts.length > 0 ? (
             filteredProducts.slice(0, 48).map((product: AnyProduct) => (
-              <ProductCard key={productId(product)} product={product} />
+              <ProductCard key={productId(product)} product={product as any} />
             ))
           ) : (
             <div className="col-span-full py-20 text-center text-gray-500">
@@ -377,7 +346,7 @@ export default function Women(): JSX.Element {
               <div className="flex-1 overflow-y-auto p-6">
                 <ProductFilters
                   onFilterChange={handleFilterChange}
-                  colors={availableColors}
+                  colors={availableColors.map(c => c.name)}
                   sizes={availableSizes}
                   initialFilters={currentFilters}
                 />
@@ -400,23 +369,36 @@ export default function Women(): JSX.Element {
           {availableColors.length === 0 ? (
             <div className="text-sm text-gray-500">No colors available</div>
           ) : (
-            availableColors.map((c) => {
-              const colorName = getColorName(String(c));
-              const swatchBg = resolveColorHex(String(c)) || String(c);
+            availableColors.map((colorItem) => {
+              const activeColor = String(currentFilters?.color || '').trim().toLowerCase();
+              const isActive = activeColor === colorItem.name.toLowerCase() || activeColor === colorItem.slug;
               return (
-                <Link
-                  key={String(c)}
-                  to={`/shop?gender=women&color=${encodeURIComponent(String(c))}`}
-                  className="flex flex-col items-center group"
+                <button
+                  key={colorItem.slug}
+                  type="button"
+                  onClick={() => handleColorClick(colorItem)}
+                  className={`flex flex-col items-center group transition-transform ${isActive ? 'scale-105' : ''}`}
+                  title={`Filter by ${colorItem.name}`}
+                  aria-label={`Filter by ${colorItem.name}${isActive ? ' (active, click to clear)' : ''}`}
                 >
                   <div
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full border-4 border-gray-200 group-hover:border-gray-400 transition-all duration-300 group-hover:scale-110"
-                    style={{ backgroundColor: swatchBg }}
-                  />
-                  <span className="mt-2 text-xs md:text-sm font-medium text-gray-700 uppercase tracking-wide">
-                    {colorName}
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-full border-4 transition-all duration-300 group-hover:scale-110 relative ${
+                      isActive
+                        ? 'border-black ring-4 ring-black/20 shadow-md'
+                        : 'border-gray-200 group-hover:border-gray-400'
+                    }`}
+                    style={{ backgroundColor: colorItem.hex }}
+                  >
+                    {isActive && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Check className={`w-6 h-6 ${isLightColorHex(colorItem.hex) ? 'text-black' : 'text-white'}`} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`mt-2 text-xs md:text-sm font-medium uppercase tracking-wide ${isActive ? 'text-black font-bold underline' : 'text-gray-700'}`}>
+                    {colorItem.name}
                   </span>
-                </Link>
+                </button>
               );
             })
           )}
@@ -460,7 +442,7 @@ function StyledByYouSection() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
         {items.map((entry: any) =>
           (entry.images || []).map((img: any, i: number) => (
-            <Link key={`${entry._id || entry.id || 'styled'}-${i}`} to={img.product ? `/product/${img.product}` : '#'} className="relative aspect-square overflow-hidden group">
+            <Link key={`${entry._id || entry.id || 'styled'}-${i}`} to={img.product ? productUrl(img.product) : '#'} className="relative aspect-square overflow-hidden group">
               <img src={img.url} alt={img.caption || 'Styled Look'} className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
               <div className="absolute top-2 right-2 bg-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">

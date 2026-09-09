@@ -171,7 +171,7 @@ export const VariantImageManager: React.FC<VariantImageManagerProps> = ({
               value={swatchUrlInput}
               onChange={(e) => setSwatchUrlInput(e.target.value)}
               onKeyPress={handleSwatchUrlKeyPress}
-              placeholder="https://example.com/swatch.jpg"
+              placeholder="Enter swatch image URL"
               disabled={validatingSwatchUrl}
               className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs disabled:opacity-50"
             />
@@ -249,7 +249,7 @@ export const VariantImageManager: React.FC<VariantImageManagerProps> = ({
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               onKeyPress={handleUrlKeyPress}
-              placeholder="https://example.com/image.jpg"
+              placeholder="Enter image URL"
               disabled={validatingUrl}
               className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs disabled:opacity-50"
             />
